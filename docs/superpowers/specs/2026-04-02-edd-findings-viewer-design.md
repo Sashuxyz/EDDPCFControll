@@ -32,7 +32,9 @@ The control receives these columns via the dataset binding (configured in the su
 | `modifiedon` | DateTime | Record last modified date |
 | `createdby` | Lookup | User who created the record |
 
-**Note:** OptionSet integer values and labels are read from dataset metadata at runtime. Labels are never hardcoded. Additional columns added to the subgrid view in the form designer will be auto-rendered in the expanded metadata footer — no code change required.
+**Parent relationship:** The `syg_eddfinding` entity has a lookup field `syg_kycprofileid` (verify actual schema name) pointing to `syg_kycprofile`. This is the field that gets pre-populated when creating a new finding from within this control.
+
+**Note:** OptionSet integer values and labels are read from dataset metadata at runtime. Labels are never hardcoded. Additional columns added to the subgrid view in the form designer will be auto-rendered in the expanded metadata footer — no code change required. The project structure in this spec represents the target implementation state.
 
 ## UX Design
 
@@ -60,7 +62,7 @@ Each finding renders as a document-style card showing:
 
 Category is **not shown** in the collapsed state — it's typically implied by the title and shown in the expanded footer.
 
-Cards are sorted by `createdon` descending (newest first), respecting the dataset's configured sorting.
+Cards are displayed in the order provided by the dataset (respecting the subgrid view's configured sorting). The recommended default sort on the subgrid view is `createdon` descending (newest first), but the control does not override the dataset sort order.
 
 ### Card Layout — Expanded State
 
@@ -77,8 +79,8 @@ Only one card is expanded at a time (accordion behavior).
 
 ### Click Targets
 
-- **Header area** (severity badge row + title row): Clickable — toggles expand/collapse
-- **Title text:** Clickable link — opens the finding record in a D365 form (takes priority over expand/collapse)
+- **Header area** (severity badge row + title row background): Clickable — toggles expand/collapse. The expand/collapse click region includes the severity badge row and the title row background, but excludes the title link text itself.
+- **Title text:** Clickable link — opens the finding record in a D365 form. This is an `<a>` or `<button>` element nested within the header area; clicks on it do not bubble to the expand/collapse handler (`stopPropagation`).
 - **Description area:** Not clickable for expand — allows text selection for copy-paste
 - **"Show more" / "Show less" link:** Toggles expand/collapse
 - **Linked condition link:** Opens the condition record in a D365 form
@@ -117,7 +119,7 @@ Keyed on OptionSet **integer values** (must be verified against Dataverse after 
 |---|---|---|---|
 | 1 | Low | `#DFF6DD` | `#107C10` |
 | 2 | Medium | `#FFF4CE` | `#835B00` |
-| 3 | High | `#FFF4CE` | `#835B00` |
+| 3 | High | `#FED9CC` | `#C4441C` |
 | 4 | Critical | `#FDE7E9` | `#A4262C` |
 
 Fallback for unknown values: `#F3F2F1` background, `#605E5C` text.
@@ -138,7 +140,20 @@ Fallback: same as unknown risk severity.
 ### Rich Text Rendering
 
 - **Collapsed state:** Strip all HTML tags from `syg_description` to produce plain text. Use a utility function that extracts `textContent` from a temporary DOM element (or regex for simple cases). Truncate visually with CSS line-clamp.
-- **Expanded state:** Sanitize the raw HTML via **DOMPurify** with an explicit allowlist of safe tags (`p`, `br`, `strong`, `em`, `ul`, `ol`, `li`, `table`, `thead`, `tbody`, `tr`, `th`, `td`, `img`, `h1`-`h6`, `span`, `div`, `a`). Render the sanitized output. No unsanitized HTML is ever rendered.
+- **Expanded state:** Sanitize the raw HTML via **DOMPurify** with the following configuration. Render the sanitized output. No unsanitized HTML is ever rendered.
+  ```ts
+  DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li',
+                   'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                   'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                   'span', 'div', 'a', 'blockquote', 'pre', 'code'],
+    ALLOWED_ATTR: ['src', 'href', 'alt', 'title', 'class', 'style',
+                   'colspan', 'rowspan', 'width', 'height', 'target', 'rel'],
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|data):)/i, // Allow https and data: URIs (for base64 images)
+    ALLOW_DATA_ATTR: false,
+  });
+  ```
+  **Note:** `data:` URIs are allowed because Dataverse's rich text editor embeds images as base64 `data:image/...` in `img[src]`. The `ALLOW_DATA_ATTR` is false to block `data-*` attributes which are unnecessary.
 - **Rich text base styles:** Apply scoped CSS within the expanded content area for:
   - `img`: `max-width: 100%; height: auto;`
   - `table`: `width: 100%; border-collapse: collapse; font-size: 12px;`
@@ -173,7 +188,35 @@ For clickable links: `context.navigation.openForm({ entityName, entityId })` wit
 
 - **Open finding record:** `context.navigation.openForm({ entityName: "syg_eddfinding", entityId })` — triggered by clicking the finding title link.
 - **Open linked condition:** `context.navigation.openForm({ entityName: "syg_compliancecondition", entityId })` — triggered by clicking the condition link in the metadata footer.
-- **New finding:** `context.navigation.openForm({ entityName: "syg_eddfinding", createFromEntity: { entityType: "syg_kycprofile", id: parentRecordId } })` — pre-populates the parent lookup.
+- **New finding:** Pre-populates the parent KYC Profile lookup. Use `formParameters` for reliability with custom entities:
+  ```ts
+  context.navigation.openForm(
+    { entityName: "syg_eddfinding" },
+    { syg_kycprofileid: parentRecordId, syg_kycprofileidname: parentRecordName }
+  );
+  ```
+  Verify `syg_kycprofileid` matches the actual lookup field schema name on `syg_eddfinding`.
+
+### Parent Record Context
+
+The control needs the parent KYC Profile record ID to pre-populate the "+ New Finding" form. Resolution strategy:
+
+1. **Primary:** `(context.mode as any).contextInfo.entityId` — available in model-driven app forms. This works in both standalone and embedded form contexts.
+2. **Fallback:** Parse `context.page.entityId` if available.
+3. **If neither is available:** The "+ New Finding" button opens a blank form without pre-population (graceful degradation).
+
+The parent record name for display purposes can be obtained from `(context.mode as any).contextInfo.entityRecordName` or via a lightweight `retrieveRecord` call.
+
+### Loading State
+
+While the dataset is loading (`dataset.loading === true`), display a Fluent UI `Spinner` component centered in the control area with the label "Loading findings...". The header bar is not shown during loading.
+
+### Error Handling
+
+- **Navigation failures** (`openForm` calls): Caught silently with `console.warn`. The user remains on the current form.
+- **Lookup resolution failures** (Web API calls for condition names): The field displays "Open Record" as a clickable fallback instead of the display name.
+- **DOMPurify failures** (malformed HTML): Falls back to plain text rendering (same as collapsed preview).
+- **Pagination failures** (`loadNextPage`): The "Load more" button shows an inline error message "Failed to load — try again" and remains clickable for retry.
 
 ### Responsiveness
 
@@ -249,3 +292,5 @@ EddFindingsViewer/
 11. D365 visual language: Segoe UI, 2px radius, D365 shadows and color palette.
 12. Keyboard accessible and screen-reader friendly.
 13. Description text is selectable for copy-paste.
+14. If the dataset page size is exceeded, a "Load more" button appears and loads additional records.
+15. Loading spinner shown while dataset is loading.
