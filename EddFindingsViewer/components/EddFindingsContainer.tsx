@@ -125,9 +125,9 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
   );
 
   const handleNewFinding = React.useCallback(() => {
-    const parentId = (context.mode as any).contextInfo?.entityId as
-      | string
-      | undefined;
+    const modeInfo = (context.mode as any).contextInfo;
+    const parentId = modeInfo?.entityId as string | undefined;
+    const parentName = modeInfo?.entityRecordName as string | undefined;
 
     const formOptions: Record<string, unknown> = {
       entityName: 'syg_eddfinding',
@@ -136,7 +136,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
     const formParameters: Record<string, string> | undefined = parentId
       ? {
           syg_kycprofileid: parentId,
-          syg_kycprofileidname: parentId,
+          ...(parentName ? { syg_kycprofileidname: parentName } : {}),
         }
       : undefined;
 
