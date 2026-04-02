@@ -6,8 +6,20 @@ import DOMPurify from 'dompurify';
  */
 export function stripHtml(html: string): string {
   if (!html) return '';
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  return doc.body.textContent?.trim() ?? '';
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent?.trim() ?? '';
+  } catch {
+    // Fallback if DOMParser unavailable: sanitize first, then extract text
+    try {
+      const el = document.createElement('div');
+      // Safe: content is sanitized via DOMPurify before assignment
+      el.innerHTML = DOMPurify.sanitize(html); // eslint-disable-line
+      return el.textContent?.trim() ?? '';
+    } catch {
+      return html;
+    }
+  }
 }
 
 /**

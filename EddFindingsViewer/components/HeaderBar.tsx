@@ -1,30 +1,46 @@
 import * as React from 'react';
-import { Button } from '@fluentui/react-components';
-import { Add20Regular } from '@fluentui/react-icons';
-import { useHeaderStyles } from '../styles/tokens';
+import { headerStyles } from '../styles/tokens';
 
 interface HeaderBarProps {
   count: number;
   onNewClick: () => void;
 }
 
-export const HeaderBar: React.FC<HeaderBarProps> = ({ count, onNewClick }) => {
-  const styles = useHeaderStyles();
+const addButtonStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '4px 8px',
+  fontSize: '12px',
+  fontFamily: 'inherit',
+  color: '#323130',
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderRadius: '2px',
+  cursor: 'pointer',
+};
 
+export const HeaderBar: React.FC<HeaderBarProps> = ({ count, onNewClick }) => {
   return (
-    <div className={styles.root}>
-      <div className={styles.left}>
-        <span className={styles.title}>EDD Findings</span>
-        <span className={styles.countBadge}>{count}</span>
+    <div style={headerStyles.root}>
+      <div style={headerStyles.left}>
+        <span style={headerStyles.title}>EDD Findings</span>
+        <span style={headerStyles.countBadge}>{count}</span>
       </div>
-      <Button
-        appearance="subtle"
-        icon={<Add20Regular />}
+      <button
+        style={addButtonStyle}
         onClick={onNewClick}
-        size="small"
+        type="button"
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F3F2F1';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+        }}
       >
+        <span aria-hidden="true" style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
         New Finding
-      </Button>
+      </button>
     </div>
   );
 };

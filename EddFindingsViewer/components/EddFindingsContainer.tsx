@@ -1,27 +1,33 @@
 import * as React from 'react';
-import {
-  FluentProvider,
-  webLightTheme,
-  Spinner,
-  Button,
-} from '@fluentui/react-components';
 import { FindingCard } from './FindingCard';
 import { HeaderBar } from './HeaderBar';
 import { EmptyState } from './EmptyState';
 import { extractRecords } from '../utils/datasetHelpers';
 import { getAdditionalColumns } from '../utils/metadataHelpers';
-import { useContainerStyles } from '../styles/tokens';
+import { containerStyles } from '../styles/tokens';
 
 interface EddFindingsContainerProps {
   dataset: ComponentFramework.PropertyTypes.DataSet;
   context: ComponentFramework.Context<unknown>;
 }
 
+const loadMoreButtonStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 8px',
+  fontSize: '12px',
+  fontFamily: 'inherit',
+  color: '#323130',
+  backgroundColor: 'transparent',
+  border: 'none',
+  borderRadius: '2px',
+  cursor: 'pointer',
+};
+
 export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
   dataset,
   context,
 }) => {
-  const styles = useContainerStyles();
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [conditionNames, setConditionNames] = React.useState<Record<string, string>>({});
   const [loadMoreError, setLoadMoreError] = React.useState<boolean>(false);
@@ -183,59 +189,65 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
     [dataset.records]
   );
 
-  // Loading state — no HeaderBar per spec
+  // Loading state
   if (dataset.loading) {
     return (
-      <FluentProvider theme={webLightTheme}>
-        <div className={styles.loading}>
-          <Spinner label="Loading findings..." />
-        </div>
-      </FluentProvider>
+      <div style={containerStyles.loading}>
+        <span style={{ color: '#605E5C', fontSize: '13px' }}>Loading findings...</span>
+      </div>
     );
   }
 
   return (
-    <FluentProvider theme={webLightTheme}>
-      <div className={styles.root}>
-        <HeaderBar count={findings.length} onNewClick={handleNewFinding} />
+    <div style={containerStyles.root}>
+      <HeaderBar count={findings.length} onNewClick={handleNewFinding} />
 
-        {findings.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {findings.map((finding) => (
-              <FindingCard
-                key={finding.id}
-                finding={finding}
-                isExpanded={expandedId === finding.id}
-                onToggle={() => handleToggle(finding.id)}
-                onOpenFinding={handleOpenFinding}
-                onOpenCondition={handleOpenCondition}
-                conditionNameOverride={
-                  finding.linkedConditionId
-                    ? conditionNames[finding.linkedConditionId]
-                    : undefined
-                }
-                additionalColumns={additionalColumns}
-                getAdditionalValue={getAdditionalValue}
-              />
-            ))}
+      {findings.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          {findings.map((finding) => (
+            <FindingCard
+              key={finding.id}
+              finding={finding}
+              isExpanded={expandedId === finding.id}
+              onToggle={() => handleToggle(finding.id)}
+              onOpenFinding={handleOpenFinding}
+              onOpenCondition={handleOpenCondition}
+              conditionNameOverride={
+                finding.linkedConditionId
+                  ? conditionNames[finding.linkedConditionId]
+                  : undefined
+              }
+              additionalColumns={additionalColumns}
+              getAdditionalValue={getAdditionalValue}
+            />
+          ))}
 
-            {dataset.paging?.hasNextPage && (
-              <div className={styles.loadMoreContainer}>
-                <Button appearance="subtle" onClick={handleLoadMore} size="small">
-                  Load more
-                </Button>
-                {loadMoreError && (
-                  <div className={styles.loadMoreError}>
-                    Failed to load — try again
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </FluentProvider>
+          {dataset.paging?.hasNextPage && (
+            <div style={containerStyles.loadMoreContainer}>
+              <button
+                style={loadMoreButtonStyle}
+                onClick={handleLoadMore}
+                type="button"
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#F3F2F1';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                }}
+              >
+                Load more
+              </button>
+              {loadMoreError && (
+                <div style={containerStyles.loadMoreError}>
+                  Failed to load — try again
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 };

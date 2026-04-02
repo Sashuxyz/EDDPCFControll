@@ -1,12 +1,10 @@
 import * as React from 'react';
-import { mergeClasses } from '@fluentui/react-components';
-import { ChevronDown20Regular } from '@fluentui/react-icons';
 import { FindingRecord } from '../utils/datasetHelpers';
 import { getRiskColors, getStatusColors } from '../utils/optionSetColors';
 import { stripHtml, sanitizeHtml } from '../utils/htmlHelpers';
 import { MetadataField } from '../utils/metadataHelpers';
-import { useCardStyles } from '../styles/tokens';
-import { useRichTextStyles } from '../styles/richText';
+import { cardStyles } from '../styles/tokens';
+import { RICH_TEXT_CLASS, injectRichTextStyles } from '../styles/richText';
 
 interface FindingCardProps {
   finding: FindingRecord;
@@ -29,9 +27,12 @@ export const FindingCard: React.FC<FindingCardProps> = ({
   additionalColumns,
   getAdditionalValue,
 }) => {
-  const styles = useCardStyles();
-  const richTextStyles = useRichTextStyles();
   const contentId = `finding-content-${finding.id}`;
+
+  // Inject rich text scoped styles once
+  React.useEffect(() => {
+    injectRichTextStyles();
+  }, []);
 
   const riskColors = getRiskColors(finding.riskSeverityValue);
   const statusColors = getStatusColors(finding.statusValue);
@@ -80,11 +81,19 @@ export const FindingCard: React.FC<FindingCardProps> = ({
     }
   };
 
+  const cardStyle: React.CSSProperties = isExpanded
+    ? { ...cardStyles.card, ...cardStyles.cardExpanded }
+    : cardStyles.card;
+
+  const chevronStyle: React.CSSProperties = isExpanded
+    ? { ...cardStyles.chevron, ...cardStyles.chevronExpanded }
+    : cardStyles.chevron;
+
   return (
-    <div className={mergeClasses(styles.card, isExpanded && styles.cardExpanded)}>
+    <div style={cardStyle}>
       {/* Header area — click to toggle */}
       <div
-        className={styles.headerArea}
+        style={cardStyles.headerArea}
         role="button"
         aria-expanded={isExpanded}
         aria-controls={contentId}
@@ -93,36 +102,31 @@ export const FindingCard: React.FC<FindingCardProps> = ({
         onKeyDown={handleHeaderKeyDown}
       >
         {/* Top row: severity badge (left), status badge + chevron (right) */}
-        <div className={styles.topRow}>
+        <div style={cardStyles.topRow}>
           <span
-            className={styles.badge}
-            style={{ backgroundColor: riskColors.bg, color: riskColors.text }}
+            style={{ ...cardStyles.badge, backgroundColor: riskColors.bg, color: riskColors.text }}
           >
             {finding.riskSeverityLabel || 'Unknown'}
           </span>
-          <div className={styles.rightGroup}>
+          <div style={cardStyles.rightGroup}>
             <span
-              className={styles.badge}
-              style={{ backgroundColor: statusColors.bg, color: statusColors.text }}
+              style={{ ...cardStyles.badge, backgroundColor: statusColors.bg, color: statusColors.text }}
             >
               {finding.statusLabel || 'Unknown'}
             </span>
             <span
-              className={mergeClasses(
-                styles.chevron,
-                isExpanded && styles.chevronExpanded
-              )}
+              style={chevronStyle}
               aria-hidden="true"
             >
-              <ChevronDown20Regular />
+              &#9662;
             </span>
           </div>
         </div>
 
         {/* Title row */}
-        <div className={styles.titleRow}>
+        <div style={cardStyles.titleRow}>
           <button
-            className={styles.titleLink}
+            style={cardStyles.titleLink}
             onClick={handleTitleClick}
             onKeyDown={handleTitleKeyDown}
             type="button"
@@ -135,12 +139,12 @@ export const FindingCard: React.FC<FindingCardProps> = ({
       {/* Collapsed: plain text preview + show more */}
       {!isExpanded && plainText && (
         <>
-          <div className={styles.previewArea}>
-            <div className={styles.previewText}>{plainText}</div>
+          <div style={cardStyles.previewArea}>
+            <div style={cardStyles.previewText}>{plainText}</div>
           </div>
-          <div className={styles.showMoreLink}>
+          <div style={cardStyles.showMoreLink}>
             <button
-              className={styles.showMoreButton}
+              style={cardStyles.showMoreButton}
               onClick={handleShowMore}
               type="button"
             >
@@ -159,18 +163,16 @@ export const FindingCard: React.FC<FindingCardProps> = ({
         >
           {sanitizedHtml && (
             <div
-              className={mergeClasses(
-                styles.expandedDescription,
-                richTextStyles.richTextContainer
-              )}
+              className={RICH_TEXT_CLASS}
+              style={cardStyles.expandedDescription}
               // Safe: content is sanitized via DOMPurify in sanitizeHtml()
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
           )}
 
-          <div className={styles.showMoreLink}>
+          <div style={cardStyles.showMoreLink}>
             <button
-              className={styles.showMoreButton}
+              style={cardStyles.showMoreButton}
               onClick={handleShowMore}
               type="button"
             >
@@ -179,26 +181,26 @@ export const FindingCard: React.FC<FindingCardProps> = ({
           </div>
 
           {/* Metadata footer */}
-          <div className={styles.metadataFooter}>
+          <div style={cardStyles.metadataFooter}>
             {/* Tier 1: curated fields */}
-            <div className={styles.metadataRow}>
+            <div style={cardStyles.metadataRow}>
               {finding.categoryLabel && (
                 <span>
-                  <span className={styles.metadataLabel}>Category: </span>
+                  <span style={cardStyles.metadataLabel}>Category: </span>
                   {finding.categoryLabel}
                 </span>
               )}
               {finding.createdByName && (
                 <span>
-                  <span className={styles.metadataLabel}>Created by: </span>
+                  <span style={cardStyles.metadataLabel}>Created by: </span>
                   {finding.createdByName}
                 </span>
               )}
               {finding.linkedConditionId && (
                 <span>
-                  <span className={styles.metadataLabel}>Condition: </span>
+                  <span style={cardStyles.metadataLabel}>Condition: </span>
                   <button
-                    className={styles.conditionLink}
+                    style={cardStyles.conditionLink}
                     onClick={handleConditionClick}
                     type="button"
                     title={conditionName ? `Open ${conditionName}` : 'Open linked condition'}
@@ -209,7 +211,7 @@ export const FindingCard: React.FC<FindingCardProps> = ({
               )}
               {finding.modifiedOn && (
                 <span>
-                  <span className={styles.metadataLabel}>Last updated: </span>
+                  <span style={cardStyles.metadataLabel}>Last updated: </span>
                   {finding.modifiedOn}
                 </span>
               )}
@@ -217,13 +219,13 @@ export const FindingCard: React.FC<FindingCardProps> = ({
 
             {/* Tier 2: auto-discovered additional columns */}
             {additionalColumns.length > 0 && (
-              <div className={styles.metadataRow} style={{ marginTop: '8px' }}>
+              <div style={{ ...cardStyles.metadataRow, marginTop: '8px' }}>
                 {additionalColumns.map((col) => {
                   const value = getAdditionalValue(finding.id, col.name);
                   if (!value) return null;
                   return (
                     <span key={col.name}>
-                      <span className={styles.metadataLabel}>{col.displayName}: </span>
+                      <span style={cardStyles.metadataLabel}>{col.displayName}: </span>
                       {value}
                     </span>
                   );

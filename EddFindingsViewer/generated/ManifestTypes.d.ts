@@ -1,5 +1,10 @@
-export interface IInputs {
-  findings: ComponentFramework.PropertyTypes.DataSet;
-}
+/*
+*This is auto generated from the ControlManifest.Input.xml file
+*/
 
-export interface IOutputs {}
+// Define IInputs and IOutputs Type. They should match with ControlManifest.
+export interface IInputs {
+    findings: ComponentFramework.PropertyTypes.DataSet;
+}
+export interface IOutputs {
+}

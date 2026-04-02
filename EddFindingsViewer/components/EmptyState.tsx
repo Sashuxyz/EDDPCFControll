@@ -1,15 +1,13 @@
 import * as React from 'react';
-import { useEmptyStyles } from '../styles/tokens';
+import { emptyStyles } from '../styles/tokens';
 
 export const EmptyState: React.FC = () => {
-  const styles = useEmptyStyles();
-
   return (
-    <div className={styles.root}>
-      <div className={styles.icon} aria-hidden="true">
+    <div style={emptyStyles.root}>
+      <div style={emptyStyles.icon} aria-hidden="true">
         &#128269;
       </div>
-      <div className={styles.text}>No EDD findings recorded.</div>
+      <div style={emptyStyles.text}>No EDD findings recorded.</div>
     </div>
   );
 };
