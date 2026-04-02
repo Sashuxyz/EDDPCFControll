@@ -22,8 +22,8 @@ function getOptionSetValue(
   const raw = record.getValue(columnName);
   if (raw == null) return null;
   if (typeof raw === 'number') return raw;
-  if (typeof raw === 'object' && raw !== null && 'Value' in (raw as Record<string, unknown>)) {
-    return (raw as Record<string, unknown>).Value as number;
+  if (typeof raw === 'object' && raw !== null && 'Value' in (raw as unknown as Record<string, unknown>)) {
+    return (raw as unknown as Record<string, unknown>).Value as number;
   }
   const parsed = parseInt(String(raw), 10);
   return isNaN(parsed) ? null : parsed;

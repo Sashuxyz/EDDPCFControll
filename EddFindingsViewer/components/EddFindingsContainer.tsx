@@ -129,7 +129,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
     const parentId = modeInfo?.entityId as string | undefined;
     const parentName = modeInfo?.entityRecordName as string | undefined;
 
-    const formOptions: Record<string, unknown> = {
+    const formOptions: ComponentFramework.NavigationApi.EntityFormOptions = {
       entityName: 'syg_eddfinding',
     };
 
@@ -141,27 +141,20 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
       : undefined;
 
     try {
-      context.navigation.openForm(
-        formOptions,
-        formParameters as unknown as ComponentFramework.FormatApi
-      );
+      context.navigation.openForm(formOptions, formParameters);
     } catch {
       try {
         const xrm = (window as unknown as {
           Xrm?: {
             Navigation?: {
               openForm: (
-                options: Record<string, unknown>,
-                params?: Record<string, string>
+                options: ComponentFramework.NavigationApi.EntityFormOptions,
+                params?: { [key: string]: string }
               ) => void;
             };
           };
         }).Xrm;
-        if (formParameters) {
-          xrm?.Navigation?.openForm(formOptions, formParameters);
-        } else {
-          xrm?.Navigation?.openForm(formOptions);
-        }
+        xrm?.Navigation?.openForm(formOptions, formParameters);
       } catch {
         console.warn('Navigation failed');
       }
