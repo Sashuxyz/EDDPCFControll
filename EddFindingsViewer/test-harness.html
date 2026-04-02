@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EDD Findings Viewer — Test Harness</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    #control-container { max-width: 800px; margin: 0 auto; background: #fff; min-height: 200px; }
+    .harness-header { max-width: 800px; margin: 0 auto 16px auto; }
+    .harness-header h2 { margin: 0 0 4px 0; font-size: 16px; color: #323130; }
+    .harness-header p { margin: 0; font-size: 13px; color: #605E5C; }
+    #error-display { max-width: 800px; margin: 16px auto; padding: 20px; color: #A4262C; display: none; }
+  </style>
+
+  <!-- React 18 -->
+  <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+
+  <!-- Assign platform library aliases that the PCF bundle expects -->
+  <script>
+    window.Reactv18 = window.React;
+    window.ReactDOMv18 = window.ReactDOM;
+  </script>
+</head>
+<body>
+  <div class="harness-header">
+    <h2>EDD Findings Viewer — Test Harness</h2>
+    <p>Simulates the PCF dataset control with mock EDD Finding records.</p>
+  </div>
+  <div id="control-container"></div>
+  <div id="error-display"></div>
+
+  <script>
+    // Mock dataset records simulating what Dataverse provides
+    const mockRecords = {
+      'rec-001': createMockRecord('rec-001', {
+        syg_name: 'Adverse media — senior executive linked to sanctions',
+        syg_riskseverity: 4,
+        syg_riskseverityFormatted: 'Critical',
+        syg_status: 1,
+        syg_statusFormatted: 'Open',
+        syg_category: 1,
+        syg_categoryFormatted: 'Adverse Media',
+        syg_description: '<p>Multiple international news outlets have reported on the subject\'s involvement in transactions flagged by regulatory authorities. The reports indicate <strong>potential connections</strong> to entities currently under EU and OFAC sanctions programs, specifically relating to financial services and export controls.</p><p>The compliance team has initiated an enhanced review and recommends immediate escalation to the sanctions advisory group.</p>',
+        syg_linkedcondition: null,
+        createdby: null,
+        createdbyFormatted: 'Sarah Johnson',
+        createdon: new Date('2026-03-15'),
+        createdonFormatted: '15 Mar 2026',
+        modifiedon: new Date('2026-03-28'),
+        modifiedonFormatted: '28 Mar 2026',
+      }),
+      'rec-002': createMockRecord('rec-002', {
+        syg_name: 'Source of wealth — inconsistent documentation',
+        syg_riskseverity: 3,
+        syg_riskseverityFormatted: 'High',
+        syg_status: 2,
+        syg_statusFormatted: 'Mitigated',
+        syg_category: 4,
+        syg_categoryFormatted: 'Source of Wealth',
+        syg_description: '<p>Review of the client\'s declared source of wealth identified <strong>material inconsistencies</strong> between stated income and observed transaction volumes.</p><table><thead><tr><th>Source</th><th>Declared (\u20ac)</th><th>Observed (\u20ac)</th><th>Variance</th></tr></thead><tbody><tr><td>Employment</td><td>180,000</td><td>180,000</td><td>0%</td></tr><tr><td>Investments</td><td>50,000</td><td>320,000</td><td><strong>+540%</strong></td></tr></tbody></table><p>Mitigation: Enhanced monitoring applied. Follow-up scheduled for 30 April 2026.</p>',
+        syg_linkedcondition: { id: 'cond-001', name: 'SOW-2025-0042', entityType: 'syg_compliancecondition' },
+        syg_linkedconditionFormatted: 'SOW-2025-0042',
+        createdby: null,
+        createdbyFormatted: 'Michael Chen',
+        createdon: new Date('2026-02-20'),
+        createdonFormatted: '20 Feb 2026',
+        modifiedon: new Date('2026-03-25'),
+        modifiedonFormatted: '25 Mar 2026',
+      }),
+      'rec-003': createMockRecord('rec-003', {
+        syg_name: 'PEP screening — family member holds minor political role',
+        syg_riskseverity: 1,
+        syg_riskseverityFormatted: 'Low',
+        syg_status: 4,
+        syg_statusFormatted: 'Closed',
+        syg_category: 2,
+        syg_categoryFormatted: 'PEP',
+        syg_description: '<p>Automated screening identified a second-degree family connection to a municipal-level government official. Assessment determined the role carries minimal influence over financial or regulatory decisions. No further action required.</p>',
+        syg_linkedcondition: null,
+        createdby: null,
+        createdbyFormatted: 'Emma Wilson',
+        createdon: new Date('2026-01-10'),
+        createdonFormatted: '10 Jan 2026',
+        modifiedon: new Date('2026-02-05'),
+        modifiedonFormatted: '05 Feb 2026',
+      }),
+      'rec-004': createMockRecord('rec-004', {
+        syg_name: 'Incomplete beneficial ownership documentation',
+        syg_riskseverity: 2,
+        syg_riskseverityFormatted: 'Medium',
+        syg_status: 3,
+        syg_statusFormatted: 'Accepted',
+        syg_category: 5,
+        syg_categoryFormatted: 'Other',
+        syg_description: '<p>Corporate structure documentation provided by the client shows a multi-layered holding arrangement across three jurisdictions. The <strong>ultimate beneficial owner</strong> has been identified, however intermediate holding entities in jurisdiction B lack complete registration details.</p><p>Risk accepted by senior compliance officer pending annual review.</p>',
+        syg_linkedcondition: null,
+        createdby: null,
+        createdbyFormatted: 'David Park',
+        createdon: new Date('2026-03-01'),
+        createdonFormatted: '01 Mar 2026',
+        modifiedon: new Date('2026-03-20'),
+        modifiedonFormatted: '20 Mar 2026',
+      }),
+    };
+
+    function createMockRecord(id, data) {
+      return {
+        getRecordId: function() { return id; },
+        getValue: function(col) {
+          if (col === 'syg_linkedcondition' && data.syg_linkedcondition) {
+            return data.syg_linkedcondition;
+          }
+          return data[col] !== undefined ? data[col] : null;
+        },
+        getFormattedValue: function(col) {
+          var formattedKey = col + 'Formatted';
+          if (data[formattedKey] !== undefined) return data[formattedKey];
+          if (col === 'syg_linkedcondition' && data.syg_linkedcondition) {
+            return data.syg_linkedcondition.name || null;
+          }
+          var val = data[col];
+          if (val instanceof Date) return val.toLocaleDateString();
+          if (typeof val === 'string') return val;
+          return null;
+        },
+        getNamedReference: function() { return { id: id, name: data.syg_name }; },
+      };
+    }
+
+    // Mock dataset
+    var mockDataset = {
+      sortedRecordIds: ['rec-001', 'rec-002', 'rec-003', 'rec-004'],
+      records: mockRecords,
+      columns: [
+        { name: 'syg_name', displayName: 'Name', dataType: 'SingleLine.Text' },
+        { name: 'syg_riskseverity', displayName: 'Risk Severity', dataType: 'OptionSet' },
+        { name: 'syg_status', displayName: 'Status', dataType: 'OptionSet' },
+        { name: 'syg_category', displayName: 'Category', dataType: 'OptionSet' },
+        { name: 'syg_description', displayName: 'Description', dataType: 'Multiple' },
+        { name: 'syg_linkedcondition', displayName: 'Linked Condition', dataType: 'Lookup.Simple' },
+        { name: 'createdby', displayName: 'Created By', dataType: 'Lookup.Simple' },
+        { name: 'createdon', displayName: 'Created On', dataType: 'DateAndTime.DateOnly' },
+        { name: 'modifiedon', displayName: 'Modified On', dataType: 'DateAndTime.DateOnly' },
+      ],
+      loading: false,
+      paging: {
+        hasNextPage: false,
+        hasPreviousPage: false,
+        loadNextPage: function() { console.log('loadNextPage called'); },
+        loadPreviousPage: function() { console.log('loadPreviousPage called'); },
+        pageSize: 25,
+      },
+      sorting: [],
+      filtering: { getFilter: function() { return null; }, setFilter: function() {} },
+      linking: { getLinkedEntities: function() { return []; } },
+    };
+
+    // Mock context
+    var mockContext = {
+      mode: {
+        allocatedHeight: 600,
+        allocatedWidth: 800,
+        isControlDisabled: false,
+        isVisible: true,
+        label: 'EDD Findings',
+        trackContainerResize: function() {},
+        contextInfo: {
+          entityId: 'kyc-profile-001',
+          entityRecordName: 'KYC-2026-00123',
+          entityTypeName: 'syg_kycprofile',
+        },
+      },
+      navigation: {
+        openForm: function(options, params) {
+          console.log('openForm called:', options, params);
+          alert('Navigation: openForm\n' + JSON.stringify(options, null, 2) + (params ? '\nParams: ' + JSON.stringify(params, null, 2) : ''));
+          return Promise.resolve({ savedEntityReference: [] });
+        },
+      },
+      webAPI: {
+        retrieveRecord: function(entityName, id, options) {
+          console.log('retrieveRecord:', entityName, id, options);
+          return Promise.resolve({ syg_name: 'Mock Condition' });
+        },
+      },
+      parameters: {
+        findings: mockDataset,
+      },
+    };
+  </script>
+
+  <!-- Load the PCF bundle -->
+  <script src="out/controls/bundle.js"></script>
+
+  <script>
+    // Instantiate and render the control
+    try {
+      var container = document.getElementById('control-container');
+      var controlClass = window.Syg && window.Syg.EddFindingsViewer;
+
+      if (!controlClass) {
+        console.error('Control class not found on window.Syg');
+        document.getElementById('error-display').style.display = 'block';
+        document.getElementById('error-display').textContent = 'Control class not found. Check browser console for errors.';
+      } else {
+        var control = new controlClass();
+        control.init(mockContext, function() {}, {}, container);
+        control.updateView(mockContext);
+        console.log('Control rendered successfully');
+      }
+    } catch (err) {
+      console.error('Failed to render control:', err);
+      document.getElementById('error-display').style.display = 'block';
+      document.getElementById('error-display').textContent = 'Error: ' + err.message;
+    }
+  </script>
+</body>
+</html>
