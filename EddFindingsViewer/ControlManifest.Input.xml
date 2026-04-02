@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Syg" constructor="EddFindingsViewer" version="1.0.0" display-name-key="EddFindingsViewer" description-key="Displays EDD Finding records as expandable cards" control-type="standard" api-version="1.3.0">
+    <external-service-usage enabled="false" />
+    <data-set name="findings" display-name-key="EDD Findings Dataset" cds-data-set-options="displayCommandBar:false;displayViewSelector:false" />
+    <resources>
+      <code path="index.ts" order="1" />
+      <platform-library name="React" version="18.2.0" />
+      <platform-library name="Fluent" version="9.46.2" />
+    </resources>
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
+  </control>
+</manifest>
