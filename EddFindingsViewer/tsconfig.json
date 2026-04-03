@@ -1,0 +1,21 @@
+{
+  "extends": "./node_modules/pcf-scripts/tsconfig_base.json",
+  "compilerOptions": {
+    "outDir": "./out/controls",
+    "rootDir": ".",
+    "jsx": "react",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "index.ts",
+    "components/**/*.tsx",
+    "utils/**/*.ts",
+    "styles/**/*.ts",
+    "generated/**/*.d.ts"
+  ]
+}

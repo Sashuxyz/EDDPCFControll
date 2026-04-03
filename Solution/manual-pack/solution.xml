@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SolutionManifest>
-    <UniqueName>EddFindingsViewer</UniqueName>
+    <UniqueName>SygnumPCFComponents</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="EDD Findings Viewer" languagecode="1033" />
+      <LocalizedName description="Sygnum PCF Components" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="PCF control displaying EDD Finding records as expandable cards" languagecode="1033" />
+      <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
     </Descriptions>
-    <Version>1.2.0</Version>
+    <Version>1.10.0</Version>
     <Managed>1</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
@@ -87,3 +87,4 @@
     <MissingDependencies />
   </SolutionManifest>
 </ImportExportXml>
+rtExportXml>

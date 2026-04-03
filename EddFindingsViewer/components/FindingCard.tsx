@@ -76,6 +76,7 @@ export const FindingCard: React.FC<FindingCardProps> = ({
 
   const handleConditionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     if (finding.linkedConditionId) {
       onOpenCondition(finding.linkedConditionId);
     }
@@ -101,18 +102,20 @@ export const FindingCard: React.FC<FindingCardProps> = ({
         onClick={onToggle}
         onKeyDown={handleHeaderKeyDown}
       >
-        {/* Top row: severity badge (left), status badge + chevron (right) */}
+        {/* Top row: category label (left), risk severity badge + chevron (right) */}
         <div style={cardStyles.topRow}>
-          <span
-            style={{ ...cardStyles.badge, backgroundColor: riskColors.bg, color: riskColors.text }}
-          >
-            {finding.riskSeverityLabel || 'Unknown'}
-          </span>
+          {finding.categoryLabel ? (
+            <span style={cardStyles.categoryLabel}>
+              {finding.categoryLabel}
+            </span>
+          ) : (
+            <span />
+          )}
           <div style={cardStyles.rightGroup}>
             <span
-              style={{ ...cardStyles.badge, backgroundColor: statusColors.bg, color: statusColors.text }}
+              style={{ ...cardStyles.badge, backgroundColor: riskColors.bg, color: riskColors.text }}
             >
-              {finding.statusLabel || 'Unknown'}
+              {finding.riskSeverityLabel || 'Unknown'}
             </span>
             <span
               style={chevronStyle}
@@ -181,13 +184,13 @@ export const FindingCard: React.FC<FindingCardProps> = ({
           </div>
 
           {/* Metadata footer */}
-          <div style={cardStyles.metadataFooter}>
+          <div style={cardStyles.metadataFooter} onClick={(e) => e.stopPropagation()}>
             {/* Tier 1: curated fields */}
             <div style={cardStyles.metadataRow}>
-              {finding.categoryLabel && (
+              {finding.statusLabel && (
                 <span>
-                  <span style={cardStyles.metadataLabel}>Category: </span>
-                  {finding.categoryLabel}
+                  <span style={cardStyles.metadataLabel}>Status: </span>
+                  {finding.statusLabel}
                 </span>
               )}
               {finding.createdByName && (
@@ -209,9 +212,15 @@ export const FindingCard: React.FC<FindingCardProps> = ({
                   </button>
                 </span>
               )}
+              {finding.createdOn && (
+                <span>
+                  <span style={cardStyles.metadataLabel}>Created: </span>
+                  {finding.createdOn}
+                </span>
+              )}
               {finding.modifiedOn && (
                 <span>
-                  <span style={cardStyles.metadataLabel}>Last updated: </span>
+                  <span style={cardStyles.metadataLabel}>Updated: </span>
                   {finding.modifiedOn}
                 </span>
               )}

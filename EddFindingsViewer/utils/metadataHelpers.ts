@@ -6,10 +6,12 @@ const EXCLUDED_COLUMNS = new Set([
   'syg_description',
   'syg_riskseverity',
   'syg_status',
+  'statuscode',
+  'statecode',
   'createdon',
   'syg_category',
   'createdby',
-  'syg_linkedcondition',
+  'syg_complianceconditionid',
   'modifiedon',
 ]);
 

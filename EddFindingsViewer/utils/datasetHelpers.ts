@@ -51,8 +51,8 @@ export function extractRecords(
   for (const recordId of dataset.sortedRecordIds) {
     const record = dataset.records[recordId];
 
-    const linkedConditionFormatted = record.getFormattedValue('syg_linkedcondition');
-    const linkedConditionId = getLookupId(record, 'syg_linkedcondition');
+    const linkedConditionFormatted = record.getFormattedValue('syg_complianceconditionid');
+    const linkedConditionId = getLookupId(record, 'syg_complianceconditionid');
 
     records.push({
       id: recordId,
@@ -62,8 +62,8 @@ export function extractRecords(
       riskSeverityValue: getOptionSetValue(record, 'syg_riskseverity'),
       riskSeverityLabel: record.getFormattedValue('syg_riskseverity') || '',
       rawDescription: String(record.getValue('syg_description') ?? ''),
-      statusValue: getOptionSetValue(record, 'syg_status'),
-      statusLabel: record.getFormattedValue('syg_status') || '',
+      statusValue: getOptionSetValue(record, 'statuscode'),
+      statusLabel: record.getFormattedValue('statuscode') || '',
       linkedConditionId,
       linkedConditionName:
         linkedConditionFormatted && linkedConditionFormatted !== linkedConditionId

@@ -28,7 +28,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
   dataset,
   context,
 }) => {
-  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [conditionNames, setConditionNames] = React.useState<Record<string, string>>({});
   const [loadMoreError, setLoadMoreError] = React.useState<boolean>(false);
 
@@ -93,10 +93,12 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
 
   const navigateToForm = React.useCallback(
     (entityName: string, entityId: string) => {
+      // Strip curly braces from GUID if present
+      const cleanId = entityId.replace(/[{}]/g, '');
       try {
         context.navigation.openForm({
           entityName,
-          entityId,
+          entityId: cleanId,
         });
       } catch {
         try {
@@ -107,7 +109,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
               };
             };
           }).Xrm;
-          xrm?.Navigation?.openForm({ entityName, entityId });
+          xrm?.Navigation?.openForm({ entityName, entityId: cleanId });
         } catch {
           console.warn('Navigation failed');
         }
@@ -168,8 +170,26 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
   }, [context]);
 
   const handleToggle = React.useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   }, []);
+
+  const allExpanded = findings.length > 0 && findings.every((f) => expandedIds.has(f.id));
+
+  const handleToggleAll = React.useCallback(() => {
+    if (allExpanded) {
+      setExpandedIds(new Set());
+    } else {
+      setExpandedIds(new Set(findings.map((f) => f.id)));
+    }
+  }, [allExpanded, findings]);
 
   const handleLoadMore = React.useCallback(() => {
     setLoadMoreError(false);
@@ -200,7 +220,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
 
   return (
     <div style={containerStyles.root}>
-      <HeaderBar count={findings.length} onNewClick={handleNewFinding} />
+      <HeaderBar count={findings.length} onNewClick={handleNewFinding} allExpanded={allExpanded} onToggleAll={handleToggleAll} />
 
       {findings.length === 0 ? (
         <EmptyState />
@@ -210,7 +230,7 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
             <FindingCard
               key={finding.id}
               finding={finding}
-              isExpanded={expandedId === finding.id}
+              isExpanded={expandedIds.has(finding.id)}
               onToggle={() => handleToggle(finding.id)}
               onOpenFinding={handleOpenFinding}
               onOpenCondition={handleOpenCondition}
