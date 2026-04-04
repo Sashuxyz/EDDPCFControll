@@ -5,5 +5,9 @@
       <Name>Syg.EddFindingsViewer</Name>
       <FileName>/Controls/Syg.EddFindingsViewer/ControlManifest.xml</FileName>
     </CustomControl>
+    <CustomControl>
+      <Name>Syg.CompactSubgrid</Name>
+      <FileName>/Controls/Syg.CompactSubgrid/ControlManifest.xml</FileName>
+    </CustomControl>
   </CustomControls>
 </ImportExportXml>

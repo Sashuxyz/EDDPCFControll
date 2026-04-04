@@ -8,7 +8,7 @@
     <Descriptions>
       <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
     </Descriptions>
-    <Version>1.10.0</Version>
+    <Version>2.0.0</Version>
     <Managed>1</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
@@ -83,8 +83,8 @@
     </Publisher>
     <RootComponents>
       <RootComponent type="66" schemaName="Syg.EddFindingsViewer" behavior="0" />
+      <RootComponent type="66" schemaName="Syg.CompactSubgrid" behavior="0" />
     </RootComponents>
     <MissingDependencies />
   </SolutionManifest>
 </ImportExportXml>
-rtExportXml>
