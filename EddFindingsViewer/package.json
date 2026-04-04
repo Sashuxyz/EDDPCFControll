@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "PCF dataset control — EDD Finding cards for KYC Profile form",
   "scripts": {
-    "build": "pcf-scripts build",
+    "build": "pcf-scripts build --buildMode production",
     "clean": "pcf-scripts clean",
     "lint": "eslint . --ext .ts,.tsx",
     "rebuild": "pcf-scripts clean && pcf-scripts build",

@@ -6,6 +6,7 @@ export interface FindingRecord {
   riskSeverityValue: number | null;
   riskSeverityLabel: string;
   rawDescription: string;
+  rawMitigationSummary: string;
   statusValue: number | null;
   statusLabel: string;
   linkedConditionId: string | null;
@@ -37,10 +38,15 @@ function getLookupId(
   if (raw == null) return null;
   if (typeof raw === 'object' && raw !== null) {
     const lookup = raw as ComponentFramework.LookupValue;
-    if (lookup.id) return lookup.id;
+    if (lookup.id) {
+      // D365 sometimes returns id as {guid: "..."} instead of a plain string
+      if (typeof lookup.id === 'string') return lookup.id;
+      const nested = lookup.id as unknown as { guid?: string };
+      if (nested.guid) return nested.guid;
+    }
   }
   const str = String(raw);
-  return str && str !== 'null' && str !== 'undefined' ? str : null;
+  return str && str !== 'null' && str !== 'undefined' && str !== '[object Object]' ? str : null;
 }
 
 export function extractRecords(
@@ -62,6 +68,7 @@ export function extractRecords(
       riskSeverityValue: getOptionSetValue(record, 'syg_riskseverity'),
       riskSeverityLabel: record.getFormattedValue('syg_riskseverity') || '',
       rawDescription: String(record.getValue('syg_description') ?? ''),
+      rawMitigationSummary: String(record.getValue('syg_mitigationsummary') ?? ''),
       statusValue: getOptionSetValue(record, 'statuscode'),
       statusLabel: record.getFormattedValue('statuscode') || '',
       linkedConditionId,

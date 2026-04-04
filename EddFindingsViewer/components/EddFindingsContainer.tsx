@@ -93,25 +93,45 @@ export const EddFindingsContainer: React.FC<EddFindingsContainerProps> = ({
 
   const navigateToForm = React.useCallback(
     (entityName: string, entityId: string) => {
-      // Strip curly braces from GUID if present
+      const ALLOWED_ENTITIES = ['syg_eddfinding', 'syg_compliancecondition'];
+      const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
       const cleanId = entityId.replace(/[{}]/g, '');
+
+      if (!ALLOWED_ENTITIES.includes(entityName) || !GUID_REGEX.test(cleanId)) {
+        return;
+      }
+
+      // Try Xrm first — most reliable in D365 model-driven apps
+      const xrm = (window as unknown as {
+        Xrm?: {
+          Navigation?: {
+            openForm: (options: { entityName: string; entityId: string }) => Promise<unknown>;
+          };
+        };
+      }).Xrm;
+
+      if (xrm?.Navigation?.openForm) {
+        xrm.Navigation.openForm({ entityName, entityId: cleanId });
+        return;
+      }
+
+      // Fallback to PCF context navigation
       try {
         context.navigation.openForm({
           entityName,
           entityId: cleanId,
         });
       } catch {
+        // Last resort: URL navigation using URL constructor for safe encoding
         try {
-          const xrm = (window as unknown as {
-            Xrm?: {
-              Navigation?: {
-                openForm: (options: { entityName: string; entityId: string }) => void;
-              };
-            };
-          }).Xrm;
-          xrm?.Navigation?.openForm({ entityName, entityId: cleanId });
+          const url = new URL('/main.aspx', window.location.origin);
+          url.searchParams.set('etn', entityName);
+          url.searchParams.set('id', cleanId);
+          url.searchParams.set('pagetype', 'entityrecord');
+          window.open(url.toString(), '_blank');
         } catch {
-          console.warn('Navigation failed');
+          // URL construction failed — no navigation possible
         }
       }
     },

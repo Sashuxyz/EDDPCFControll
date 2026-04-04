@@ -49,6 +49,11 @@ export const FindingCard: React.FC<FindingCardProps> = ({
     [finding.rawDescription]
   );
 
+  const sanitizedMitigationHtml = React.useMemo(
+    () => sanitizeHtml(finding.rawMitigationSummary),
+    [finding.rawMitigationSummary]
+  );
+
   const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -171,6 +176,19 @@ export const FindingCard: React.FC<FindingCardProps> = ({
               // Safe: content is sanitized via DOMPurify in sanitizeHtml()
               dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
             />
+          )}
+
+          {sanitizedMitigationHtml && (
+            <>
+              <div style={cardStyles.mitigationSubheading}>
+                Mitigation Summary
+              </div>
+              <div
+                className={RICH_TEXT_CLASS}
+                style={cardStyles.expandedDescription}
+                dangerouslySetInnerHTML={{ __html: sanitizedMitigationHtml }}
+              />
+            </>
           )}
 
           <div style={cardStyles.showMoreLink}>

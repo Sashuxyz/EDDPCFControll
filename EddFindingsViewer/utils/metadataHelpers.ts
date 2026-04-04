@@ -12,6 +12,7 @@ const EXCLUDED_COLUMNS = new Set([
   'syg_category',
   'createdby',
   'syg_complianceconditionid',
+  'syg_mitigationsummary',
   'modifiedon',
 ]);
 

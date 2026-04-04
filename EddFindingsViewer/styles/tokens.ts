@@ -136,7 +136,7 @@ export const cardStyles: StyleMap = {
   },
   titleLink: {
     fontWeight: 600,
-    fontSize: '13px',
+    fontSize: '14px',
     color: '#0078D4',
     cursor: 'pointer',
     textDecoration: 'none',
@@ -150,16 +150,16 @@ export const cardStyles: StyleMap = {
   },
   previewText: {
     fontSize: '13px',
-    lineHeight: '1.65',
+    lineHeight: '1.5',
     color: '#323130',
     overflow: 'hidden',
     wordBreak: 'break-word' as const,
     overflowWrap: 'anywhere' as const,
     whiteSpace: 'pre-wrap' as const,
-    maxHeight: '106px', /* ~5 lines at 13px * 1.65 line-height = ~21px per line */
+    maxHeight: '100px', /* ~5 lines at 13px * 1.5 line-height = ~20px per line */
   },
   showMoreLink: {
-    padding: '4px 14px 10px 14px',
+    padding: '8px 14px 10px 14px',
   },
   showMoreButton: {
     color: '#0078D4',
@@ -172,7 +172,7 @@ export const cardStyles: StyleMap = {
   },
   expandedDescription: {
     fontSize: '13px',
-    lineHeight: '1.65',
+    lineHeight: '1.5',
     color: '#323130',
     padding: '6px 14px 0 14px',
     wordBreak: 'break-word' as const,
@@ -180,6 +180,16 @@ export const cardStyles: StyleMap = {
     whiteSpace: 'pre-wrap' as const,
     maxWidth: '100%',
     boxSizing: 'border-box' as const,
+  },
+  mitigationSubheading: {
+    fontSize: '12px',
+    fontWeight: 600,
+    color: '#323130',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.3px',
+    padding: '20px 14px 0 14px',
+    margin: '0 14px',
+    borderTop: '1px solid #f3f2f1',
   },
   metadataFooter: {
     padding: '10px 14px 12px 14px',
@@ -199,7 +209,7 @@ export const cardStyles: StyleMap = {
   },
   categoryLabel: {
     fontSize: '11px',
-    fontWeight: 400,
+    fontWeight: 600,
     color: '#605E5C',
     textTransform: 'uppercase' as const,
     letterSpacing: '0.5px',
