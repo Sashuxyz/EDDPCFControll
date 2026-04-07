@@ -11,7 +11,19 @@ interface GridHeaderProps {
   allSelected: boolean;
   onSort: (columnName: string) => void;
   onSelectAll: () => void;
+  onResize: (columnName: string, newWidthPx: number) => void;
+  getColumnWidthPx: (columnName: string) => number;
 }
+
+const resizeHandleStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  width: '6px',
+  height: '100%',
+  cursor: 'col-resize',
+  userSelect: 'none',
+};
 
 export const GridHeader: React.FC<GridHeaderProps> = ({
   gridColumns,
@@ -21,7 +33,45 @@ export const GridHeader: React.FC<GridHeaderProps> = ({
   allSelected,
   onSort,
   onSelectAll,
+  onResize,
+  getColumnWidthPx,
 }) => {
+  const resizeStateRef = React.useRef<{
+    columnName: string;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+
+  const handleResizeMouseDown = React.useCallback(
+    (e: React.MouseEvent, columnName: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeStateRef.current = {
+        columnName,
+        startX: e.clientX,
+        startWidth: getColumnWidthPx(columnName),
+      };
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        const state = resizeStateRef.current;
+        if (!state) return;
+        const delta = moveEvent.clientX - state.startX;
+        const newWidth = Math.max(40, state.startWidth + delta);
+        onResize(state.columnName, newWidth);
+      };
+
+      const handleMouseUp = () => {
+        resizeStateRef.current = null;
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    },
+    [onResize, getColumnWidthPx]
+  );
+
   return (
     <div style={{ ...headerStyles.row, display: 'grid', gridTemplateColumns }}>
       <div style={headerStyles.checkboxCell}>
@@ -40,13 +90,21 @@ export const GridHeader: React.FC<GridHeaderProps> = ({
             ? ' \u25B2'
             : ' \u25BC'
           : '';
+        const cellStyle: React.CSSProperties = {
+          ...(isActive ? headerStyles.cellActive : headerStyles.cell),
+          position: 'relative',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        };
         return (
-          <div
-            key={col.name}
-            style={isActive ? headerStyles.cellActive : headerStyles.cell}
-            onClick={() => onSort(col.name)}
-          >
+          <div key={col.name} style={cellStyle} onClick={() => onSort(col.name)} title={col.displayName}>
             {col.displayName}{arrow}
+            <div
+              style={resizeHandleStyle}
+              onMouseDown={(e) => handleResizeMouseDown(e, col.name)}
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         );
       })}

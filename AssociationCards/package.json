@@ -1,0 +1,23 @@
+{
+  "name": "association-cards",
+  "version": "1.0.0",
+  "description": "N:N card/chip display for associated records",
+  "scripts": {
+    "build": "pcf-scripts build --buildMode production",
+    "clean": "pcf-scripts clean",
+    "rebuild": "pcf-scripts clean && pcf-scripts build --buildMode production",
+    "start": "pcf-scripts start watch"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/powerapps-component-framework": "^1.3.18",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "pcf-scripts": "^1",
+    "pcf-start": "^1",
+    "typescript": "^4.9.5"
+  }
+}

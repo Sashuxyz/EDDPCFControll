@@ -7,6 +7,7 @@ export const containerStyles: Record<string, React.CSSProperties> = {
     boxSizing: 'border-box',
     overflow: 'hidden',
     background: '#fff',
+    padding: '12px 0',
   },
 };
 

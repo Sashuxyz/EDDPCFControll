@@ -11,6 +11,7 @@ interface CommandBarProps {
   isNtoN: boolean;
   onExpandAll: () => void;
   onNewClick: () => void;
+  onAddExistingClick: () => void;
   onDeleteClick: () => void;
   onClearSelection: () => void;
 }
@@ -24,6 +25,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   isNtoN,
   onExpandAll,
   onNewClick,
+  onAddExistingClick,
   onDeleteClick,
   onClearSelection,
 }) => {
@@ -69,9 +71,15 @@ export const CommandBar: React.FC<CommandBarProps> = ({
             <span style={commandBarStyles.divider}>|</span>
           </>
         )}
-        <button style={commandBarStyles.button} type="button" onClick={onNewClick}>
-          + New
-        </button>
+        {isNtoN ? (
+          <button style={commandBarStyles.button} type="button" onClick={onAddExistingClick}>
+            + Add existing
+          </button>
+        ) : (
+          <button style={commandBarStyles.button} type="button" onClick={onNewClick}>
+            + New
+          </button>
+        )}
       </div>
     </div>
   );

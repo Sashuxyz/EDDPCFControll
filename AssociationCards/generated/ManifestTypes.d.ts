@@ -4,8 +4,6 @@
 
 // Define IInputs and IOutputs Type. They should match with ControlManifest.
 export interface IInputs {
-    conditionalFields: ComponentFramework.PropertyTypes.StringProperty;
-    isManyToMany: ComponentFramework.PropertyTypes.TwoOptionsProperty;
     relationshipName: ComponentFramework.PropertyTypes.StringProperty;
     records: ComponentFramework.PropertyTypes.DataSet;
 }

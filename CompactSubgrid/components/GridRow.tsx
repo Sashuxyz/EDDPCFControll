@@ -112,7 +112,7 @@ export const GridRow: React.FC<GridRowProps> = ({
 
           if (isPrimary) {
             return (
-              <div key={col.name} style={rowStyles.cell}>
+              <div key={col.name} style={rowStyles.cell} title={cell.text}>
                 <button style={rowStyles.nameLink} type="button" onClick={handleNameClick}>
                   {cell.text || 'Untitled'}
                 </button>
@@ -122,7 +122,7 @@ export const GridRow: React.FC<GridRowProps> = ({
 
           if (cell.isLookup && cell.lookupEntityName && cell.lookupEntityId) {
             return (
-              <div key={col.name} style={rowStyles.cell}>
+              <div key={col.name} style={rowStyles.cell} title={cell.text}>
                 <button
                   style={rowStyles.nameLink}
                   type="button"
@@ -138,7 +138,7 @@ export const GridRow: React.FC<GridRowProps> = ({
           }
 
           return (
-            <div key={col.name} style={rowStyles.cell}>
+            <div key={col.name} style={rowStyles.cell} title={cell.text}>
               {cell.text}
             </div>
           );

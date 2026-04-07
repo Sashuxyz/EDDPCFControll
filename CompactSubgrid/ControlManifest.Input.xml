@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Syg" constructor="CompactSubgrid" version="1.0.0" display-name-key="CompactSubgrid" description-key="Generic condensed subgrid with expandable detail panels" control-type="standard" api-version="1.3.0">
+  <control namespace="Syg" constructor="CompactSubgrid" version="1.2.0" display-name-key="CompactSubgrid" description-key="CompactSubgrid_Desc" control-type="standard" api-version="1.3.0">
     <external-service-usage enabled="false" />
     <property name="conditionalFields" display-name-key="conditionalFields" description-key="conditionalFields_Desc" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="isManyToMany" display-name-key="isManyToMany" description-key="isManyToMany_Desc" of-type="TwoOptions" usage="input" required="false" default-value="false" />
+    <property name="relationshipName" display-name-key="relationshipName" description-key="relationshipName_Desc" of-type="SingleLine.Text" usage="input" required="false" />
     <data-set name="records" display-name-key="records" cds-data-set-options="displayCommandBar:false;displayViewSelector:false">
     </data-set>
     <resources>
       <code path="index.ts" order="1" />
+      <resx path="strings/CompactSubgrid.1033.resx" version="1.0.0" />
     </resources>
     <feature-usage>
-      <uses-feature name="WebAPI" required="false" />
+      <uses-feature name="WebAPI" required="true" />
     </feature-usage>
   </control>
 </manifest>

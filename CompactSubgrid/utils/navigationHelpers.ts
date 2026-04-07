@@ -1,9 +1,24 @@
 const GUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function getXrm(): { Navigation?: { openForm: (options: { entityName: string; entityId: string }) => Promise<unknown> } } | undefined {
-  return (window as unknown as {
-    Xrm?: { Navigation?: { openForm: (options: { entityName: string; entityId: string }) => Promise<unknown> } };
-  }).Xrm;
+interface XrmOpenFormOptions {
+  entityName: string;
+  entityId?: string;
+  useQuickCreateForm?: boolean;
+}
+
+interface XrmWindow {
+  Xrm?: {
+    Navigation?: {
+      openForm: (
+        options: XrmOpenFormOptions,
+        parameters?: Record<string, string>
+      ) => Promise<unknown>;
+    };
+  };
+}
+
+function getXrm(): XrmWindow['Xrm'] {
+  return (window as unknown as XrmWindow).Xrm;
 }
 
 export function navigateToRecord(
@@ -37,23 +52,34 @@ export function openNewRecordForm(
   context: ComponentFramework.Context<unknown>,
   entityName: string
 ): void {
+  if (!entityName) return;
+
   const modeInfo = (context.mode as unknown as Record<string, unknown>).contextInfo as
-    | { entityId?: string; entityRecordName?: string }
+    | { entityId?: string; entityRecordName?: string; entityTypeName?: string }
     | undefined;
 
-  const formOptions: ComponentFramework.NavigationApi.EntityFormOptions = { entityName };
-
-  const formParameters: Record<string, string> | undefined = modeInfo?.entityId
-    ? { parentid: modeInfo.entityId, ...(modeInfo.entityRecordName ? { parentidname: modeInfo.entityRecordName } : {}) }
-    : undefined;
+  const formParameters: Record<string, string> = {};
+  if (modeInfo?.entityId && modeInfo?.entityTypeName) {
+    // Pre-populate parent lookup using entityTypeName from contextInfo
+    formParameters[`${modeInfo.entityTypeName}id`] = modeInfo.entityId;
+    if (modeInfo.entityRecordName) {
+      formParameters[`${modeInfo.entityTypeName}idname`] = modeInfo.entityRecordName;
+    }
+  }
 
   const xrm = getXrm();
   if (xrm?.Navigation?.openForm) {
-    xrm.Navigation.openForm(formOptions as { entityName: string; entityId: string });
+    xrm.Navigation.openForm(
+      { entityName },
+      Object.keys(formParameters).length > 0 ? formParameters : undefined
+    );
     return;
   }
 
   try {
-    context.navigation.openForm(formOptions, formParameters);
+    context.navigation.openForm(
+      { entityName } as ComponentFramework.NavigationApi.EntityFormOptions,
+      Object.keys(formParameters).length > 0 ? formParameters : undefined
+    );
   } catch { /* Navigation failed */ }
 }

@@ -1,9 +1,9 @@
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
-import { SubgridContainer } from './components/SubgridContainer';
+import { CardsContainer } from './components/CardsContainer';
 
-export class CompactSubgrid implements ComponentFramework.StandardControl<IInputs, IOutputs> {
+export class AssociationCards implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private container: HTMLDivElement;
   private root: Root;
 
@@ -16,21 +16,21 @@ export class CompactSubgrid implements ComponentFramework.StandardControl<IInput
     this.container = container;
     this.root = createRoot(container);
     context.mode.trackContainerResize(true);
+    // Request a large page size so all associations load at once
+    try {
+      context.parameters.records.paging.setPageSize(250);
+    } catch { /* setPageSize not available */ }
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
     const dataset = context.parameters.records;
-    const conditionalFields = context.parameters.conditionalFields?.raw ?? undefined;
-    const isManyToMany = context.parameters.isManyToMany?.raw === true;
-    const relationshipName = context.parameters.relationshipName?.raw ?? undefined;
+    const relationshipName = context.parameters.relationshipName?.raw ?? '';
 
     this.root.render(
-      React.createElement(SubgridContainer, {
+      React.createElement(CardsContainer, {
         dataset,
         context: context as unknown as ComponentFramework.Context<unknown>,
-        conditionalFieldsOverride: conditionalFields || undefined,
-        isManyToMany,
-        relationshipName: relationshipName || undefined,
+        relationshipName,
       })
     );
   }
