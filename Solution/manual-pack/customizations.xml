@@ -9,5 +9,13 @@
       <Name>Syg.CompactSubgrid</Name>
       <FileName>/Controls/Syg.CompactSubgrid/ControlManifest.xml</FileName>
     </CustomControl>
+    <CustomControl>
+      <Name>Syg.AssociationCards</Name>
+      <FileName>/Controls/Syg.AssociationCards/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.WealthAllocationControl</Name>
+      <FileName>/Controls/Syg.WealthAllocationControl/ControlManifest.xml</FileName>
+    </CustomControl>
   </CustomControls>
 </ImportExportXml>

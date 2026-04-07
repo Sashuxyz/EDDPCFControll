@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Syg" constructor="WealthAllocationControl" version="1.0.0" display-name-key="WealthAllocationControl" description-key="Visual wealth distribution across asset classes" control-type="standard" api-version="1.3.0">
+    <external-service-usage enabled="false" />
+    <property name="totalWealthChf" display-name-key="Total Wealth (CHF)" description-key="Total wealth amount in CHF" of-type="Currency" usage="bound" required="true" />
+    <property name="cashPct" display-name-key="Cash %" description-key="Cash allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="digitalAssetsPct" display-name-key="Digital Assets %" description-key="Digital assets allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="equitiesPct" display-name-key="Equities %" description-key="Equities allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="fixedIncomePct" display-name-key="Fixed Income %" description-key="Fixed income allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="commoditiesPct" display-name-key="Commodities %" description-key="Commodities allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="realEstatePct" display-name-key="Real Estate %" description-key="Real estate allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <property name="otherPct" display-name-key="Other %" description-key="Other allocation percentage" of-type="Decimal" usage="bound" required="true" />
+    <resources>
+      <code path="index.ts" order="1" />
+    </resources>
+  </control>
+</manifest>
