@@ -3,6 +3,65 @@ import { AssetClass } from '../types';
 import { formatCHF } from '../utils/allocationLogic';
 import { tableStyles, inputStyles } from '../styles/tokens';
 
+let sliderStyleInjected = false;
+function injectSliderStyles(): void {
+  if (sliderStyleInjected) return;
+  const style = document.createElement('style');
+  style.textContent = `
+    .wac-slider {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      height: 4px !important;
+      border-radius: 2px !important;
+      outline: none !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      max-height: 4px !important;
+      box-sizing: content-box !important;
+    }
+    .wac-slider::-webkit-slider-thumb {
+      -webkit-appearance: none !important;
+      appearance: none !important;
+      width: 12px !important;
+      height: 12px !important;
+      border-radius: 50% !important;
+      background: var(--wac-color, #0078D4) !important;
+      border: 2px solid #fff !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25) !important;
+      cursor: pointer !important;
+      margin-top: -4px !important;
+    }
+    .wac-slider::-moz-range-thumb {
+      width: 12px !important;
+      height: 12px !important;
+      border-radius: 50% !important;
+      background: var(--wac-color, #0078D4) !important;
+      border: none !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25) !important;
+      cursor: pointer !important;
+    }
+    .wac-slider::-webkit-slider-runnable-track {
+      height: 4px !important;
+      border-radius: 2px !important;
+    }
+    .wac-slider::-moz-range-track {
+      height: 4px !important;
+      border-radius: 2px !important;
+      border: none !important;
+    }
+    .wac-slider:disabled::-webkit-slider-thumb {
+      cursor: default !important;
+      opacity: 0.4 !important;
+    }
+    .wac-slider:disabled::-moz-range-thumb {
+      cursor: default !important;
+      opacity: 0.4 !important;
+    }
+  `;
+  document.head.appendChild(style);
+  sliderStyleInjected = true;
+}
+
 interface AssetRowProps {
   assetClass: AssetClass;
   value: number;
@@ -24,16 +83,17 @@ export const AssetRow: React.FC<AssetRowProps> = ({
 }) => {
   const [localInput, setLocalInput] = React.useState(value.toFixed(2));
   const [isFocused, setIsFocused] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // Sync from props when not focused
+  React.useEffect(() => { injectSliderStyles(); }, []);
+
   React.useEffect(() => {
     if (!isFocused) {
       setLocalInput(value.toFixed(2));
     }
   }, [value, isFocused]);
 
-  const isOverHeadroom = isFocused && parseFloat(localInput) > headroom + value;
+  const parsedLocal = parseFloat(localInput);
+  const isOverHeadroom = isFocused && isFinite(parsedLocal) && parsedLocal > headroom + value;
   const isZero = value === 0;
   const sliderDisabled = disabled || (isZero && headroom === 0);
 
@@ -58,7 +118,7 @@ export const AssetRow: React.FC<AssetRowProps> = ({
   const handleFieldBlur = React.useCallback(() => {
     setIsFocused(false);
     const parsed = parseFloat(localInput);
-    if (!isNaN(parsed)) {
+    if (isFinite(parsed) && parsed >= 0) {
       onFieldBlur(assetClass.paramIndex, parsed);
     }
   }, [localInput, onFieldBlur, assetClass.paramIndex]);
@@ -71,7 +131,6 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     ...(isZero && !isFocused ? tableStyles.rowZero : {}),
   };
 
-  // Percent input style
   let pctStyle: React.CSSProperties = { ...inputStyles.percentField };
   if (isFocused) {
     pctStyle = { ...pctStyle, ...inputStyles.fieldFocused };
@@ -83,14 +142,13 @@ export const AssetRow: React.FC<AssetRowProps> = ({
     pctStyle = { ...pctStyle, ...inputStyles.fieldDisabled };
   }
 
-  // Slider track gradient
   const sliderBg = `linear-gradient(to right, ${assetClass.color} ${fillPct}%, #E1DFDD ${fillPct}%)`;
 
   return (
     <div style={rowStyle}>
       <div style={{ ...tableStyles.dot, background: assetClass.color }} />
       <div style={tableStyles.label}>{assetClass.label}</div>
-      <div style={{ position: 'relative', height: '20px' }}>
+      <div style={tableStyles.sliderCell}>
         <input
           type="range"
           min={0}
@@ -99,25 +157,18 @@ export const AssetRow: React.FC<AssetRowProps> = ({
           value={value}
           disabled={sliderDisabled}
           onChange={handleSliderInput}
+          className="wac-slider"
           style={{
             width: '100%',
-            height: '4px',
-            WebkitAppearance: 'none',
-            appearance: 'none' as React.CSSProperties['appearance'],
             background: sliderBg,
-            borderRadius: '2px',
-            outline: 'none',
             cursor: sliderDisabled ? 'default' : 'pointer',
-            margin: 0,
-            position: 'absolute',
-            top: '8px',
             opacity: sliderDisabled ? 0.4 : 1,
+            ['--wac-color' as string]: assetClass.color,
           }}
         />
       </div>
-      <div>
+      <div style={inputStyles.percentWrapper}>
         <input
-          ref={inputRef}
           type="text"
           value={isFocused ? localInput : value.toFixed(2)}
           disabled={disabled}

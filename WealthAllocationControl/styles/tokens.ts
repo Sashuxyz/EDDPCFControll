@@ -14,28 +14,30 @@ export const containerStyles: S = {
 
 export const inputStyles: S = {
   totalRow: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: '110px 200px',
+    gap: '8px',
     alignItems: 'center',
-    gap: '12px',
-    marginBottom: '16px',
+    marginBottom: '14px',
+    paddingLeft: '24px',
   },
   totalLabel: {
     fontSize: '13px',
     fontWeight: 600,
     color: '#323130',
-    minWidth: '120px',
   },
   field: {
     background: '#F3F2F1',
     border: 'none',
     borderBottom: '2px solid transparent',
     borderRadius: '2px',
-    padding: '5px 8px',
+    padding: '6px 10px',
     fontSize: '14px',
     fontFamily: 'inherit',
     color: '#323130',
     outline: 'none',
-    width: '180px',
+    width: '100%',
+    boxSizing: 'border-box',
     textAlign: 'right',
   },
   fieldFocused: {
@@ -61,10 +63,14 @@ export const inputStyles: S = {
     width: '54px',
     textAlign: 'right',
   },
+  percentWrapper: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '2px',
+  },
   percentSuffix: {
     fontSize: '11px',
     color: '#605E5C',
-    marginLeft: '2px',
   },
 };
 
@@ -136,7 +142,7 @@ export const barStyles: S = {
 export const tableStyles: S = {
   headerRow: {
     display: 'grid',
-    gridTemplateColumns: '24px 140px 1fr 70px 110px',
+    gridTemplateColumns: '16px 110px 1fr 70px 100px',
     gap: '0 8px',
     padding: '6px 0',
     borderBottom: '1px solid #edebe9',
@@ -154,20 +160,28 @@ export const tableStyles: S = {
   },
   row: {
     display: 'grid',
-    gridTemplateColumns: '24px 140px 1fr 70px 110px',
+    gridTemplateColumns: '16px 110px 1fr 70px 100px',
     gap: '0 8px',
-    padding: '8px 0',
+    padding: '2px 0',
     borderBottom: '1px solid #f3f2f1',
     alignItems: 'center',
     transition: 'opacity 150ms',
+    height: '34px',
+  },
+  sliderCell: {
+    display: 'flex',
+    alignItems: 'center',
+    height: '20px',
+    overflow: 'visible',
   },
   rowZero: {
     opacity: 0.45,
   },
   dot: {
-    width: '10px',
-    height: '10px',
+    width: '8px',
+    height: '8px',
     borderRadius: '50%',
+    flexShrink: 0,
   },
   label: {
     fontSize: '13px',
@@ -183,15 +197,16 @@ export const tableStyles: S = {
 export const unallocatedStyles: S = {
   row: {
     display: 'grid',
-    gridTemplateColumns: '24px 140px 1fr 70px 110px',
+    gridTemplateColumns: '16px 110px 1fr 70px 100px',
     gap: '0 8px',
-    padding: '8px 0',
+    padding: '2px 0',
     alignItems: 'center',
     background: '#FAFAF9',
+    height: '34px',
   },
   dot: {
-    width: '10px',
-    height: '10px',
+    width: '8px',
+    height: '8px',
     borderRadius: '50%',
     background: '#E1DFDD',
     border: '1px dashed #A19F9D',

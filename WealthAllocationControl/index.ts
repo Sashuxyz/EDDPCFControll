@@ -10,6 +10,8 @@ export class WealthAllocationControl implements ComponentFramework.StandardContr
   private notifyOutputChanged: () => void;
   private state: AllocationState = { totalWealth: 0, vals: [0, 0, 0, 0, 0, 0, 0] };
   private isDisabled = false;
+  private initialized = false;
+  private pendingOutput = false;
 
   public init(
     context: ComponentFramework.Context<IInputs>,
@@ -24,13 +26,45 @@ export class WealthAllocationControl implements ComponentFramework.StandardContr
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
     this.isDisabled = context.mode.isControlDisabled;
-    this.state.totalWealth = context.parameters.totalWealthChf?.raw ?? 0;
 
+    // If we just called notifyOutputChanged, skip reading from context
+    // to avoid overwriting our local state with stale Dataverse values
+    if (this.pendingOutput) {
+      this.pendingOutput = false;
+      this.renderReact();
+      return;
+    }
+
+    // Read from context (initial load or external form change)
     const paramNames = ['cashPct', 'digitalAssetsPct', 'equitiesPct', 'fixedIncomePct', 'commoditiesPct', 'realEstatePct', 'otherPct'] as const;
-    paramNames.forEach((name, i) => {
-      this.state.vals[i] = (context.parameters[name] as ComponentFramework.PropertyTypes.DecimalNumberProperty)?.raw ?? 0;
-    });
 
+    const contextWealth = context.parameters.totalWealthChf?.raw ?? 0;
+    const contextVals = paramNames.map(
+      (name) => (context.parameters[name] as ComponentFramework.PropertyTypes.DecimalNumberProperty)?.raw ?? 0
+    );
+
+    if (!this.initialized) {
+      // First load: always accept context values
+      this.state.totalWealth = contextWealth;
+      this.state.vals = contextVals;
+      this.initialized = true;
+    } else {
+      // Subsequent updateView: only accept if values actually differ from our state
+      // (indicates an external change like form refresh, not our own notifyOutputChanged echo)
+      const wealthChanged = Math.abs(contextWealth - this.state.totalWealth) > 0.001;
+      const valsChanged = contextVals.some((v, i) => Math.abs(v - this.state.vals[i]) > 0.001);
+      if (wealthChanged || valsChanged) {
+        this.state.totalWealth = contextWealth;
+        this.state.vals = contextVals;
+      }
+    }
+
+    this.renderReact();
+  }
+
+  private handleChange(): void {
+    this.pendingOutput = true;
+    this.notifyOutputChanged();
     this.renderReact();
   }
 
@@ -41,18 +75,15 @@ export class WealthAllocationControl implements ComponentFramework.StandardContr
         disabled: this.isDisabled,
         onTotalWealthChange: (value: number) => {
           this.state.totalWealth = value;
-          this.notifyOutputChanged();
-          this.renderReact();
+          this.handleChange();
         },
         onSliderChange: (idx: number, raw: number) => {
           this.state.vals = applySlider(idx, raw, this.state.vals);
-          this.notifyOutputChanged();
-          this.renderReact();
+          this.handleChange();
         },
         onFieldBlur: (idx: number, raw: number) => {
           this.state.vals = applyFieldBlur(idx, raw, this.state.vals);
-          this.notifyOutputChanged();
-          this.renderReact();
+          this.handleChange();
         },
       })
     );
