@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Syg" constructor="KycDraftTakeover" version="1.1.0" display-name-key="KycDraftTakeover" description-key="AI research output review and takeover control" control-type="standard" api-version="1.3.0">
+    <external-service-usage enabled="false" />
+    <property name="aiAnalyticsAudit" display-name-key="AI Analytics Audit" description-key="JSON field containing agent research output" of-type="Multiple" usage="bound" required="true" />
+    <property name="professionalBackground" display-name-key="Professional Background" description-key="Target field for professional background summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="financialSituation" display-name-key="Financial Situation" description-key="Target field for financial situation summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="estimatedTotalWealth" display-name-key="Estimated Total Wealth" description-key="Target field for estimated total wealth in CHF" of-type="Currency" usage="bound" required="false" />
+    <property name="relatedParties" display-name-key="Related Parties" description-key="Target field for related parties summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="sanctionCheck" display-name-key="Sanction Check" description-key="Target field for sanction check summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="reputationalRisk" display-name-key="Reputational Risk" description-key="Target field for reputational risk summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="pep" display-name-key="PEP Status" description-key="Target field for PEP status summary" of-type="Multiple" usage="bound" required="false" />
+    <property name="sources" display-name-key="Sources" description-key="Target field for research sources" of-type="Multiple" usage="bound" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+    </resources>
+  </control>
+</manifest>
