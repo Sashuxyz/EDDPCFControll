@@ -17,5 +17,13 @@
       <Name>Syg.WealthAllocationControl</Name>
       <FileName>/Controls/Syg.WealthAllocationControl/ControlManifest.xml</FileName>
     </CustomControl>
+    <CustomControl>
+      <Name>Syg.ComplianceConditionScheduler</Name>
+      <FileName>/Controls/Syg.ComplianceConditionScheduler/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.KycDraftTakeover</Name>
+      <FileName>/Controls/Syg.KycDraftTakeover/ControlManifest.xml</FileName>
+    </CustomControl>
   </CustomControls>
 </ImportExportXml>
