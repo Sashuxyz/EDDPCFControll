@@ -25,5 +25,9 @@
       <Name>Syg.KycDraftTakeover</Name>
       <FileName>/Controls/Syg.KycDraftTakeover/ControlManifest.xml</FileName>
     </CustomControl>
+    <CustomControl>
+      <Name>Syg.OnboardingApprovalTracker</Name>
+      <FileName>/Controls/Syg.OnboardingApprovalTracker/ControlManifest.xml</FileName>
+    </CustomControl>
   </CustomControls>
 </ImportExportXml>
