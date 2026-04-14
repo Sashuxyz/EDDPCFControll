@@ -66,43 +66,54 @@ Stored in `checkResults`. Written on every answer change (no explicit save butto
 ## Checklist Sections and Items
 
 ### Section 1 — Client properties check
-| Key | Label | Type | CRM source field |
-|---|---|---|---|
-| `dob` | Date of Birth | CRM check | `birthdate` |
-| `rm` | Relationship Manager | CRM check | `syg_relationshipmanager` (lookup name) |
-| `active` | Set Client as Active | Manual check | — |
-| `risk` | Risk Level | CRM check | `syg_risklevel` |
-| `pep` | PEP Status | CRM check | `syg_pepstatus` |
-| — | Nationalities | Display only | `syg_nationalities` |
+| Key | Label | Type | Entity | CRM source field |
+|---|---|---|---|---|
+| — | Nationalities | Display only | `syg_kycprofile` | `syg_nationalities` |
+| `dob` | Date of Birth | CRM check | `syg_kycprofile` | `syg_dateofbirth` |
+| `rm` | Relationship Manager | CRM check | `syg_clientonboarding` | `syg_relationshipmanagerid` (lookup name) |
+| `active` | Set Client as Active | Manual check | — | — |
+| `risk` | Risk Level | CRM check | `syg_clientonboarding` | `syg_risklevel` |
+| `pep` | PEP Status | CRM check | `syg_clientonboarding` | `syg_pepcheck` |
 
 ### Section 2 — ID data (display only)
-Related entity: `syg_iddocument` (N:1 to contact). Shows document type, number, country/place of issue, issue date, expiry date. Per document card. No Yes/No buttons — read-only reference.
+Single record via lookup on onboarding: `syg_clientonboarding.syg_identificationdocumentid` → `syg_identificationdocuments`. Shows one document card (no Yes/No buttons — read-only reference).
 
-Also displays: Client Segment (`syg_clientsegment`).
+| Field | Entity | Logical name |
+|---|---|---|
+| Document Type | `syg_identificationdocuments` | `syg_documenttype` (option set) |
+| Document Number | `syg_identificationdocuments` | `syg_documentnumber` |
+| Country of Issue | `syg_identificationdocuments` | `syg_countryofissueid` (lookup) |
+| Place of Issue | `syg_identificationdocuments` | `syg_placeofissue` |
+| Date of Issue | `syg_identificationdocuments` | `syg_dateofissue` |
+| Expiration Date | `syg_identificationdocuments` | `syg_expirationdate` |
+| Client Segment | `syg_kycprofile` | `syg_finsaclassification` (option set) |
 
 ### Section 3 — Finnova accounts
-| Key | Label | Type |
-|---|---|---|
-| `currency` | Portfolio Default Currency | CRM check |
-| `pms` | PMS+ | Manual check |
-| `payment` | Payment Rules Matching Main Account Currency | Manual check |
-| `block` | Remove a General Block | Manual check |
-| `special` | Special Conditions | CRM check |
-| `archive` | Set Up a Web Archive | Manual check |
-| `btct` | Add BTC and ETH Trading | CRM check |
-| `btcv` | Add BTC and ETH Vault | CRM check |
-| — | Digital Asset Vault Currency | Display only |
+| Key | Label | Type | Entity | CRM source field |
+|---|---|---|---|---|
+| — | Digital Asset Vault Currency | Display only | `syg_clientonboarding` | `syg_referencecurrencyid` (same value as Portfolio Default Currency) |
+| `currency` | Portfolio Default Currency | CRM check | `syg_clientonboarding` | `syg_referencecurrencyid` (lookup) |
+| `pms` | PMS+ | Manual check | — | — |
+| `payment` | Payment Rules Matching Main Account Currency | Manual check | — | — |
+| `block` | Remove a General Block | Manual check | — | — |
+| `special` | Special Conditions | CRM check | `syg_clientonboarding` | `syg_specialconditions` |
+| `archive` | Set Up a Web Archive | Manual check | — | — |
 
 ### Section 4 — Finnova: Tax information
-Related entity: `syg_taxrecord` (N:1 to contact). Each record shows Tax domicile + Tax ID with a Yes/No "Tax ID verified" check per record.
+Related entity: `syg_taxationdetails` (N:1 to `syg_clientonboarding` via lookup on tax detail). Each record shows Tax Domicile + Tax ID with a Yes/No "Tax ID verified" check per record.
+
+| Field | Entity | Logical name |
+|---|---|---|
+| Tax Domicile | `syg_taxationdetails` | `syg_countryid` (lookup) |
+| Tax ID | `syg_taxationdetails` | `syg_taxid` |
 
 Additional items:
-| Key | Label | Type |
-|---|---|---|
-| `chtax` | CH Tax Regulations | Manual check |
-| `dispatch` | Direct Dispatch (CH clients) | Manual check |
-| `indicia` | Run INDICIA Search | CRM check |
-| `oms` | Created Client in OMS and Added the Tier | Manual check |
+| Key | Label | Type | Entity | CRM source field |
+|---|---|---|---|---|
+| `chtax` | CH Tax Regulations | Manual check | — | — |
+| `dispatch` | Direct Dispatch (CH clients) | Manual check | — | — |
+| `indicia` | Run INDICIA Search | CRM check | `syg_clientonboarding` | `syg_aiareporting` |
+| `oms` | Created Client in OMS and Added the Tier | Manual check | — | — |
 
 ### Section 5 — Additional actions
 | Key | Label | Type |
@@ -110,6 +121,8 @@ Additional items:
 | `omst` | Has the Tier Been Updated on OMS Portal? | Manual check |
 | `cv4` | C-Vault: Business Team Approved with 4-Eyes Check | Manual check |
 | `cvw` | C-Vault: Wallets | Manual check |
+| `btct` | Add BTC and ETH Trading | Manual check |
+| `btcv` | Add BTC and ETH Vault | Manual check |
 
 ---
 
@@ -127,7 +140,7 @@ Additional items:
 ### Manual check items
 - Show italic "Manual check" below the title. No CRM value. No lock icon.
 - Yes = done → counts toward progress.
-- No = hard block → red highlight, simplified form appears with:
+- No = hard block → grey highlight, simplified form appears with:
   - **Reason** (textarea, optional — not required)
   - Blocking note: "This check blocks checklist completion"
   - No resolve option — item stays blocked until user changes to Yes.
@@ -142,8 +155,8 @@ Additional items:
 - Sticky header with title, "X of Y items checked" count, and 4px blue progress bar.
 - Display-only items are excluded from the total count.
 - Tax record checks count as one item per record (dynamic based on how many records exist).
-- Mismatch alert bar (yellow) lists unresolved CRM mismatches — each is a scroll-to link.
-- Blocked alert bar (red) lists manual checks answered No — each is a scroll-to link.
+- Mismatch alert bar (grey) lists unresolved CRM mismatches — each is a scroll-to link.
+- Blocked alert bar (dark grey) lists manual checks answered No — each is a scroll-to link.
 
 ---
 
@@ -160,7 +173,7 @@ Each collapsed section shows a summary in the header:
 
 ## Submit Bar (sticky footer)
 
-- **Complete checklist** button — disabled while any manual No or unresolved mismatch exists.
+- **Complete checklist** button — disabled while any item is unchecked (pending), any manual No exists, or any CRM mismatch is unresolved.
 - Info text explains what is blocking (e.g. "2 manual checks not completed — completion is blocked").
 - On click: writes `completedAt` (ISO timestamp) and `completedBy` (user full name) to the JSON, then calls `notifyOutputChanged()`.
 
@@ -170,11 +183,12 @@ Each collapsed section shows a summary in the header:
 
 Two WebAPI calls in `init()`:
 
-1. Retrieve the Service Request record with expanded contact (onboarding subject). Fetches all CRM check field values (DOB, RM, risk level, PEP status, nationalities, portfolio currency, special conditions, BTC/ETH flags, client segment).
+1. Retrieve the Service Request with nested expands:
+   - Expand `syg_linkedonboardingid` → `syg_clientonboarding` (CO fields: `syg_relationshipmanagerid`, `syg_risklevel`, `syg_pepcheck`, `syg_specialconditions`, `syg_referencecurrencyid`, `syg_aiareporting`)
+   - Within onboarding, expand `syg_kycprofilefrontinputid` → `syg_kycprofile` (KYC fields: `syg_dateofbirth`, `syg_nationalities`, `syg_finsaclassification`)
+   - Within onboarding, expand `syg_identificationdocumentid` → `syg_identificationdocuments` (ID fields: `syg_documenttype`, `syg_documentnumber`, `syg_countryofissueid`, `syg_placeofissue`, `syg_dateofissue`, `syg_expirationdate`)
 
-2. Retrieve related records:
-   - `syg_iddocument` records linked to the contact — for Section 2 display cards.
-   - `syg_taxrecord` records linked to the contact — for Section 4 tax cards and per-record Yes/No checks.
+2. Using the onboarding ID from step 1, fetch `syg_taxationdetails` records filtered by `_syg_clientonboardingid_value` — for Section 4 tax cards and per-record Yes/No checks.
 
 Record ID: `(context.mode as any).contextInfo.entityId`, with fallback to `Xrm.Page.data.entity.getId()`.
 
@@ -200,9 +214,9 @@ interface CheckState {
   answers: Record<string, 'yes' | 'no' | null>;
   mismatches: Record<string, { description: string; actionTaken: string; resolution: string; resolved: boolean }>;
   manualNotDone: Record<string, { label: string; reason: string }>;
-  crmValues: Record<string, string>;   // loaded from WebAPI
-  taxRecords: TaxRecord[];
-  idDocuments: IdDocument[];
+  crmValues: CrmValues;               // loaded from WebAPI
+  taxRecords: TaxRecord[];            // from syg_taxationdetails, N records
+  idDocument: IdDocument | null;      // single record via syg_clientonboarding.syg_identificationdocumentid
   loading: boolean;
 }
 ```

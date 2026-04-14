@@ -224,33 +224,35 @@ export interface CheckResults {
 
 export interface TaxRecord {
   id: string;
-  taxDomicile: string;
-  taxId: string;
+  taxDomicile: string;   // from syg_taxationdetails.syg_countryid (lookup formatted value)
+  taxId: string;         // from syg_taxationdetails.syg_taxid
 }
 
 export interface IdDocument {
   id: string;
-  documentType: string;
-  documentNumber: string;
-  countryOfIssue: string;
-  placeOfIssue: string;
-  issueDate: string;      // already formatted de-CH
-  expiryDate: string;     // already formatted de-CH
+  documentType: string;    // syg_documenttype (option set formatted value)
+  documentNumber: string;  // syg_documentnumber
+  countryOfIssue: string;  // syg_countryofissueid (lookup formatted value)
+  placeOfIssue: string;    // syg_placeofissue
+  issueDate: string;       // syg_dateofissue, already formatted de-CH
+  expirationDate: string;  // syg_expirationdate, already formatted de-CH
 }
 
 export interface CrmValues {
-  // Section 1
-  birthdate: string;
-  relationshipManager: string;
-  riskLevel: string;
-  pepStatus: string;
-  nationalities: string;
-  // Section 3
-  portfolioDefaultCurrency: string;
-  specialConditions: string;
-  digitalAssetVaultCurrency: string;
-  // Section 2 display
-  clientSegment: string;
+  // Section 1 — from syg_kycprofile (via syg_clientonboarding.syg_kycprofilefrontinputid)
+  dateOfBirth: string;           // syg_dateofbirth
+  nationalities: string;         // syg_nationalities
+  // Section 1 — from syg_clientonboarding
+  relationshipManager: string;   // syg_relationshipmanagerid (lookup formatted value)
+  riskLevel: string;             // syg_risklevel (option set formatted value)
+  pepStatus: string;             // syg_pepcheck (option set formatted value)
+  // Section 2 — from syg_kycprofile
+  clientSegment: string;         // syg_finsaclassification (option set formatted value)
+  // Section 3 — from syg_clientonboarding
+  referenceCurrency: string;     // syg_referencecurrencyid (lookup formatted value) — used for both Portfolio Default Currency and Digital Asset Vault Currency display
+  specialConditions: string;     // syg_specialconditions
+  // Section 4 — from syg_clientonboarding
+  aiaReporting: string;          // syg_aiareporting (option set formatted value) — INDICIA check
 }
 
 export interface CheckState {
@@ -259,7 +261,7 @@ export interface CheckState {
   manualNotDone: Record<string, ManualNotDoneData>;
   crmValues: CrmValues;
   taxRecords: TaxRecord[];
-  idDocuments: IdDocument[];
+  idDocument: IdDocument | null;   // single document via lookup on syg_clientonboarding
   loading: boolean;
   loadError: string | null;
 }
@@ -267,19 +269,16 @@ export interface CheckState {
 /** Items whose "No" answer is a hard block (manual checks). */
 export const MANUAL_KEYS = new Set<string>([
   'active', 'pms', 'payment', 'block', 'archive',
-  'chtax', 'dispatch',
-  'omst', 'oms', 'btct', 'btcv',
-  'cvac', 'cvcu', 'cvcg', 'cvag', 'cv4', 'cvw',
+  'chtax', 'dispatch', 'oms',
+  'omst', 'btct', 'btcv', 'cv4', 'cvw',
 ]);
 
-/** Keys in Section 1 (excludes dynamic tax keys which are computed at runtime). */
+/** Keys in each section (excludes dynamic tax keys computed at runtime). */
 export const SEC1_KEYS = ['dob', 'rm', 'active', 'risk', 'pep'] as const;
 export const SEC3_KEYS = ['currency', 'pms', 'payment', 'block', 'special', 'archive'] as const;
-export const SEC4_FIXED_KEYS = ['chtax', 'dispatch'] as const;
-export const SEC5_KEYS = [
-  'omst', 'oms', 'btct', 'btcv',
-  'cvac', 'cvcu', 'cvcg', 'cvag', 'cv4', 'cvw',
-] as const;
+// Section 4: tax record keys (dynamic) + fixed items below
+export const SEC4_FIXED_KEYS = ['chtax', 'dispatch', 'indicia', 'oms'] as const;
+export const SEC5_KEYS = ['omst', 'cv4', 'cvw', 'btct', 'btcv'] as const;
 
 /** Human-readable labels for alert bars. */
 export const ITEM_LABELS: Record<string, string> = {
@@ -290,22 +289,19 @@ export const ITEM_LABELS: Record<string, string> = {
   pep: 'PEP Status',
   currency: 'Portfolio Default Currency',
   pms: 'PMS+',
-  payment: 'Payment Rules',
+  payment: 'Payment Rules Matching Main Account Currency',
   block: 'Remove General Block',
   special: 'Special Conditions',
-  archive: 'Web Archive',
+  archive: 'Set Up a Web Archive',
   chtax: 'CH Tax Regulations',
-  dispatch: 'Direct Dispatch',
-  omst: 'OMS Tier Updated',
-  oms: 'OMS Client Created',
-  btct: 'BTC/ETH Trading',
-  btcv: 'BTC/ETH Vault',
-  cvac: 'C-Vault Accounts/IBANs',
-  cvcu: 'C-Vault User',
-  cvcg: 'Customer Group',
-  cvag: 'Approver Group',
-  cv4: '4-Eyes Check',
-  cvw: 'C-Vault Wallets',
+  dispatch: 'Direct Dispatch (CH clients)',
+  indicia: 'Run INDICIA Search',
+  oms: 'Created Client in OMS and Added the Tier',
+  omst: 'Has the Tier Been Updated on OMS Portal?',
+  btct: 'Add BTC and ETH Trading',
+  btcv: 'Add BTC and ETH Vault',
+  cv4: 'C-Vault: Business Team Approved with 4-Eyes Check',
+  cvw: 'C-Vault: Wallets',
 };
 
 export function taxKey(index: number): string {
@@ -408,15 +404,15 @@ export function apiBase(): string {
 /** Build an empty default CrmValues object. */
 export function emptyCrmValues(): import('./types').CrmValues {
   return {
-    birthdate: '',
+    dateOfBirth: '',
+    nationalities: '',
     relationshipManager: '',
     riskLevel: '',
     pepStatus: '',
-    nationalities: '',
-    portfolioDefaultCurrency: '',
-    specialConditions: '',
-    digitalAssetVaultCurrency: '',
     clientSegment: '',
+    referenceCurrency: '',
+    specialConditions: '',
+    aiaReporting: '',
   };
 }
 ```
@@ -936,40 +932,29 @@ import { IdDocument } from '../types';
 import { DisplayItem } from './DisplayItem';
 
 interface Props {
-  idDocuments: IdDocument[];
-  clientSegment: string;
+  idDocument: IdDocument | null;   // single document via CO.syg_identificationdocumentid
+  clientSegment: string;           // from syg_kycprofile.syg_finsaclassification
 }
 
-export function IdDocumentSection({ idDocuments, clientSegment }: Props): React.ReactElement {
+export function IdDocumentSection({ idDocument, clientSegment }: Props): React.ReactElement {
   return (
     <div>
-      {/* Document count pill */}
-      <div style={pillStyle}>
-        <svg width={11} height={11} viewBox="0 0 12 12" fill="none">
-          <rect x={1} y={2} width={10} height={8} rx={1} stroke="#605e5c" strokeWidth={1.1} />
-          <line x1={3} y1={5} x2={9} y2={5} stroke="#605e5c" strokeWidth={1} />
-          <line x1={3} y1={7.5} x2={7} y2={7.5} stroke="#605e5c" strokeWidth={1} />
-        </svg>
-        {idDocuments.length} document{idDocuments.length !== 1 ? 's' : ''}
-      </div>
-
-      {/* Document cards */}
-      <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {idDocuments.length === 0 && (
-          <div style={{ fontSize: 13, color: '#a19f9d', padding: '4px 0' }}>No ID documents found.</div>
-        )}
-        {idDocuments.map((doc, i) => (
-          <div key={doc.id} style={cardStyle}>
-            <div style={cardHdrStyle}>Document {i + 1}</div>
+      {/* Document card */}
+      <div style={{ padding: '10px 12px 12px' }}>
+        {!idDocument ? (
+          <div style={{ fontSize: 13, color: '#a19f9d', padding: '4px 0' }}>No ID document linked to this onboarding.</div>
+        ) : (
+          <div style={cardStyle}>
+            <div style={cardHdrStyle}>Identification Document</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', padding: '8px 12px', gap: '8px 16px' }}>
-              {[
-                ['Document type',   doc.documentType],
-                ['Document number', doc.documentNumber],
-                ['Country of issue', doc.countryOfIssue],
-                ['Place of issue',  doc.placeOfIssue],
-                ['Date of issue',   doc.issueDate],
-                ['Expiration date', doc.expiryDate],
-              ].map(([lbl, val]) => (
+              {([
+                ['Document type',   idDocument.documentType],
+                ['Document number', idDocument.documentNumber],
+                ['Country of issue', idDocument.countryOfIssue],
+                ['Place of issue',  idDocument.placeOfIssue],
+                ['Date of issue',   idDocument.issueDate],
+                ['Expiration date', idDocument.expirationDate],
+              ] as [string, string][]).map(([lbl, val]) => (
                 <div key={lbl}>
                   <div style={{ fontSize: 10, color: '#a19f9d', marginBottom: 1 }}>{lbl}</div>
                   <div style={{ fontSize: 12, color: '#201f1e', fontWeight: 500 }}>{val || '—'}</div>
@@ -977,7 +962,7 @@ export function IdDocumentSection({ idDocuments, clientSegment }: Props): React.
               ))}
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       {/* Client Segment display */}
@@ -988,12 +973,6 @@ export function IdDocumentSection({ idDocuments, clientSegment }: Props): React.
   );
 }
 
-const pillStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 5,
-  background: '#f3f2f1', border: '1px solid #c8c6c4', borderRadius: 2,
-  padding: '3px 10px', fontSize: 11, fontWeight: 600, color: '#605e5c',
-  margin: '10px 14px 8px',
-};
 const cardStyle: React.CSSProperties = {
   border: '1px solid #edebe9', borderRadius: 2,
 };
@@ -1651,10 +1630,10 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
               itemKey={key}
               label={ITEM_LABELS[key]}
               crmValue={
-                key === 'dob' ? crmValues.birthdate :
-                key === 'rm'  ? crmValues.relationshipManager :
-                key === 'risk'? crmValues.riskLevel :
-                                crmValues.pepStatus
+                key === 'dob'  ? crmValues.dateOfBirth :
+                key === 'rm'   ? crmValues.relationshipManager :
+                key === 'risk' ? crmValues.riskLevel :
+                                 crmValues.pepStatus
               }
               answer={state.answers[key] ?? null}
               mismatch={state.mismatches[key]}
@@ -1678,26 +1657,22 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
 
       {/* ── Section 2: ID data ── */}
       <SectionCard title="ID data" status="normal" summaryText="Display only" defaultCollapsed>
-        <IdDocumentSection idDocuments={state.idDocuments} clientSegment={crmValues.clientSegment} />
+        <IdDocumentSection idDocument={state.idDocument} clientSegment={crmValues.clientSegment} />
       </SectionCard>
 
       {/* ── Section 3: Finnova accounts ── */}
       <SectionCard title="Finnova accounts" status={s3.status} summaryText={s3.text}>
-        <DisplayItem label="Digital Asset Vault Currency" value={crmValues.digitalAssetVaultCurrency} />
+        {/* Digital Asset Vault Currency — display only, same value as Portfolio Default Currency */}
+        <DisplayItem label="Digital Asset Vault Currency" value={crmValues.referenceCurrency} />
         <div ref={itemRef('currency')}>
-          <CheckItem itemKey="currency" label="Portfolio Default Currency" crmValue={crmValues.portfolioDefaultCurrency}
+          <CheckItem itemKey="currency" label="Portfolio Default Currency" crmValue={crmValues.referenceCurrency}
             answer={state.answers['currency'] ?? null} mismatch={state.mismatches['currency']}
             isReadOnly={isReadOnly} onAnswer={handleAnswer} onMismatchChange={handleMismatchChange} />
         </div>
         {(['pms', 'payment', 'block', 'archive'] as const).map(key => (
           <div key={key} ref={itemRef(key)}>
             <ManualCheckItem
-              itemKey={key} label={
-                key === 'pms'     ? 'PMS+' :
-                key === 'payment' ? 'Payment Rules Matching Main Account Currency' :
-                key === 'block'   ? 'Remove a General Block' :
-                                    'Set Up a Web Archive'
-              }
+              itemKey={key} label={ITEM_LABELS[key]}
               answer={state.answers[key] ?? null}
               notDone={state.manualNotDone[key]}
               isReadOnly={isReadOnly}
@@ -1723,7 +1698,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
           onAnswer={handleAnswer}
           onMismatchChange={handleMismatchChange}
         />
-        {/* Group header for additional tax checks */}
+        {/* Additional fixed items below the per-record tax cards */}
         <div style={grpHdrStyle}>Additional tax checks</div>
         <div ref={itemRef('chtax')}>
           <ManualCheckItem itemKey="chtax" label="CH Tax Regulations"
@@ -1735,64 +1710,44 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             answer={state.answers['dispatch'] ?? null} notDone={state.manualNotDone['dispatch']}
             isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
         </div>
+        <div ref={itemRef('indicia')}>
+          {/* INDICIA: CRM check — value from syg_clientonboarding.syg_aiareporting */}
+          <CheckItem itemKey="indicia" label="Run INDICIA Search" crmValue={crmValues.aiaReporting}
+            answer={state.answers['indicia'] ?? null} mismatch={state.mismatches['indicia']}
+            isReadOnly={isReadOnly} onAnswer={handleAnswer} onMismatchChange={handleMismatchChange} />
+        </div>
+        <div ref={itemRef('oms')}>
+          <ManualCheckItem itemKey="oms" label="Created Client in OMS and Added the Tier"
+            answer={state.answers['oms'] ?? null} notDone={state.manualNotDone['oms']}
+            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
+        </div>
       </SectionCard>
 
       {/* ── Section 5: Additional actions ── */}
       <SectionCard title="Additional actions" status={s5.status} summaryText={s5.text}>
-        {/* OMS + BTC/ETH */}
-        {([
-          ['omst', 'Has the Tier Been Updated on OMS Portal?'],
-          ['oms',  'Has the Client Been Created in OMS and the Tier Added?'],
-          ['btct', 'Has BTC and ETH Trading Been Added?'],
-          ['btcv', 'Has BTC and ETH Vault Been Added?'],
-        ] as const).map(([key, lbl]) => (
-          <div key={key} ref={itemRef(key)}>
-            <ManualCheckItem itemKey={key} label={lbl}
-              answer={state.answers[key] ?? null} notDone={state.manualNotDone[key]}
-              isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
-          </div>
-        ))}
-
-        {/* C-Vault: Create Customer */}
-        <div style={grpHdrStyle}>C-Vault: Create Customer</div>
-        <div ref={itemRef('cvac')}>
-          <ManualCheckItem itemKey="cvac" label="Have Accounts and IBANs Been Set Up?"
-            answer={state.answers['cvac'] ?? null} notDone={state.manualNotDone['cvac']}
+        <div ref={itemRef('omst')}>
+          <ManualCheckItem itemKey="omst" label="Has the Tier Been Updated on OMS Portal?"
+            answer={state.answers['omst'] ?? null} notDone={state.manualNotDone['omst']}
             isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
         </div>
-        <DisplayItem label="Special Conditions" value={crmValues.specialConditions} showLock />
-
-        {/* C-Vault: Create User */}
-        <div style={grpHdrStyle}>C-Vault: Create User</div>
-        <div ref={itemRef('cvcu')}>
-          <ManualCheckItem itemKey="cvcu" label="Has the C-Vault User Been Created?"
-            answer={state.answers['cvcu'] ?? null} notDone={state.manualNotDone['cvcu']}
-            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
-        </div>
-
-        {/* C-Vault: Customer Group */}
-        <div style={grpHdrStyle}>C-Vault: Customer Group</div>
-        <div ref={itemRef('cvcg')}>
-          <ManualCheckItem itemKey="cvcg" label="Has the Customer Group Been Created?"
-            answer={state.answers['cvcg'] ?? null} notDone={state.manualNotDone['cvcg']}
-            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
-        </div>
-        <div ref={itemRef('cvag')}>
-          <ManualCheckItem itemKey="cvag" label="Has the Customer Been Added to the Approver Group?"
-            answer={state.answers['cvag'] ?? null} notDone={state.manualNotDone['cvag']}
-            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
-        </div>
-
-        {/* C-Vault: 4-Eyes & Wallets */}
-        <div style={grpHdrStyle}>C-Vault: 4-Eyes &amp; Wallets</div>
         <div ref={itemRef('cv4')}>
-          <ManualCheckItem itemKey="cv4" label="Has the Business Team Approved with a 4-Eyes Check?"
+          <ManualCheckItem itemKey="cv4" label="C-Vault: Business Team Approved with 4-Eyes Check"
             answer={state.answers['cv4'] ?? null} notDone={state.manualNotDone['cv4']}
             isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
         </div>
         <div ref={itemRef('cvw')}>
-          <ManualCheckItem itemKey="cvw" label="Have C-Vault Wallets Been Configured?"
+          <ManualCheckItem itemKey="cvw" label="C-Vault: Wallets"
             answer={state.answers['cvw'] ?? null} notDone={state.manualNotDone['cvw']}
+            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
+        </div>
+        <div ref={itemRef('btct')}>
+          <ManualCheckItem itemKey="btct" label="Add BTC and ETH Trading"
+            answer={state.answers['btct'] ?? null} notDone={state.manualNotDone['btct']}
+            isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
+        </div>
+        <div ref={itemRef('btcv')}>
+          <ManualCheckItem itemKey="btcv" label="Add BTC and ETH Vault"
+            answer={state.answers['btcv'] ?? null} notDone={state.manualNotDone['btcv']}
             isReadOnly={isReadOnly} onAnswer={handleAnswer} onNotDoneChange={handleNotDoneChange} />
         </div>
       </SectionCard>
@@ -1866,8 +1821,8 @@ git commit -m "feat: add ChecklistRoot with full state management"
 - Create: `NpOnboardingChecklist/index.ts`
 
 This is the PCF entry point. `init()` fires two WebAPI calls sequentially:
-1. Fetch the Service Request with `$expand=customerid_contact` to get all CRM field values.
-2. Using the contact ID from step 1, fetch `syg_iddocument` records and `syg_taxrecord` records linked to that contact.
+1. Fetch the Service Request with nested `$expand=syg_linkedonboardingid` → expands `syg_kycprofilefrontinputid` (KYC fields) and `syg_identificationdocumentid` (single ID document) within the onboarding record.
+2. Using the onboarding ID from step 1, fetch `syg_taxationdetails` records filtered by `_syg_clientonboardingid_value`.
 
 - [ ] **Step 1: Write index.ts**
 
@@ -1894,7 +1849,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     manualNotDone: {},
     crmValues: emptyCrmValues(),
     taxRecords: [],
-    idDocuments: [],
+    idDocument: null,
     loading: true,
     loadError: null,
   };
@@ -1947,82 +1902,96 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const base = apiBase();
     const creds: RequestInit = { credentials: 'include' };
 
-    // ── Step 1: Fetch SR with contact expand ──
-    const srFields = 'incidentid';
-    const contactFields = [
-      'contactid', 'birthdate',
-      'syg_relationshipmanager', '_syg_relationshipmanager_value',
-      'syg_risklevel', 'syg_pepstatus',
-      'syg_nationalities',
-      'syg_portfoliodefaultcurrency',
+    // ── Step 1: Fetch SR → expand onboarding → expand KYC + ID document ──
+    // Nested $expand: syg_linkedonboardingid expands two more navigation properties.
+    // NOTE: verify entity set name for syg_identificationdocuments if expand fails.
+    const kycFields = 'syg_dateofbirth,syg_nationalities,syg_finsaclassification';
+    const idFields = [
+      'syg_identificationdocumentid',
+      'syg_documenttype',
+      'syg_documentnumber',
+      'syg_countryofissueid',
+      'syg_placeofissue',
+      'syg_dateofissue',
+      'syg_expirationdate',
+    ].join(',');
+    const coFields = [
+      'syg_clientonboardingid',
+      'syg_risklevel',
+      'syg_pepcheck',
       'syg_specialconditions',
-      'syg_digitalassetvaultcurrency',
-      'syg_clientsegment',
+      'syg_aiareporting',
     ].join(',');
 
-    const srUrl = `${base}/incidents(${srId})?$select=${srFields}&$expand=customerid_contact($select=${contactFields})`;
+    const srUrl =
+      `${base}/incidents(${srId})?$select=incidentid` +
+      `&$expand=syg_linkedonboardingid(` +
+        `$select=${coFields};` +
+        `$expand=syg_relationshipmanagerid($select=systemuserid,fullname),` +
+          `syg_referencecurrencyid($select=transactioncurrencyid,currencyname,isocurrencycode),` +
+          `syg_kycprofilefrontinputid($select=${kycFields}),` +
+          `syg_identificationdocumentid($select=${idFields})` +
+      `)`;
+
     const srResp = await fetch(srUrl, creds);
     if (!srResp.ok) throw new Error(`SR fetch failed: ${srResp.status}`);
     const srData = await srResp.json();
-    const contact = srData.customerid_contact ?? {};
-    const contactId: string = contact.contactid ?? '';
+    const co = srData.syg_linkedonboardingid ?? {};
+    const onboardingId: string = co.syg_clientonboardingid ?? '';
+    const kyc = co.syg_kycprofilefrontinputid ?? {};
+    const idDoc = co.syg_identificationdocumentid ?? null;
+    const rm = co.syg_relationshipmanagerid ?? {};
+    const currency = co.syg_referencecurrencyid ?? {};
+
+    const fv = (obj: any, key: string): string =>
+      obj[`${key}@OData.Community.Display.V1.FormattedValue`] ?? String(obj[key] ?? '');
 
     const crm: CrmValues = {
-      birthdate: formatDate(contact.birthdate),
-      relationshipManager:
-        contact['syg_relationshipmanager@OData.Community.Display.V1.FormattedValue'] ??
-        contact._syg_relationshipmanager_value_ODataFormattedValue ??
-        contact.syg_relationshipmanager ?? '',
-      riskLevel:
-        contact['syg_risklevel@OData.Community.Display.V1.FormattedValue'] ?? String(contact.syg_risklevel ?? ''),
-      pepStatus:
-        contact['syg_pepstatus@OData.Community.Display.V1.FormattedValue'] ?? String(contact.syg_pepstatus ?? ''),
-      nationalities: contact.syg_nationalities ?? '',
-      portfolioDefaultCurrency: contact.syg_portfoliodefaultcurrency ?? '',
-      specialConditions: contact.syg_specialconditions ?? '',
-      digitalAssetVaultCurrency: contact.syg_digitalassetvaultcurrency ?? '',
-      clientSegment:
-        contact['syg_clientsegment@OData.Community.Display.V1.FormattedValue'] ?? String(contact.syg_clientsegment ?? ''),
+      // KYC fields
+      dateOfBirth: formatDate(kyc.syg_dateofbirth),
+      nationalities: kyc.syg_nationalities ?? '',
+      clientSegment: fv(kyc, 'syg_finsaclassification'),
+      // CO lookup fields
+      relationshipManager: rm.fullname ?? '',
+      referenceCurrency: currency.currencyname ?? currency.isocurrencycode ?? '',
+      // CO option set / text fields
+      riskLevel: fv(co, 'syg_risklevel'),
+      pepStatus: fv(co, 'syg_pepcheck'),
+      specialConditions: co.syg_specialconditions ?? '',
+      aiaReporting: fv(co, 'syg_aiareporting'),
     };
 
-    // ── Step 2a: Fetch ID documents linked to contact ──
-    let idDocuments: IdDocument[] = [];
-    if (contactId) {
-      const idUrl = `${base}/syg_iddocuments?$filter=_syg_contact_value eq '${contactId}'&$select=syg_iddocumentid,syg_documenttype,syg_documentnumber,syg_countryofissue,syg_placeofissue,syg_issuedate,syg_expirydate`;
-      const idResp = await fetch(idUrl, creds);
-      if (idResp.ok) {
-        const idData = await idResp.json();
-        idDocuments = (idData.value ?? []).map((d: any) => ({
-          id: d.syg_iddocumentid,
-          documentType:
-            d['syg_documenttype@OData.Community.Display.V1.FormattedValue'] ?? String(d.syg_documenttype ?? ''),
-          documentNumber: d.syg_documentnumber ?? '',
-          countryOfIssue:
-            d['syg_countryofissue@OData.Community.Display.V1.FormattedValue'] ?? d.syg_countryofissue ?? '',
-          placeOfIssue: d.syg_placeofissue ?? '',
-          issueDate:  formatDate(d.syg_issuedate),
-          expiryDate: formatDate(d.syg_expirydate),
-        })) as IdDocument[];
-      }
-    }
+    const idDocument: IdDocument | null = idDoc
+      ? {
+          id: idDoc.syg_identificationdocumentid ?? '',
+          documentType: fv(idDoc, 'syg_documenttype'),
+          documentNumber: idDoc.syg_documentnumber ?? '',
+          countryOfIssue: fv(idDoc, 'syg_countryofissueid'),
+          placeOfIssue: idDoc.syg_placeofissue ?? '',
+          issueDate: formatDate(idDoc.syg_dateofissue),
+          expirationDate: formatDate(idDoc.syg_expirationdate),
+        }
+      : null;
 
-    // ── Step 2b: Fetch tax records linked to contact ──
+    // ── Step 2: Fetch syg_taxationdetails linked to onboarding ──
     let taxRecords: TaxRecord[] = [];
-    if (contactId) {
-      const txUrl = `${base}/syg_taxrecords?$filter=_syg_contact_value eq '${contactId}'&$select=syg_taxrecordid,syg_taxdomicile,syg_taxid`;
+    if (onboardingId) {
+      const txUrl =
+        `${base}/syg_taxationdetails?$filter=_syg_clientonboardingid_value eq '${onboardingId}'` +
+        `&$select=syg_taxationdetailsid,syg_taxid` +
+        `&$expand=syg_countryid($select=syg_countryid,syg_name)`;
       const txResp = await fetch(txUrl, creds);
       if (txResp.ok) {
         const txData = await txResp.json();
         taxRecords = (txData.value ?? []).map((r: any) => ({
-          id: r.syg_taxrecordid,
-          taxDomicile:
-            r['syg_taxdomicile@OData.Community.Display.V1.FormattedValue'] ?? r.syg_taxdomicile ?? '',
+          id: r.syg_taxationdetailsid,
+          taxDomicile: r.syg_countryid?.syg_name ?? fv(r, 'syg_countryid') ?? '',
           taxId: r.syg_taxid ?? '',
         })) as TaxRecord[];
       }
     }
 
-    this.state = { ...this.state, crmValues: crm, idDocuments, taxRecords };
+    this.state = { ...this.state, crmValues: crm, idDocument, taxRecords };
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
@@ -2141,7 +2110,7 @@ export interface CheckState {
   manualNotDone: Record<string, ManualNotDoneData>;
   crmValues: CrmValues;
   taxRecords: TaxRecord[];
-  idDocuments: IdDocument[];
+  idDocument: IdDocument | null;
   loading: boolean;
   loadError: string | null;
   completedAt?: string;
@@ -2303,12 +2272,12 @@ In D365 → Customizations → Customize the System → Service Request entity �
 
 - [ ] **Step 3: Hard-refresh D365 and open a Service Request record**
 
-Press `Ctrl+Shift+R` in the browser after publish. Open a Service Request with an onboarding contact. The checklist should load with CRM values populated from the linked contact.
+Press `Ctrl+Shift+R` in the browser after publish. Open a Service Request with a linked onboarding record (`syg_linkedonboardingid`). The checklist should load with CRM values populated from the onboarding and its KYC profile.
 
 - [ ] **Step 4: Smoke-test the control**
 
 Verify:
-- [ ] Section 1 shows Date of Birth, RM name, Risk Level, PEP Status from the linked contact
+- [ ] Section 1 shows Date of Birth (from KYC), RM name, Risk Level, PEP Status (from onboarding CO)
 - [ ] Clicking Yes on a CRM item turns dot blue, status shows "Confirmed"
 - [ ] Clicking No on a CRM item opens the mismatch form; checking "Mark as resolved" without filling description shows validation message
 - [ ] Clicking No on a manual item opens the optional reason textarea with "blocks completion" note
@@ -2328,8 +2297,8 @@ Verify:
 - [x] Section 1 (dob, rm, active, risk, pep + nationalities display) — Task 11
 - [x] Section 2 (ID documents display, client segment) — Tasks 7, 11
 - [x] Section 3 (currency CRM, pms/payment/block/archive manual, special CRM, DAV display) — Task 11
-- [x] Section 4 (dynamic tax records + chtax/dispatch manual, no INDICIA) — Tasks 8, 11
-- [x] Section 5 (omst/oms/btct/btcv + C-Vault sub-groups with 6 items) — Task 11
+- [x] Section 4 (dynamic tax records + chtax/dispatch/oms manual + indicia CRM check) — Tasks 8, 11
+- [x] Section 5 (omst/cv4/cvw/btct/btcv — 5 manual checks, no sub-groups) — Task 11
 - [x] CRM check: lock icon, mismatch form, description required, two resolution options — Task 5
 - [x] Manual check: no lock, italic "Manual check", optional reason, block note — Task 6
 - [x] Display-only: grey dot, no buttons, not counted — Task 4
