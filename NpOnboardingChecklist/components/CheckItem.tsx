@@ -20,6 +20,7 @@ export function CheckItem({
   onAnswer, onMismatchChange,
 }: Props): React.ReactElement {
   const [descInvalid, setDescInvalid] = React.useState(false);
+  React.useEffect(() => { setDescInvalid(false); }, [answer]);
 
   const status: 'pending' | 'confirmed' | 'mismatch' | 'resolved' =
     answer === 'yes' ? 'confirmed' :
@@ -34,7 +35,7 @@ export function CheckItem({
     status === 'resolved'  ? 'Resolved'  :
     status === 'mismatch'  ? 'Mismatch'  : '';
 
-  const itemBg = answer === 'no' ? '#faf9f8' : '#fff';
+  const itemBg = answer === 'no' ? '#fffbf0' : '#fff';
   const borderLeft = answer === 'no' ? '3px solid #c8c6c4' : undefined;
 
   function handleResolve(checked: boolean): void {
@@ -129,7 +130,7 @@ export function CheckItem({
             </div>
             {!isReadOnly && !mismatch?.resolved && (
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#323130', cursor: 'pointer', marginBottom: 2 }}>
-                <input type="checkbox" checked={false} onChange={e => handleResolve(e.target.checked)}
+                <input type="checkbox" checked={md.resolved} onChange={e => handleResolve(e.target.checked)}
                   style={{ width: 14, height: 14, accentColor: '#0078d4', cursor: 'pointer' }} />
                 Mark as resolved
               </label>
