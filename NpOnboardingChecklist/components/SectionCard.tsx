@@ -25,15 +25,15 @@ export function SectionCard({ title, status, summaryText, defaultCollapsed = tru
     status === 'blocked'  ? '#323130' :
     status === 'mismatch' ? '#605e5c' : '#605e5c';
 
-  const sectionStyle: React.CSSProperties = {
+  const sectionStyle = React.useMemo<React.CSSProperties>(() => ({
     margin: '10px 12px',
     background: '#fff',
     border: '1px solid #edebe9',
     borderLeft: borderLeft || '1px solid #edebe9',
     borderRadius: 2,
-  };
+  }), [borderLeft]);
 
-  const hdrStyle: React.CSSProperties = {
+  const hdrStyle = React.useMemo<React.CSSProperties>(() => ({
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     padding: '9px 12px',
     background: '#f3f2f1',
@@ -41,7 +41,7 @@ export function SectionCard({ title, status, summaryText, defaultCollapsed = tru
     userSelect: 'none',
     borderBottom: collapsed ? 'none' : '1px solid #edebe9',
     borderRadius: collapsed ? 2 : '2px 2px 0 0',
-  };
+  }), [collapsed]);
 
   return (
     <div style={sectionStyle}>
