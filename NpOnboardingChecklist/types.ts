@@ -23,13 +23,6 @@ export interface CheckSummary {
   completedBy?: string;
 }
 
-export interface CheckResults {
-  answers: Record<string, AnswerValue>;
-  mismatches: Record<string, MismatchData>;
-  manualNotDone: Record<string, ManualNotDoneData>;
-  summary: CheckSummary;
-}
-
 export interface TaxRecord {
   id: string;
   taxDomicile: string;   // from syg_taxationdetails.syg_countryid (lookup formatted value)
@@ -72,8 +65,12 @@ export interface CheckState {
   idDocument: IdDocument | null;   // single document via lookup on syg_clientonboarding
   loading: boolean;
   loadError: string | null;
-  completedAt?: string;
-  completedBy?: string;
+  completedAt: string | null;
+  completedBy: string | null;
+}
+
+export interface CheckResults extends Pick<CheckState, 'answers' | 'mismatches' | 'manualNotDone'> {
+  summary: CheckSummary;
 }
 
 export type SectionStatus = 'normal' | 'mismatch' | 'blocked' | 'done';
@@ -93,7 +90,7 @@ export const SEC4_FIXED_KEYS = ['chtax', 'dispatch', 'indicia', 'oms'] as const;
 export const SEC5_KEYS = ['omst', 'cv4', 'cvw', 'btct', 'btcv'] as const;
 
 /** Human-readable labels for alert bars. */
-export const ITEM_LABELS: Record<string, string> = {
+export const ITEM_LABELS = {
   dob: 'Date of Birth',
   rm: 'Relationship Manager',
   active: 'Set Client as Active',
@@ -114,7 +111,7 @@ export const ITEM_LABELS: Record<string, string> = {
   btcv: 'Add BTC and ETH Vault',
   cv4: 'C-Vault: Business Team Approved with 4-Eyes Check',
   cvw: 'C-Vault: Wallets',
-};
+} as const;
 
 export function taxKey(index: number): string {
   return `tx${index}`;
