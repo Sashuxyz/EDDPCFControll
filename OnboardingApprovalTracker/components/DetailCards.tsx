@@ -6,6 +6,7 @@ import { formatDateTime } from '../utils/dateFormat';
 interface DetailCardsProps {
   steps: ApprovalStep[];
   onApproverClick: (recordId: string) => void;
+  tzOffsetMinutes: number;
 }
 
 function ApproverElement({ step, onClick }: { step: ApprovalStep; onClick: (id: string) => void }): React.ReactElement {
@@ -42,11 +43,11 @@ function StatusLine({ step }: { step: ApprovalStep }): React.ReactElement {
   return <div style={detailCardsStyles.statusUpcoming}>Not started</div>;
 }
 
-function DateLine({ step }: { step: ApprovalStep }): React.ReactElement {
-  return <div style={detailCardsStyles.date}>{step.approvedOn ? formatDateTime(step.approvedOn) : '\u00A0'}</div>;
+function DateLine({ step, tzOffsetMinutes }: { step: ApprovalStep; tzOffsetMinutes: number }): React.ReactElement {
+  return <div style={detailCardsStyles.date}>{step.approvedOn ? formatDateTime(step.approvedOn, tzOffsetMinutes) : '\u00A0'}</div>;
 }
 
-export const DetailCards: React.FC<DetailCardsProps> = ({ steps, onApproverClick }) => {
+export const DetailCards: React.FC<DetailCardsProps> = ({ steps, onApproverClick, tzOffsetMinutes }) => {
   return (
     <div style={detailCardsStyles.row}>
       {steps.map((step, idx) => {
@@ -59,7 +60,7 @@ export const DetailCards: React.FC<DetailCardsProps> = ({ steps, onApproverClick
           <div key={step.key} style={isLast ? detailCardsStyles.cardLast : detailCardsStyles.card}>
             <div style={detailCardsStyles.label}>{labelText}</div>
             <ApproverElement step={step} onClick={onApproverClick} />
-            <DateLine step={step} />
+            <DateLine step={step} tzOffsetMinutes={tzOffsetMinutes} />
             <StatusLine step={step} />
           </div>
         );

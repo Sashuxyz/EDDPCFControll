@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Syg" constructor="OnboardingApprovalTracker" version="1.0.0" display-name-key="OnboardingApprovalTracker" description-key="Approval progress tracker for client onboarding" control-type="standard" api-version="1.3.0">
+  <control namespace="Syg" constructor="OnboardingApprovalTracker" version="1.0.1" display-name-key="OnboardingApprovalTracker" description-key="Approval progress tracker for client onboarding" control-type="standard" api-version="1.3.0">
     <external-service-usage enabled="false" />
     <data-set name="transitionLogs" display-name-key="Transition Logs" cds-data-set-options="displayCommandBar:false;displayViewSelector:false">
       <property-set name="transitionType" display-name-key="Transition Type" of-type="OptionSet" usage="bound" required="true" />

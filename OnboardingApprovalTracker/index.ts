@@ -7,6 +7,7 @@ import { extractAllRecords } from './utils/recordExtractor';
 import { groupIntoRounds } from './utils/roundGrouper';
 import { buildTimelineEvents } from './utils/timelineBuilder';
 import { resolveParentInfo, fetchApprovalFlow, ParentInfo } from './utils/parentContext';
+import { getUserTimezoneOffsetMinutes } from './utils/dateFormat';
 import { STEP_MAP } from './types';
 
 type FlowState =
@@ -101,12 +102,16 @@ export class OnboardingApprovalTracker
     const records = extractAllRecords(ds);
     const rounds = groupIntoRounds(records, flow);
     const events = buildTimelineEvents(rounds);
+    const tzOffsetMinutes = getUserTimezoneOffsetMinutes(
+      context as unknown as ComponentFramework.Context<unknown>
+    );
 
     this.root.render(
       React.createElement(ApprovalTracker, {
         rounds,
         events,
         context: context as unknown as ComponentFramework.Context<unknown>,
+        tzOffsetMinutes,
       })
     );
   }

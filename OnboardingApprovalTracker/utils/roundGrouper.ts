@@ -44,10 +44,15 @@ export function groupIntoRounds(records: ExtractedRecord[], approvalFlow: number
       }
     }
 
+    // Build steps in order. A step is only "completed" if the matching
+    // approval log exists AND all prior steps in the ordered chain are
+    // also completed. Enforces the business rule that approvals happen
+    // sequentially (RM -> SH -> Compliance -> BAB).
+    let priorStepCompleted = true;
     const steps: ApprovalStep[] = stepKeys.map((key) => {
       const def = STEP_DEFS[key];
       const matched = stepsByType.get(def.transitionType);
-      if (matched) {
+      if (matched && priorStepCompleted) {
         return {
           ...def,
           status: 'completed',
@@ -56,6 +61,8 @@ export function groupIntoRounds(records: ExtractedRecord[], approvalFlow: number
           recordId: matched.recordId,
         };
       }
+      // Once a step is not completed, all subsequent steps are not completed either.
+      priorStepCompleted = false;
       return { ...def, status: 'upcoming' };
     });
 

@@ -11,6 +11,7 @@ interface ApprovalTrackerProps {
   rounds: ApprovalRound[];
   events: TimelineEvent[];
   context: ComponentFramework.Context<unknown>;
+  tzOffsetMinutes: number;
 }
 
 function findFinalApprovalDate(currentRound: ApprovalRound | undefined): Date | null {
@@ -26,7 +27,7 @@ function findFinalApprovalDate(currentRound: ApprovalRound | undefined): Date | 
   return latest;
 }
 
-export const ApprovalTracker: React.FC<ApprovalTrackerProps> = ({ rounds, events, context }) => {
+export const ApprovalTracker: React.FC<ApprovalTrackerProps> = ({ rounds, events, context, tzOffsetMinutes }) => {
   const currentRound = rounds.find((r) => r.isCurrent);
 
   const onApproverClick = React.useCallback(
@@ -54,7 +55,7 @@ export const ApprovalTracker: React.FC<ApprovalTrackerProps> = ({ rounds, events
       <div style={headerStyles.row}>
         <span style={headerStyles.title}>Approval progress</span>
         {finalApprovalDate ? (
-          <span style={headerStyles.approvedIndicator}>Approved on {formatDate(finalApprovalDate)}</span>
+          <span style={headerStyles.approvedIndicator}>Approved on {formatDate(finalApprovalDate, tzOffsetMinutes)}</span>
         ) : totalRounds > 1 ? (
           <span style={headerStyles.roundIndicator}>Round {currentRound.roundNumber} of {totalRounds}</span>
         ) : (
@@ -63,8 +64,8 @@ export const ApprovalTracker: React.FC<ApprovalTrackerProps> = ({ rounds, events
       </div>
 
       <ProgressBar steps={currentRound.steps} />
-      <DetailCards steps={currentRound.steps} onApproverClick={onApproverClick} />
-      <Timeline events={events} onApproverClick={onApproverClick} />
+      <DetailCards steps={currentRound.steps} onApproverClick={onApproverClick} tzOffsetMinutes={tzOffsetMinutes} />
+      <Timeline events={events} onApproverClick={onApproverClick} tzOffsetMinutes={tzOffsetMinutes} />
     </div>
   );
 };
