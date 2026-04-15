@@ -6,6 +6,7 @@ import { formatDateTime } from '../utils/dateFormat';
 interface TimelineProps {
   events: TimelineEvent[];
   onApproverClick: (recordId: string) => void;
+  tzOffsetMinutes: number;
 }
 
 function dotStyle(event: TimelineEvent): React.CSSProperties {
@@ -64,15 +65,15 @@ function EventDescription({ event, onApproverClick }: { event: TimelineEvent; on
   );
 }
 
-function MetaLine({ event }: { event: TimelineEvent }): React.ReactElement {
+function MetaLine({ event, tzOffsetMinutes }: { event: TimelineEvent; tzOffsetMinutes: number }): React.ReactElement {
   if (event.type === 'awaiting') {
     return <div style={timelineStyles.meta}>Round {event.roundNumber} -- In progress</div>;
   }
-  const dt = event.occurredOn ? formatDateTime(event.occurredOn) : '';
+  const dt = event.occurredOn ? formatDateTime(event.occurredOn, tzOffsetMinutes) : '';
   return <div style={timelineStyles.meta}>{dt} -- Round {event.roundNumber}</div>;
 }
 
-export const Timeline: React.FC<TimelineProps> = ({ events, onApproverClick }) => {
+export const Timeline: React.FC<TimelineProps> = ({ events, onApproverClick, tzOffsetMinutes }) => {
   if (events.length === 0) return null;
   return (
     <div style={timelineStyles.section}>
@@ -85,7 +86,7 @@ export const Timeline: React.FC<TimelineProps> = ({ events, onApproverClick }) =
             <div key={idx} style={isLast ? timelineStyles.itemLast : timelineStyles.item}>
               <div style={dotStyle(event)} />
               <EventDescription event={event} onApproverClick={onApproverClick} />
-              <MetaLine event={event} />
+              <MetaLine event={event} tzOffsetMinutes={tzOffsetMinutes} />
             </div>
           );
         })}
