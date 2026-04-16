@@ -72,6 +72,20 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
   const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const prevStateRef = React.useRef(state);
 
+  // Sync CRM-loaded fields from parent once loadData completes.
+  // useState(initialState) captures the first render only, so without this
+  // the UI stays in its initial loading state forever.
+  React.useEffect(() => {
+    setState(prev => ({
+      ...prev,
+      loading: initialState.loading,
+      loadError: initialState.loadError,
+      crmValues: initialState.crmValues,
+      taxRecords: initialState.taxRecords,
+      idDocument: initialState.idDocument,
+    }));
+  }, [initialState.loading, initialState.loadError, initialState.crmValues, initialState.taxRecords, initialState.idDocument]);
+
   // Serialize and notify whenever state changes (not during render)
   React.useEffect(() => {
     if (prevStateRef.current === state) return;
