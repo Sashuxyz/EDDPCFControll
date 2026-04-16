@@ -93,12 +93,17 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const fv = (obj: Record<string, any>, key: string): string =>
       (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined) ?? String(obj[key] ?? '');
 
-    // ── Step 1: Fetch SR to get the linked onboarding GUID via raw lookup column ──
-    const srData = await odataFetch(
-      `${base}/incidents(${srId})?$select=incidentid,_syg_linkedonboardingid_value`
+    // ── Step 1: Fetch the full SR record and auto-discover the onboarding lookup. ──
+    // The custom lookup column name varies across orgs (e.g. _syg_linkedonboarding_value,
+    // _syg_linkedclientonboarding_value). Finding it dynamically by matching
+    // any `_syg_*onboarding*_value` property avoids hardcoding the wrong name.
+    const srData = await odataFetch(`${base}/incidents(${srId})`);
+    const onboardingLookupKey = Object.keys(srData).find((k) =>
+      /^_syg_.*onboarding.*_value$/i.test(k) && typeof srData[k] === 'string'
     );
-    const onboardingId: string = (srData['_syg_linkedonboardingid_value'] as string) ?? '';
-    if (!onboardingId) return; // no linked onboarding; leave defaults
+    if (!onboardingLookupKey) return; // no onboarding lookup on this SR; leave defaults
+    const onboardingId: string = (srData[onboardingLookupKey] as string) ?? '';
+    if (!onboardingId) return;
 
     // ── Step 2: Fetch the client onboarding (scalar + raw lookup values only — no $expand). ──
     // We rely on formatted-value annotations for display text and follow-up
