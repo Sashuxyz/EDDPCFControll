@@ -40,20 +40,29 @@ export function formatDate(isoDate: string | null | undefined): string {
   }
 }
 
-/** Resolve the Service Request record ID from PCF context with Xrm.Page fallback. */
-export function resolveSrId(context: ComponentFramework.Context<any>): string | null {
+export interface SrContext {
+  entityName: string;
+  entityId: string;
+}
+
+/** Resolve the parent record's entity name + ID from PCF context with Xrm.Page fallback. */
+export function resolveSr(context: ComponentFramework.Context<any>): SrContext | null {
+  let entityName: string | undefined;
+  let entityId: string | undefined;
   try {
     const info = (context.mode as any).contextInfo;
-    if (info?.entityId && typeof info.entityId === 'string' && info.entityId.length > 10) {
-      return info.entityId.replace(/[{}]/g, '');
-    }
+    entityName = info?.entityTypeName;
+    entityId = info?.entityId;
   } catch { /* ignore */ }
-  try {
-    const xrm = (window as any).Xrm;
-    const id = xrm?.Page?.data?.entity?.getId?.();
-    if (id && typeof id === 'string') return id.replace(/[{}]/g, '');
-  } catch { /* ignore */ }
-  return null;
+  if (!entityName || !entityId) {
+    try {
+      const xrmEntity = (window as any).Xrm?.Page?.data?.entity;
+      entityName = entityName || xrmEntity?.getEntityName?.();
+      entityId = entityId || xrmEntity?.getId?.();
+    } catch { /* ignore */ }
+  }
+  if (!entityName || !entityId || typeof entityId !== 'string' || entityId.length < 10) return null;
+  return { entityName, entityId: entityId.replace(/[{}]/g, '') };
 }
 
 /** Return the D365 WebAPI base URL. */

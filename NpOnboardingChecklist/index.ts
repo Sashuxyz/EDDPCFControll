@@ -4,7 +4,7 @@ import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { ChecklistRoot } from './components/ChecklistRoot';
 import { CheckState, AnswerValue, MismatchData, ManualNotDoneData } from './types';
-import { parseCheckResults, resolveSrId, apiBase, formatDate, emptyCrmValues } from './utils';
+import { parseCheckResults, resolveSr, apiBase, formatDate, emptyCrmValues } from './utils';
 
 export class NpOnboardingChecklist implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private root!: Root;
@@ -65,8 +65,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
   }
 
   private async loadData(context: ComponentFramework.Context<IInputs>): Promise<void> {
-    const srId = resolveSrId(context);
-    if (!srId) throw new Error('Cannot resolve Service Request ID');
+    const sr = resolveSr(context);
+    if (!sr) throw new Error('Cannot resolve Service Request context');
+    const srSet = `${sr.entityName}s`;
 
     const base = apiBase();
     const odataFetch = async (url: string): Promise<Record<string, any>> => {
@@ -97,7 +98,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     // The custom lookup column name varies across orgs (e.g. _syg_linkedonboarding_value,
     // _syg_linkedclientonboarding_value). Finding it dynamically by matching
     // any `_syg_*onboarding*_value` property avoids hardcoding the wrong name.
-    const srData = await odataFetch(`${base}/incidents(${srId})`);
+    const srData = await odataFetch(`${base}/${srSet}(${sr.entityId})`);
     const onboardingLookupKey = Object.keys(srData).find((k) =>
       /^_syg_.*onboarding.*_value$/i.test(k) && typeof srData[k] === 'string'
     );
