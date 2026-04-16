@@ -100,37 +100,45 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const onboardingId: string = (srData['_syg_linkedonboardingid_value'] as string) ?? '';
     if (!onboardingId) return; // no linked onboarding; leave defaults
 
-    // ── Step 2: Fetch the client onboarding with its related records via $expand ──
+    // ── Step 2: Fetch the client onboarding (scalar + raw lookup values only — no $expand). ──
+    // We rely on formatted-value annotations for display text and follow-up
+    // fetches (Step 3) for related records whose fields we actually need.
     const coFields = [
       'syg_clientonboardingid',
       'syg_risklevel',
       'syg_pepcheck',
       'syg_specialconditions',
       'syg_aiareporting',
-    ].join(',');
-    const kycFields = 'syg_dateofbirth,syg_nationalities,syg_finsaclassification';
-    const idFields = [
-      'syg_identificationdocumentid',
-      'syg_documenttype',
-      'syg_documentnumber',
-      'syg_countryofissueid',
-      'syg_placeofissue',
-      'syg_dateofissue',
-      'syg_expirationdate',
+      '_syg_relationshipmanagerid_value',
+      '_syg_referencecurrencyid_value',
+      '_syg_kycprofilefrontinputid_value',
+      '_syg_identificationdocumentid_value',
     ].join(',');
 
-    const coUrl =
-      `${base}/syg_clientonboardings(${onboardingId})?$select=${coFields}` +
-      `&$expand=syg_relationshipmanagerid($select=systemuserid,fullname),` +
-        `syg_referencecurrencyid($select=transactioncurrencyid,currencyname,isocurrencycode),` +
-        `syg_kycprofilefrontinputid($select=${kycFields}),` +
-        `syg_identificationdocumentid($select=${idFields})`;
+    const co = await odataFetch(
+      `${base}/syg_clientonboardings(${onboardingId})?$select=${coFields}`
+    );
+    const kycId = (co['_syg_kycprofilefrontinputid_value'] as string | null) ?? '';
+    const idDocId = (co['_syg_identificationdocumentid_value'] as string | null) ?? '';
 
-    const co = await odataFetch(coUrl);
-    const kyc = (co['syg_kycprofilefrontinputid'] as Record<string, any>) ?? {};
-    const idDoc = (co['syg_identificationdocumentid'] as Record<string, any> | null) ?? null;
-    const rm = (co['syg_relationshipmanagerid'] as Record<string, any>) ?? {};
-    const currency = (co['syg_referencecurrencyid'] as Record<string, any>) ?? {};
+    // Step 3: parallel fetches for related records where we need actual fields.
+    // Each is independent — a failure on one returns {} instead of breaking the others.
+    const safe = async (url: string): Promise<Record<string, any>> => {
+      try { return await odataFetch(url); } catch { return {}; }
+    };
+
+    const [kyc, idDoc] = await Promise.all([
+      kycId
+        ? safe(`${base}/syg_kycprofilefrontinputs(${kycId})?$select=syg_dateofbirth,syg_nationalities,syg_finsaclassification`)
+        : Promise.resolve({} as Record<string, any>),
+      idDocId
+        ? safe(
+            `${base}/syg_identificationdocuments(${idDocId})?$select=` +
+            ['syg_identificationdocumentid','syg_documenttype','syg_documentnumber',
+             '_syg_countryofissueid_value','syg_placeofissue','syg_dateofissue','syg_expirationdate'].join(',')
+          )
+        : Promise.resolve({} as Record<string, any>),
+    ]);
 
     this.state = {
       ...this.state,
@@ -138,20 +146,19 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         dateOfBirth: formatDate(kyc['syg_dateofbirth'] as string | null | undefined),
         nationalities: (kyc['syg_nationalities'] as string) ?? '',
         clientSegment: fv(kyc, 'syg_finsaclassification'),
-        relationshipManager: (rm['fullname'] as string) ?? '',
-        referenceCurrency:
-          (currency['currencyname'] as string) ?? (currency['isocurrencycode'] as string) ?? '',
+        relationshipManager: fv(co, '_syg_relationshipmanagerid_value'),
+        referenceCurrency: fv(co, '_syg_referencecurrencyid_value'),
         riskLevel: fv(co, 'syg_risklevel'),
         pepStatus: fv(co, 'syg_pepcheck'),
         specialConditions: (co['syg_specialconditions'] as string) ?? '',
         aiaReporting: fv(co, 'syg_aiareporting'),
       },
-      idDocument: idDoc
+      idDocument: idDocId
         ? {
-            id: (idDoc['syg_identificationdocumentid'] as string) ?? '',
+            id: idDocId,
             documentType: fv(idDoc, 'syg_documenttype'),
             documentNumber: (idDoc['syg_documentnumber'] as string) ?? '',
-            countryOfIssue: fv(idDoc, 'syg_countryofissueid'),
+            countryOfIssue: fv(idDoc, '_syg_countryofissueid_value'),
             placeOfIssue: (idDoc['syg_placeofissue'] as string) ?? '',
             issueDate: formatDate(idDoc['syg_dateofissue'] as string | null | undefined),
             expirationDate: formatDate(idDoc['syg_expirationdate'] as string | null | undefined),
@@ -159,22 +166,20 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         : null,
     };
 
-    // ── Step 3: Fetch syg_taxationdetails linked to the onboarding record ──
-    // OData v4 requires GUIDs in $filter to be unquoted.
+    // ── Step 4: Fetch syg_taxationdetails linked to the onboarding record. ──
+    // OData v4 requires GUIDs in $filter to be unquoted. Country display via
+    // formatted-value annotation on the raw lookup — no $expand needed.
     try {
       const txData = await odataFetch(
         `${base}/syg_taxationdetails?$filter=_syg_clientonboardingid_value eq ${onboardingId}` +
-        `&$select=syg_taxationdetailsid,syg_taxid` +
-        `&$expand=syg_countryid($select=syg_countryid,syg_name)`
+        `&$select=syg_taxationdetailsid,syg_taxid,_syg_countryid_value`
       );
       const values = (txData['value'] as Record<string, any>[] | undefined) ?? [];
       this.state = {
         ...this.state,
         taxRecords: values.map((r) => ({
           id: (r['syg_taxationdetailsid'] as string) ?? '',
-          taxDomicile:
-            (r['syg_countryid'] as Record<string, any> | null)?.['syg_name'] as string
-            ?? fv(r, 'syg_countryid'),
+          taxDomicile: fv(r, '_syg_countryid_value'),
           taxId: (r['syg_taxid'] as string) ?? '',
         })),
       };
