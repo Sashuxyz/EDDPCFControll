@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Syg" constructor="NpOnboardingChecklist" version="1.0.2"
+  <control namespace="Syg" constructor="NpOnboardingChecklist" version="1.0.3"
            display-name-key="NpOnboardingChecklist"
            description-key="4-eyes onboarding verification checklist"
            control-type="standard" api-version="1.3.0">

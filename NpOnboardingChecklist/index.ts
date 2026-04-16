@@ -69,9 +69,45 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     if (!srId) throw new Error('Cannot resolve Service Request ID');
 
     const base = apiBase();
-    const creds: RequestInit = { credentials: 'include' };
+    const odataFetch = async (url: string): Promise<Record<string, any>> => {
+      const resp = await fetch(url, {
+        credentials: 'include',
+        headers: {
+          'OData-Version': '4.0',
+          'OData-MaxVersion': '4.0',
+          'Accept': 'application/json',
+          'Prefer': 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"',
+        },
+      });
+      if (!resp.ok) {
+        let detail = '';
+        try {
+          const body = await resp.json();
+          detail = body?.error?.message ?? JSON.stringify(body);
+        } catch { /* ignore */ }
+        throw new Error(`${resp.status} ${resp.statusText}${detail ? ` - ${detail}` : ''}`);
+      }
+      return resp.json() as Promise<Record<string, any>>;
+    };
 
-    // ── Step 1: Fetch SR → expand onboarding → expand KYC + ID document ──
+    const fv = (obj: Record<string, any>, key: string): string =>
+      (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined) ?? String(obj[key] ?? '');
+
+    // ── Step 1: Fetch SR to get the linked onboarding GUID via raw lookup column ──
+    const srData = await odataFetch(
+      `${base}/incidents(${srId})?$select=incidentid,_syg_linkedonboardingid_value`
+    );
+    const onboardingId: string = (srData['_syg_linkedonboardingid_value'] as string) ?? '';
+    if (!onboardingId) return; // no linked onboarding; leave defaults
+
+    // ── Step 2: Fetch the client onboarding with its related records via $expand ──
+    const coFields = [
+      'syg_clientonboardingid',
+      'syg_risklevel',
+      'syg_pepcheck',
+      'syg_specialconditions',
+      'syg_aiareporting',
+    ].join(',');
     const kycFields = 'syg_dateofbirth,syg_nationalities,syg_finsaclassification';
     const idFields = [
       'syg_identificationdocumentid',
@@ -82,37 +118,19 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       'syg_dateofissue',
       'syg_expirationdate',
     ].join(',');
-    const coFields = [
-      'syg_clientonboardingid',
-      'syg_risklevel',
-      'syg_pepcheck',
-      'syg_specialconditions',
-      'syg_aiareporting',
-    ].join(',');
 
-    const srUrl =
-      `${base}/incidents(${srId})?$select=incidentid` +
-      `&$expand=syg_linkedonboardingid(` +
-        `$select=${coFields};` +
-        `$expand=syg_relationshipmanagerid($select=systemuserid,fullname),` +
-          `syg_referencecurrencyid($select=transactioncurrencyid,currencyname,isocurrencycode),` +
-          `syg_kycprofilefrontinputid($select=${kycFields}),` +
-          `syg_identificationdocumentid($select=${idFields})` +
-      `)`;
+    const coUrl =
+      `${base}/syg_clientonboardings(${onboardingId})?$select=${coFields}` +
+      `&$expand=syg_relationshipmanagerid($select=systemuserid,fullname),` +
+        `syg_referencecurrencyid($select=transactioncurrencyid,currencyname,isocurrencycode),` +
+        `syg_kycprofilefrontinputid($select=${kycFields}),` +
+        `syg_identificationdocumentid($select=${idFields})`;
 
-    const srResp = await fetch(srUrl, creds);
-    if (!srResp.ok) throw new Error(`SR fetch failed: ${srResp.status}`);
-    const srData = await srResp.json() as Record<string, any>;
-
-    const co = (srData['syg_linkedonboardingid'] as Record<string, any>) ?? {};
-    const onboardingId: string = (co['syg_clientonboardingid'] as string) ?? '';
+    const co = await odataFetch(coUrl);
     const kyc = (co['syg_kycprofilefrontinputid'] as Record<string, any>) ?? {};
     const idDoc = (co['syg_identificationdocumentid'] as Record<string, any> | null) ?? null;
     const rm = (co['syg_relationshipmanagerid'] as Record<string, any>) ?? {};
     const currency = (co['syg_referencecurrencyid'] as Record<string, any>) ?? {};
-
-    const fv = (obj: Record<string, any>, key: string): string =>
-      (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined) ?? String(obj[key] ?? '');
 
     this.state = {
       ...this.state,
@@ -141,26 +159,27 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         : null,
     };
 
-    // ── Step 2: Fetch syg_taxationdetails linked to the onboarding record ──
-    if (onboardingId) {
-      const txUrl =
-        `${base}/syg_taxationdetails?$filter=_syg_clientonboardingid_value eq '${onboardingId}'` +
+    // ── Step 3: Fetch syg_taxationdetails linked to the onboarding record ──
+    // OData v4 requires GUIDs in $filter to be unquoted.
+    try {
+      const txData = await odataFetch(
+        `${base}/syg_taxationdetails?$filter=_syg_clientonboardingid_value eq ${onboardingId}` +
         `&$select=syg_taxationdetailsid,syg_taxid` +
-        `&$expand=syg_countryid($select=syg_countryid,syg_name)`;
-      const txResp = await fetch(txUrl, creds);
-      if (txResp.ok) {
-        const txData = await txResp.json() as { value: Record<string, any>[] };
-        this.state = {
-          ...this.state,
-          taxRecords: (txData.value ?? []).map((r: Record<string, any>) => ({
-            id: (r['syg_taxationdetailsid'] as string) ?? '',
-            taxDomicile:
-              (r['syg_countryid'] as Record<string, any> | null)?.['syg_name'] as string
-              ?? fv(r, 'syg_countryid'),
-            taxId: (r['syg_taxid'] as string) ?? '',
-          })),
-        };
-      }
+        `&$expand=syg_countryid($select=syg_countryid,syg_name)`
+      );
+      const values = (txData['value'] as Record<string, any>[] | undefined) ?? [];
+      this.state = {
+        ...this.state,
+        taxRecords: values.map((r) => ({
+          id: (r['syg_taxationdetailsid'] as string) ?? '',
+          taxDomicile:
+            (r['syg_countryid'] as Record<string, any> | null)?.['syg_name'] as string
+            ?? fv(r, 'syg_countryid'),
+          taxId: (r['syg_taxid'] as string) ?? '',
+        })),
+      };
+    } catch {
+      // tax details are optional; leave empty on failure
     }
   }
 
