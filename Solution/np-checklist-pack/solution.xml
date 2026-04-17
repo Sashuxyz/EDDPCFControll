@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SolutionManifest>
-    <UniqueName>SygnumNpOnboardingChecklist</UniqueName>
+    <UniqueName>SygnumPCFComponents</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="Sygnum NP Onboarding Checklist" languagecode="1033" />
+      <LocalizedName description="Sygnum PCF Components" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="NP Onboarding 4-eyes verification checklist PCF control" languagecode="1033" />
+      <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
     </Descriptions>
-    <Version>1.0.10</Version>
+    <Version>8.0.10</Version>
     <Managed>0</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
