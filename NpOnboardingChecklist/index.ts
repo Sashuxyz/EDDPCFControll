@@ -89,12 +89,14 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
 
     // ── Step 1: Get the onboarding ID from the service request ──
     // Lookup field on syg_servicerequest → syg_clientonboarding is syg_linkedclientonboarding
+    console.log('[NpChecklist] SR entity:', sr.entityName, '| ID:', sr.entityId);
     const srRecord = await context.webAPI.retrieveRecord(
       sr.entityName,
       sr.entityId,
       '?$select=_syg_linkedclientonboarding_value'
     );
     const onboardingId = (srRecord['_syg_linkedclientonboarding_value'] as string | null) ?? '';
+    console.log('[NpChecklist] CO id from SR:', onboardingId || '(empty)');
     if (!onboardingId) return; // no linked onboarding — leave defaults
 
     // ── Step 2: Get the client onboarding record ──
