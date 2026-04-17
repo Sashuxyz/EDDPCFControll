@@ -4,7 +4,7 @@ import * as React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import { ChecklistRoot } from './components/ChecklistRoot';
 import { CheckState, AnswerValue, MismatchData, ManualNotDoneData } from './types';
-import { parseCheckResults, resolveSr, apiBase, formatDate, emptyCrmValues } from './utils';
+import { parseCheckResults, resolveSr, formatDate, emptyCrmValues } from './utils';
 
 export class NpOnboardingChecklist implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private root!: Root;
@@ -51,10 +51,8 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       };
     }
 
-    // Render loading state immediately
     this.renderReact();
 
-    // Load CRM data asynchronously
     this.loadData(context).then(() => {
       this.state = { ...this.state, loading: false, loadError: null };
       this.renderReact();
@@ -67,84 +65,50 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
   private async loadData(context: ComponentFramework.Context<IInputs>): Promise<void> {
     const sr = resolveSr(context);
     if (!sr) throw new Error('Cannot resolve Service Request context');
-    const srSet = `${sr.entityName}s`;
 
-    const base = apiBase();
-    const odataFetch = async (url: string): Promise<Record<string, any>> => {
-      const resp = await fetch(url, {
-        credentials: 'include',
-        headers: {
-          'OData-Version': '4.0',
-          'OData-MaxVersion': '4.0',
-          'Accept': 'application/json',
-          'Prefer': 'odata.include-annotations="OData.Community.Display.V1.FormattedValue"',
-        },
-      });
-      if (!resp.ok) {
-        let detail = '';
-        try {
-          const body = await resp.json();
-          detail = body?.error?.message ?? JSON.stringify(body);
-        } catch { /* ignore */ }
-        throw new Error(`${resp.status} ${resp.statusText}${detail ? ` - ${detail}` : ''}`);
-      }
-      return resp.json() as Promise<Record<string, any>>;
-    };
+    // Formatted value helper — works for both option sets and lookup display names
+    const fv = (obj: ComponentFramework.WebApi.Entity, key: string): string =>
+      (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined)
+      ?? String(obj[key] ?? '');
 
-    const fv = (obj: Record<string, any>, key: string): string =>
-      (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined) ?? String(obj[key] ?? '');
-
-    // ── Step 1: Fetch the full SR record and auto-discover the onboarding lookup. ──
-    // The custom lookup column name varies across orgs (e.g. _syg_linkedonboarding_value,
-    // _syg_linkedclientonboarding_value). Finding it dynamically by matching
-    // any `_syg_*onboarding*_value` property avoids hardcoding the wrong name.
-    const srData = await odataFetch(`${base}/${srSet}(${sr.entityId})`);
-    const onboardingLookupKey = Object.keys(srData).find((k) =>
-      /^_syg_.*onboarding.*_value$/i.test(k) && typeof srData[k] === 'string'
-    );
-    if (!onboardingLookupKey) return; // no onboarding lookup on this SR; leave defaults
-    const onboardingId: string = (srData[onboardingLookupKey] as string) ?? '';
-    if (!onboardingId) return;
-
-    // ── Step 2: Fetch the client onboarding (scalar + raw lookup values only — no $expand). ──
-    // We rely on formatted-value annotations for display text and follow-up
-    // fetches (Step 3) for related records whose fields we actually need.
-    const coFields = [
-      'syg_clientonboardingid',
-      'syg_risklevel',
-      'syg_pepcheck',
-      'syg_specialconditions',
-      'syg_aiareporting',
-      '_syg_relationshipmanagerid_value',
-      '_syg_referencecurrencyid_value',
-      '_syg_kycprofilefrontinputid_value',
-      '_syg_identificationdocumentid_value',
-    ].join(',');
-
-    const co = await odataFetch(
-      `${base}/syg_clientonboardings(${onboardingId})?$select=${coFields}`
-    );
-    const kycId = (co['_syg_kycprofilefrontinputid_value'] as string | null) ?? '';
-    const idDocId = (co['_syg_identificationdocumentid_value'] as string | null) ?? '';
-
-    // Step 3: fetch related records using context.webAPI which resolves entity set
-    // names internally — avoids guessing the OData collection name for custom entities.
-    const safeRetrieve = async (
-      logicalName: string,
-      id: string,
-      options: string
+    // Retrieve one record safely — returns empty entity instead of throwing
+    const safeGet = async (
+      logicalName: string, id: string, options: string
     ): Promise<ComponentFramework.WebApi.Entity> => {
       try { return await context.webAPI.retrieveRecord(logicalName, id, options); }
       catch { return {} as ComponentFramework.WebApi.Entity; }
     };
 
+    // ── Step 1: Get the onboarding ID from the service request ──
+    // Lookup field on syg_servicerequest → syg_clientonboarding is syg_linkedclientonboarding
+    const srRecord = await context.webAPI.retrieveRecord(
+      sr.entityName,
+      sr.entityId,
+      '?$select=_syg_linkedclientonboarding_value'
+    );
+    const onboardingId = (srRecord['_syg_linkedclientonboarding_value'] as string | null) ?? '';
+    if (!onboardingId) return; // no linked onboarding — leave defaults
+
+    // ── Step 2: Get the client onboarding record ──
+    const co = await context.webAPI.retrieveRecord(
+      'syg_clientonboarding',
+      onboardingId,
+      '?$select=syg_clientonboardingid,syg_risklevel,syg_pepcheck,syg_specialconditions,' +
+      'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
+      '_syg_kycprofilefrontinputid_value,_syg_identificationdocumentid_value'
+    );
+
+    const kycId    = (co['_syg_kycprofilefrontinputid_value']   as string | null) ?? '';
+    const idDocId  = (co['_syg_identificationdocumentid_value'] as string | null) ?? '';
+
+    // ── Step 3: KYC profile and ID document in parallel ──
     const [kyc, idDoc] = await Promise.all([
       kycId
-        ? safeRetrieve('syg_kycprofilefrontinput', kycId,
+        ? safeGet('syg_kycprofilefrontinput', kycId,
             '?$select=syg_dateofbirth,syg_nationalities,syg_finsaclassification')
         : Promise.resolve({} as ComponentFramework.WebApi.Entity),
       idDocId
-        ? safeRetrieve('syg_identificationdocuments', idDocId,
+        ? safeGet('syg_identificationdocuments', idDocId,
             '?$select=syg_identificationdocumentid,syg_documenttype,syg_documentnumber,' +
             '_syg_countryofissueid_value,syg_placeofissue,syg_dateofissue,syg_expirationdate')
         : Promise.resolve({} as ComponentFramework.WebApi.Entity),
@@ -153,30 +117,30 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     this.state = {
       ...this.state,
       crmValues: {
-        dateOfBirth: formatDate(kyc['syg_dateofbirth'] as string | null | undefined),
-        nationalities: (kyc['syg_nationalities'] as string) ?? '',
-        clientSegment: fv(kyc, 'syg_finsaclassification'),
-        relationshipManager: fv(co, '_syg_relationshipmanagerid_value'),
-        referenceCurrency: fv(co, '_syg_referencecurrencyid_value'),
-        riskLevel: fv(co, 'syg_risklevel'),
-        pepStatus: fv(co, 'syg_pepcheck'),
-        specialConditions: (co['syg_specialconditions'] as string) ?? '',
-        aiaReporting: fv(co, 'syg_aiareporting'),
+        dateOfBirth:          formatDate(kyc['syg_dateofbirth'] as string | null | undefined),
+        nationalities:        (kyc['syg_nationalities'] as string) ?? '',
+        clientSegment:        fv(kyc, 'syg_finsaclassification'),
+        relationshipManager:  fv(co,  '_syg_relationshipmanagerid_value'),
+        referenceCurrency:    fv(co,  '_syg_referencecurrencyid_value'),
+        riskLevel:            fv(co,  'syg_risklevel'),
+        pepStatus:            fv(co,  'syg_pepcheck'),
+        specialConditions:    (co['syg_specialconditions'] as string) ?? '',
+        aiaReporting:         fv(co,  'syg_aiareporting'),
       },
       idDocument: idDocId
         ? {
-            id: idDocId,
-            documentType: fv(idDoc, 'syg_documenttype'),
+            id:             idDocId,
+            documentType:   fv(idDoc, 'syg_documenttype'),
             documentNumber: (idDoc['syg_documentnumber'] as string) ?? '',
             countryOfIssue: fv(idDoc, '_syg_countryofissueid_value'),
-            placeOfIssue: (idDoc['syg_placeofissue'] as string) ?? '',
-            issueDate: formatDate(idDoc['syg_dateofissue'] as string | null | undefined),
-            expirationDate: formatDate(idDoc['syg_expirationdate'] as string | null | undefined),
+            placeOfIssue:   (idDoc['syg_placeofissue'] as string) ?? '',
+            issueDate:      formatDate(idDoc['syg_dateofissue']      as string | null | undefined),
+            expirationDate: formatDate(idDoc['syg_expirationdate']   as string | null | undefined),
           }
         : null,
     };
 
-    // ── Step 4: Fetch syg_taxationdetails via context.webAPI (resolves entity set name). ──
+    // ── Step 4: Tax records linked to this onboarding ──
     try {
       const txResult = await context.webAPI.retrieveMultipleRecords(
         'syg_taxationdetails',
@@ -185,22 +149,21 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       );
       this.state = {
         ...this.state,
-        taxRecords: (txResult.entities ?? []).map((r) => ({
-          id: (r['syg_taxationdetailsid'] as string) ?? '',
+        taxRecords: (txResult.entities ?? []).map((r: any) => ({
+          id:          (r['syg_taxationdetailsid'] as string) ?? '',
           taxDomicile: (r['_syg_countryid_value@OData.Community.Display.V1.FormattedValue'] as string)
-            ?? (r['_syg_countryid_value'] as string) ?? '',
-          taxId: (r['syg_taxid'] as string) ?? '',
+                       ?? (r['_syg_countryid_value'] as string) ?? '',
+          taxId:       (r['syg_taxid'] as string) ?? '',
         })),
       };
     } catch {
-      // tax details are optional; leave empty on failure
+      // tax details are optional; leave empty array on failure
     }
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
     this.isReadOnly = context.mode.isControlDisabled;
     if (this.pendingOutput) {
-      // D365 is echoing back our own output — skip re-render
       this.pendingOutput = false;
       return;
     }
@@ -211,7 +174,6 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     this.outputJson = json;
     this.pendingOutput = true;
     this.notifyOutputChanged();
-    // Do NOT call renderReact() here — React state manages UI updates internally
   }
 
   private renderReact(): void {
