@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SolutionManifest>
-    <UniqueName>SygnumPCFComponents</UniqueName>
+    <UniqueName>SygnumNpOnboardingChecklist</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="Sygnum PCF Components" languagecode="1033" />
+      <LocalizedName description="Sygnum NP Onboarding Checklist" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
+      <Description description="NP Onboarding 4-eyes verification checklist PCF control" languagecode="1033" />
     </Descriptions>
-    <Version>8.0.10</Version>
-    <Managed>1</Managed>
+    <Version>1.0.10</Version>
+    <Managed>0</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
       <LocalizedNames>
@@ -82,13 +82,6 @@
       </Addresses>
     </Publisher>
     <RootComponents>
-      <RootComponent type="66" schemaName="Syg.EddFindingsViewer" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.CompactSubgrid" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.AssociationCards" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.WealthAllocationControl" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.ComplianceConditionScheduler" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.KycDraftTakeover" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.OnboardingApprovalTracker" behavior="0" />
       <RootComponent type="66" schemaName="Syg.NpOnboardingChecklist" behavior="0" />
     </RootComponents>
     <MissingDependencies />
