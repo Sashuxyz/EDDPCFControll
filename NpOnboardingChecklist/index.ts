@@ -127,23 +127,27 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const kycId = (co['_syg_kycprofilefrontinputid_value'] as string | null) ?? '';
     const idDocId = (co['_syg_identificationdocumentid_value'] as string | null) ?? '';
 
-    // Step 3: parallel fetches for related records where we need actual fields.
-    // Each is independent — a failure on one returns {} instead of breaking the others.
-    const safe = async (url: string): Promise<Record<string, any>> => {
-      try { return await odataFetch(url); } catch { return {}; }
+    // Step 3: fetch related records using context.webAPI which resolves entity set
+    // names internally — avoids guessing the OData collection name for custom entities.
+    const safeRetrieve = async (
+      logicalName: string,
+      id: string,
+      options: string
+    ): Promise<ComponentFramework.WebApi.Entity> => {
+      try { return await context.webAPI.retrieveRecord(logicalName, id, options); }
+      catch { return {} as ComponentFramework.WebApi.Entity; }
     };
 
     const [kyc, idDoc] = await Promise.all([
       kycId
-        ? safe(`${base}/syg_kycprofilefrontinputs(${kycId})?$select=syg_dateofbirth,syg_nationalities,syg_finsaclassification`)
-        : Promise.resolve({} as Record<string, any>),
+        ? safeRetrieve('syg_kycprofilefrontinput', kycId,
+            '?$select=syg_dateofbirth,syg_nationalities,syg_finsaclassification')
+        : Promise.resolve({} as ComponentFramework.WebApi.Entity),
       idDocId
-        ? safe(
-            `${base}/syg_identificationdocuments(${idDocId})?$select=` +
-            ['syg_identificationdocumentid','syg_documenttype','syg_documentnumber',
-             '_syg_countryofissueid_value','syg_placeofissue','syg_dateofissue','syg_expirationdate'].join(',')
-          )
-        : Promise.resolve({} as Record<string, any>),
+        ? safeRetrieve('syg_identificationdocuments', idDocId,
+            '?$select=syg_identificationdocumentid,syg_documenttype,syg_documentnumber,' +
+            '_syg_countryofissueid_value,syg_placeofissue,syg_dateofissue,syg_expirationdate')
+        : Promise.resolve({} as ComponentFramework.WebApi.Entity),
     ]);
 
     this.state = {
@@ -172,20 +176,19 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         : null,
     };
 
-    // ── Step 4: Fetch syg_taxationdetails linked to the onboarding record. ──
-    // OData v4 requires GUIDs in $filter to be unquoted. Country display via
-    // formatted-value annotation on the raw lookup — no $expand needed.
+    // ── Step 4: Fetch syg_taxationdetails via context.webAPI (resolves entity set name). ──
     try {
-      const txData = await odataFetch(
-        `${base}/syg_taxationdetails?$filter=_syg_clientonboardingid_value eq ${onboardingId}` +
+      const txResult = await context.webAPI.retrieveMultipleRecords(
+        'syg_taxationdetails',
+        `?$filter=_syg_clientonboardingid_value eq ${onboardingId}` +
         `&$select=syg_taxationdetailsid,syg_taxid,_syg_countryid_value`
       );
-      const values = (txData['value'] as Record<string, any>[] | undefined) ?? [];
       this.state = {
         ...this.state,
-        taxRecords: values.map((r) => ({
+        taxRecords: (txResult.entities ?? []).map((r) => ({
           id: (r['syg_taxationdetailsid'] as string) ?? '',
-          taxDomicile: fv(r, '_syg_countryid_value'),
+          taxDomicile: (r['_syg_countryid_value@OData.Community.Display.V1.FormattedValue'] as string)
+            ?? (r['_syg_countryid_value'] as string) ?? '',
           taxId: (r['syg_taxid'] as string) ?? '',
         })),
       };
