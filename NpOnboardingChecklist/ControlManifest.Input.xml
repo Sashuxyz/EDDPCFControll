@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="Syg" constructor="NpOnboardingChecklist" version="1.0.8"
+  <control namespace="Syg" constructor="NpOnboardingChecklist" version="1.0.9"
            display-name-key="NpOnboardingChecklist"
            description-key="4-eyes onboarding verification checklist"
            control-type="standard" api-version="1.3.0">
@@ -17,6 +17,9 @@
               display-name-key="Is Read Only"
               description-key="When true renders in read-only display mode"
               of-type="TwoOptions" usage="input" required="false" />
+    <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+    </feature-usage>
     <resources>
       <code path="index.ts" order="1" />
     </resources>
