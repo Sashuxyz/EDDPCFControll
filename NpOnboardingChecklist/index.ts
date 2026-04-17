@@ -33,11 +33,19 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     _state: ComponentFramework.Dictionary,
     container: HTMLDivElement
   ): void {
-    this.root = createRoot(container);
+    try {
+      this.root = createRoot(container);
+    } catch (e) {
+      console.error('[NpOnboardingChecklist] createRoot failed:', e);
+      throw e;
+    }
     this.notifyOutputChanged = notifyOutputChanged;
-    context.mode.trackContainerResize(true);
 
-    this.userName = (context.userSettings as any).userName ?? context.userSettings.userId ?? 'Unknown';
+    try {
+      (context.mode as any).trackContainerResize?.(true);
+    } catch { /* optional API — ignore if unavailable */ }
+
+    this.userName = (context.userSettings as any).userName ?? (context.userSettings as any).userId ?? 'Unknown';
 
     // Restore saved answers before loading CRM data so UI is not blank while API calls run
     const savedJson = (context.parameters.checkResults as any)?.raw ?? null;
