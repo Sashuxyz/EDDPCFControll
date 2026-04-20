@@ -38,33 +38,29 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ steps }) => {
   const segmentCount = Math.max(0, steps.length - 1);
 
   return (
-    <div>
-      <div style={progressBarStyles.wrapper}>
-        <div style={progressBarStyles.bar}>
-          {Array.from({ length: segmentCount }, (_, i) => {
-            const leftStep = steps[i];
-            const completed = leftStep.status === 'completed';
-            return (
-              <div
-                key={i}
-                style={completed ? progressBarStyles.segmentCompleted : progressBarStyles.segmentUpcoming}
-              />
-            );
-          })}
-        </div>
-        <div style={progressBarStyles.circlesRow}>
-          {steps.map((step) => {
-            if (step.status === 'completed') return <CompletedCircle key={step.key} />;
-            if (step.status === 'active') return <ActiveCircle key={step.key} />;
-            return <UpcomingCircle key={step.key} />;
-          })}
-        </div>
+    <div style={progressBarStyles.wrapper}>
+      <div style={progressBarStyles.bar}>
+        {Array.from({ length: segmentCount }, (_, i) => {
+          const leftStep = steps[i];
+          const completed = leftStep.status === 'completed';
+          return (
+            <div
+              key={i}
+              style={completed ? progressBarStyles.segmentCompleted : progressBarStyles.segmentUpcoming}
+            />
+          );
+        })}
       </div>
-      <div style={progressBarStyles.labelsRow}>
+      <div style={progressBarStyles.stepsRow}>
         {steps.map((step) => (
-          <span key={step.key} style={progressBarStyles.label}>
-            {step.shortLabel === 'SH' ? 'Segment Head' : step.shortLabel === 'Compl.' ? 'Compliance' : step.shortLabel}
-          </span>
+          <div key={step.key} style={progressBarStyles.stepColumn}>
+            {step.status === 'completed' ? <CompletedCircle /> :
+             step.status === 'active' ? <ActiveCircle /> :
+             <UpcomingCircle />}
+            <span style={progressBarStyles.label}>
+              {step.shortLabel === 'SH' ? 'Segment Head' : step.shortLabel === 'Compl.' ? 'Compliance' : step.shortLabel}
+            </span>
+          </div>
         ))}
       </div>
     </div>

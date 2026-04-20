@@ -297,6 +297,56 @@ export const emptyStyles: Record<string, React.CSSProperties> = {
   },
 };
 
+export const triggerStyles: Record<string, React.CSSProperties> = {
+  root: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px 16px',
+  },
+  icon: {
+    marginBottom: '12px',
+  },
+  title: {
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#323130',
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: '12px',
+    color: '#A19F9D',
+    marginTop: '4px',
+    textAlign: 'center',
+    maxWidth: '360px',
+  },
+  button: {
+    marginTop: '16px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#fff',
+    background: '#0078D4',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '8px 20px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+  buttonHover: {
+    marginTop: '16px',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#fff',
+    background: '#106EBE',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '8px 20px',
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  },
+};
+
 export const sourceStyles: Record<string, React.CSSProperties> = {
   linkItem: {
     display: 'flex',

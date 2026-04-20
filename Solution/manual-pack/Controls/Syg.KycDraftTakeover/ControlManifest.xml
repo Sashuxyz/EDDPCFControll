@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest>
-  <control namespace="Syg" constructor="KycDraftTakeover" version="1.1.0" display-name-key="KycDraftTakeover" description-key="AI research output review and takeover control" control-type="standard" api-version="1.3.18">
+  <control namespace="Syg" constructor="KycDraftTakeover" version="1.2.0" display-name-key="KycDraftTakeover" description-key="AI research output review and takeover control" control-type="standard" api-version="1.3.18">
     <external-service-usage enabled="false"/>
     <property name="aiAnalyticsAudit" display-name-key="AI Analytics Audit" description-key="JSON field containing agent research output" of-type="Multiple" usage="bound" required="true"/>
     <property name="professionalBackground" display-name-key="Professional Background" description-key="Target field for professional background summary" of-type="Multiple" usage="bound" required="false"/>
@@ -11,6 +11,7 @@
     <property name="reputationalRisk" display-name-key="Reputational Risk" description-key="Target field for reputational risk summary" of-type="Multiple" usage="bound" required="false"/>
     <property name="pep" display-name-key="PEP Status" description-key="Target field for PEP status summary" of-type="Multiple" usage="bound" required="false"/>
     <property name="sources" display-name-key="Sources" description-key="Target field for research sources" of-type="Multiple" usage="bound" required="false"/>
+    <property name="aiAnalysisTriggeredOn" display-name-key="AI Analysis Triggered On" description-key="Timestamp set to trigger AI draft generation flow" of-type="DateAndTime.DateAndTime" usage="bound" required="false"/>
     <resources>
       <code path="bundle.js" order="1"/>
     </resources>

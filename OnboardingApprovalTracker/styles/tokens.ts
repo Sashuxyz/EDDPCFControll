@@ -43,7 +43,6 @@ export const headerStyles: S = {
 export const progressBarStyles: S = {
   wrapper: {
     position: 'relative',
-    height: 24,
     margin: '8px 0 12px 0',
   },
   bar: {
@@ -65,15 +64,18 @@ export const progressBarStyles: S = {
     flex: 1,
     background: '#E1DFDD',
   },
-  circlesRow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+  stepsRow: {
+    position: 'relative',
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
+  stepColumn: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    minWidth: 0,
+  } as React.CSSProperties,
   circleBase: {
     width: 24,
     height: 24,
@@ -82,6 +84,7 @@ export const progressBarStyles: S = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   circleCompleted: {
     background: '#107C10',
@@ -105,16 +108,12 @@ export const progressBarStyles: S = {
     borderRadius: '50%',
     background: '#A19F9D',
   },
-  labelsRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
+  label: {
     fontSize: 12,
     color: '#605E5C',
     marginTop: 4,
-  },
-  label: {
-    flex: 1,
     textAlign: 'center',
+    whiteSpace: 'nowrap',
   },
 };
 

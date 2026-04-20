@@ -13,6 +13,7 @@ export interface IInputs {
     reputationalRisk: ComponentFramework.PropertyTypes.StringProperty;
     pep: ComponentFramework.PropertyTypes.StringProperty;
     sources: ComponentFramework.PropertyTypes.StringProperty;
+    aiAnalysisTriggeredOn: ComponentFramework.PropertyTypes.DateTimeProperty;
 }
 export interface IOutputs {
     aiAnalyticsAudit?: string;
@@ -24,4 +25,5 @@ export interface IOutputs {
     reputationalRisk?: string;
     pep?: string;
     sources?: string;
+    aiAnalysisTriggeredOn?: Date;
 }
