@@ -71,15 +71,18 @@ export class KycDraftTakeover implements ComponentFramework.StandardControl<IInp
 
   private handleTriggerDraft(): void {
     this.draftTriggered = true;
-    this.outputValues['aiAnalysisTriggeredOn'] = new Date().toISOString();
+    this.outputValues['aiAnalysisTriggeredOn'] = new Date();
     this.pendingOutput = true;
     this.notifyOutputChanged();
 
-    // Save the form so the timestamp reaches D365 and triggers the flow
-    try {
-      const xrm = (window as unknown as { Xrm?: { Page?: { data?: { save?: () => void } } } }).Xrm;
-      xrm?.Page?.data?.save?.();
-    } catch { /* best-effort save */ }
+    // Delay the save so PCF has time to call getOutputs() and commit the
+    // timestamp value to the record before the form save fires.
+    setTimeout(() => {
+      try {
+        const xrm = (window as unknown as { Xrm?: { Page?: { data?: { save?: () => void } } } }).Xrm;
+        xrm?.Page?.data?.save?.();
+      } catch { /* best-effort save */ }
+    }, 500);
 
     this.renderReact();
   }
