@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SolutionManifest>
-    <UniqueName>SygnumBootstrap</UniqueName>
+    <UniqueName>SygnumPCFInit</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="Sygnum Bootstrap" languagecode="1033" />
+      <LocalizedName description="Sygnum PCF Init" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
       <Description description="Unmanaged bootstrap to register PCF controls — delete after managed import succeeds" languagecode="1033" />
