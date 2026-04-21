@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <data name="CompactSubgrid">
+    <value>Compact Subgrid</value>
+  </data>
+  <data name="CompactSubgrid_Desc">
+    <value>Generic condensed subgrid with auto-detected expandable detail panels</value>
+  </data>
+  <data name="records">
+    <value>Records</value>
+  </data>
+  <data name="records_Desc">
+    <value>Dataset binding for the subgrid records</value>
+  </data>
+  <data name="conditionalFields">
+    <value>Detail Fields</value>
+  </data>
+  <data name="conditionalFields_Desc">
+    <value>Comma-separated list of field logical names to move into the expandable detail panel (e.g. syg_companyname,syg_buyer,syg_saledate). Fields listed here will NOT be shown in the main grid columns. All other fields follow automatic detection based on data sparsity.</value>
+  </data>
+  <data name="isManyToMany">
+    <value>Many-to-Many Mode</value>
+  </data>
+  <data name="isManyToMany_Desc">
+    <value>Enable for N:N (many-to-many) subgrids. When enabled, the "+ New" button becomes "+ Add existing" (opens a lookup picker), and "Delete" becomes "Remove" (disassociates the record instead of deleting it). Requires the Relationship Name property to be set.</value>
+  </data>
+  <data name="relationshipName">
+    <value>Relationship Name</value>
+  </data>
+  <data name="relationshipName_Desc">
+    <value>The N:N relationship schema name (e.g. syg_kycprofile_syg_document). Required when Many-to-Many Mode is enabled. You can find this in the Power Apps maker portal under Tables &gt; Relationships.</value>
+  </data>
+</root>

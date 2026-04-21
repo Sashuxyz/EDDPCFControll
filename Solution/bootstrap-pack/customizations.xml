@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <CustomControls>
+    <CustomControl>
+      <Name>Syg.AssociationCards</Name>
+      <FileName>/Controls/Syg.AssociationCards/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.CompactSubgrid</Name>
+      <FileName>/Controls/Syg.CompactSubgrid/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.ComplianceConditionScheduler</Name>
+      <FileName>/Controls/Syg.ComplianceConditionScheduler/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.KycDraftTakeover</Name>
+      <FileName>/Controls/Syg.KycDraftTakeover/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.OnboardingApprovalTracker</Name>
+      <FileName>/Controls/Syg.OnboardingApprovalTracker/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.WealthAllocationControl</Name>
+      <FileName>/Controls/Syg.WealthAllocationControl/ControlManifest.xml</FileName>
+    </CustomControl>
+    <CustomControl>
+      <Name>Syg.NpOnboardingChecklist</Name>
+      <FileName>/Controls/Syg.NpOnboardingChecklist/ControlManifest.xml</FileName>
+    </CustomControl>
+  </CustomControls>
+</ImportExportXml>
