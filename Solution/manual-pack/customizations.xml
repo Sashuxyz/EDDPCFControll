@@ -2,10 +2,6 @@
 <ImportExportXml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <CustomControls>
     <CustomControl>
-      <Name>Syg.EddFindingsViewer</Name>
-      <FileName>/Controls/Syg.EddFindingsViewer/ControlManifest.xml</FileName>
-    </CustomControl>
-    <CustomControl>
       <Name>Syg.CompactSubgrid</Name>
       <FileName>/Controls/Syg.CompactSubgrid/ControlManifest.xml</FileName>
     </CustomControl>
