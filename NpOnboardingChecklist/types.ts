@@ -25,35 +25,32 @@ export interface CheckSummary {
 
 export interface TaxRecord {
   id: string;
-  taxDomicile: string;   // from syg_taxationdetails.syg_countryid (lookup formatted value)
-  taxId: string;         // from syg_taxationdetails.syg_taxid
+  taxDomicile: string;   // prospect.taxInformation.taxResidenceCountry
+  taxId: string;         // prospect.taxInformation.taxId
 }
 
 export interface IdDocument {
   id: string;
-  documentType: string;    // syg_documenttype (option set formatted value)
-  documentNumber: string;  // syg_documentnumber
-  countryOfIssue: string;  // syg_countryofissueid (lookup formatted value)
-  placeOfIssue: string;    // syg_placeofissue
-  issueDate: string;       // syg_dateofissue, already formatted de-CH
-  expirationDate: string;  // syg_expirationdate, already formatted de-CH
+  documentType: string;    // prospect.identificationDetails.documentType
+  documentNumber: string;  // prospect.identificationDetails.documentNumber
+  countryOfIssue: string;  // prospect.identificationDetails.issuanceCountry
+  placeOfIssue: string;    // prospect.identificationDetails.issuancePlace
+  issueDate: string;       // prospect.identificationDetails.documentIssueDate, formatted de-CH
+  expirationDate: string;  // prospect.identificationDetails.documentExpiryDate, formatted de-CH
 }
 
 export interface CrmValues {
-  // Section 1 — from syg_kycprofile (via syg_clientonboarding.syg_kycprofilefrontinputid)
-  dateOfBirth: string;           // syg_dateofbirth
-  nationalities: string;         // syg_nationalities
-  // Section 1 — from syg_clientonboarding
-  relationshipManager: string;   // syg_relationshipmanagerid (lookup formatted value)
-  riskLevel: string;             // syg_risklevel (option set formatted value)
-  pepStatus: string;             // syg_pepcheck (option set formatted value)
-  // Section 2 — from syg_kycprofile
-  clientSegment: string;         // syg_finsaclassification (option set formatted value)
-  // Section 3 — from syg_clientonboarding
-  referenceCurrency: string;     // syg_referencecurrencyid (lookup formatted value) — used for both Portfolio Default Currency and Digital Asset Vault Currency display
+  // from syg_prospectapijson on syg_clientonboarding
+  dateOfBirth: string;           // prospect.dateOfBirth
+  nationalities: string;         // prospect.nationalities[] joined
+  // from syg_clientonboarding directly
+  relationshipManager: string;   // _syg_relationshipmanagerid_value
+  riskLevel: string;             // syg_risklevel
+  pepStatus: string;             // syg_pepcheck
+  clientSegment: string;         // syg_cvaultcustomergroup
+  referenceCurrency: string;     // _syg_referencecurrencyid_value
   specialConditions: string;     // syg_specialconditions
-  // Section 4 — from syg_clientonboarding
-  aiaReporting: string;          // syg_aiareporting (option set formatted value) — INDICIA check
+  aiaReporting: string;          // syg_aiareporting
 }
 
 export interface CheckState {

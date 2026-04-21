@@ -74,21 +74,11 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const sr = resolveSr(context);
     if (!sr) throw new Error('Cannot resolve Service Request context');
 
-    // Formatted value helper — works for both option sets and lookup display names
     const fv = (obj: ComponentFramework.WebApi.Entity, key: string): string =>
       (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined)
       ?? String(obj[key] ?? '');
 
-    // Retrieve one record safely — returns empty entity instead of throwing
-    const safeGet = async (
-      logicalName: string, id: string, options: string
-    ): Promise<ComponentFramework.WebApi.Entity> => {
-      try { return await context.webAPI.retrieveRecord(logicalName, id, options); }
-      catch { return {} as ComponentFramework.WebApi.Entity; }
-    };
-
     // ── Step 1: Get the onboarding ID from the service request ──
-    // Lookup field on syg_servicerequest → syg_clientonboarding is syg_linkedclientonboarding
     console.log('[NpChecklist] SR entity:', sr.entityName, '| ID:', sr.entityId);
     const srRecord = await context.webAPI.retrieveRecord(
       sr.entityName,
@@ -97,78 +87,58 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     );
     const onboardingId = (srRecord['_syg_linkedclientonboarding_value'] as string | null) ?? '';
     console.log('[NpChecklist] CO id from SR:', onboardingId || '(empty)');
-    if (!onboardingId) return; // no linked onboarding — leave defaults
+    if (!onboardingId) return;
 
-    // ── Step 2: Get the client onboarding record ──
+    // ── Step 2: Get the client onboarding record + prospect JSON blob ──
     const co = await context.webAPI.retrieveRecord(
       'syg_clientonboarding',
       onboardingId,
-      '?$select=syg_clientonboardingid,syg_risklevel,syg_pepcheck,syg_specialconditions,' +
+      '?$select=syg_risklevel,syg_pepcheck,syg_specialconditions,' +
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
-      '_syg_kycprofilefrontinputid_value,_syg_identificationdocumentid_value'
+      'syg_cvaultcustomergroup,syg_prospectapijson'
     );
 
-    const kycId    = (co['_syg_kycprofilefrontinputid_value']   as string | null) ?? '';
-    const idDocId  = (co['_syg_identificationdocumentid_value'] as string | null) ?? '';
+    // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
+    let prospect: Record<string, unknown> = {};
+    try {
+      const raw = (co['syg_prospectapijson'] as string | null) ?? '';
+      if (raw) prospect = JSON.parse(raw) as Record<string, unknown>;
+    } catch { /* malformed JSON — CO fields still populate below */ }
 
-    // ── Step 3: KYC profile and ID document in parallel ──
-    const [kyc, idDoc] = await Promise.all([
-      kycId
-        ? safeGet('syg_kycprofilefrontinput', kycId,
-            '?$select=syg_dateofbirth,syg_nationalities,syg_finsaclassification')
-        : Promise.resolve({} as ComponentFramework.WebApi.Entity),
-      idDocId
-        ? safeGet('syg_identificationdocuments', idDocId,
-            '?$select=syg_identificationdocumentid,syg_documenttype,syg_documentnumber,' +
-            '_syg_countryofissueid_value,syg_placeofissue,syg_dateofissue,syg_expirationdate')
-        : Promise.resolve({} as ComponentFramework.WebApi.Entity),
-    ]);
+    const idDet  = (prospect['identificationDetails'] as Record<string, unknown> | undefined) ?? {};
+    const taxInfo = (prospect['taxInformation']        as Record<string, unknown> | undefined) ?? {};
+    const nats    = Array.isArray(prospect['nationalities'])
+      ? (prospect['nationalities'] as unknown[]).map(String)
+      : [];
 
     this.state = {
       ...this.state,
       crmValues: {
-        dateOfBirth:          formatDate(kyc['syg_dateofbirth'] as string | null | undefined),
-        nationalities:        (kyc['syg_nationalities'] as string) ?? '',
-        clientSegment:        fv(kyc, 'syg_finsaclassification'),
-        relationshipManager:  fv(co,  '_syg_relationshipmanagerid_value'),
-        referenceCurrency:    fv(co,  '_syg_referencecurrencyid_value'),
-        riskLevel:            fv(co,  'syg_risklevel'),
-        pepStatus:            fv(co,  'syg_pepcheck'),
-        specialConditions:    (co['syg_specialconditions'] as string) ?? '',
-        aiaReporting:         fv(co,  'syg_aiareporting'),
+        dateOfBirth:         formatDate((prospect['dateOfBirth'] as string | undefined) ?? null),
+        nationalities:       nats.join(', '),
+        clientSegment:       fv(co, 'syg_cvaultcustomergroup'),
+        relationshipManager: fv(co, '_syg_relationshipmanagerid_value'),
+        referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
+        riskLevel:           fv(co, 'syg_risklevel'),
+        pepStatus:           fv(co, 'syg_pepcheck'),
+        specialConditions:   (co['syg_specialconditions'] as string) ?? '',
+        aiaReporting:        fv(co, 'syg_aiareporting'),
       },
-      idDocument: idDocId
+      idDocument: idDet['documentNumber']
         ? {
-            id:             idDocId,
-            documentType:   fv(idDoc, 'syg_documenttype'),
-            documentNumber: (idDoc['syg_documentnumber'] as string) ?? '',
-            countryOfIssue: fv(idDoc, '_syg_countryofissueid_value'),
-            placeOfIssue:   (idDoc['syg_placeofissue'] as string) ?? '',
-            issueDate:      formatDate(idDoc['syg_dateofissue']      as string | null | undefined),
-            expirationDate: formatDate(idDoc['syg_expirationdate']   as string | null | undefined),
+            id:             '',
+            documentType:   (idDet['documentType']   as string) ?? '',
+            documentNumber: (idDet['documentNumber'] as string) ?? '',
+            countryOfIssue: (idDet['issuanceCountry'] as string) ?? '',
+            placeOfIssue:   (idDet['issuancePlace']  as string) ?? '',
+            issueDate:      formatDate((idDet['documentIssueDate']  as string | undefined) ?? null),
+            expirationDate: formatDate((idDet['documentExpiryDate'] as string | undefined) ?? null),
           }
         : null,
+      taxRecords: (taxInfo['taxResidenceCountry'] || taxInfo['taxId'])
+        ? [{ id: '', taxDomicile: (taxInfo['taxResidenceCountry'] as string) ?? '', taxId: (taxInfo['taxId'] as string) ?? '' }]
+        : [],
     };
-
-    // ── Step 4: Tax records linked to this onboarding ──
-    try {
-      const txResult = await context.webAPI.retrieveMultipleRecords(
-        'syg_taxationdetails',
-        `?$filter=_syg_clientonboardingid_value eq ${onboardingId}` +
-        `&$select=syg_taxationdetailsid,syg_taxid,_syg_countryid_value`
-      );
-      this.state = {
-        ...this.state,
-        taxRecords: (txResult.entities ?? []).map((r: any) => ({
-          id:          (r['syg_taxationdetailsid'] as string) ?? '',
-          taxDomicile: (r['_syg_countryid_value@OData.Community.Display.V1.FormattedValue'] as string)
-                       ?? (r['_syg_countryid_value'] as string) ?? '',
-          taxId:       (r['syg_taxid'] as string) ?? '',
-        })),
-      };
-    } catch {
-      // tax details are optional; leave empty array on failure
-    }
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
