@@ -37,7 +37,8 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       this.root = createRoot(container);
     } catch (e) {
       console.error('[NpOnboardingChecklist] createRoot failed:', e);
-      throw e;
+      container.innerText = 'Failed to initialize checklist: ' + String(e);
+      return;
     }
     this.notifyOutputChanged = notifyOutputChanged;
 
