@@ -8,8 +8,8 @@
     <Descriptions>
       <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
     </Descriptions>
-    <Version>8.0.10</Version>
-    <Managed>0</Managed>
+    <Version>8.0.11</Version>
+    <Managed>1</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
       <LocalizedNames>
