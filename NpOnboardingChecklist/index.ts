@@ -65,7 +65,13 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       this.state = { ...this.state, loading: false, loadError: null };
       this.renderReact();
     }).catch((err: unknown) => {
-      this.state = { ...this.state, loading: false, loadError: String(err) };
+      const msg = err instanceof Error
+        ? err.message
+        : (typeof err === 'object' && err !== null)
+          ? JSON.stringify(err)
+          : String(err);
+      console.error('[NpChecklist] loadData failed:', err);
+      this.state = { ...this.state, loading: false, loadError: msg };
       this.renderReact();
     });
   }
@@ -89,7 +95,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     console.log('[NpChecklist] CO id from SR:', onboardingId || '(empty)');
     if (!onboardingId) return;
 
-    // ── Step 2: Get the client onboarding record + prospect JSON blob ──
+    // ── Step 2: Get the client onboarding record (known-safe fields) ──
     const co = await context.webAPI.retrieveRecord(
       'syg_clientonboarding',
       onboardingId,
@@ -97,13 +103,15 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
       'syg_cvaultcustomergroup,syg_prospectapijson'
     );
+    console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
 
     // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
     let prospect: Record<string, unknown> = {};
     try {
       const raw = (co['syg_prospectapijson'] as string | null) ?? '';
+      console.log('[NpChecklist] syg_prospectapijson length:', raw?.length ?? 0);
       if (raw) prospect = JSON.parse(raw) as Record<string, unknown>;
-    } catch { /* malformed JSON — CO fields still populate below */ }
+    } catch (e) { console.warn('[NpChecklist] JSON parse failed:', e); }
 
     const idDet  = (prospect['identificationDetails'] as Record<string, unknown> | undefined) ?? {};
     const taxInfo = (prospect['taxInformation']        as Record<string, unknown> | undefined) ?? {};
