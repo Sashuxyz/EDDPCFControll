@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ImportExportXml version="9.1.0.643" SolutionPackageVersion="9.1" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <SolutionManifest>
-    <UniqueName>SygnumPCFComponents</UniqueName>
+    <UniqueName>SygnumNpBootstrap</UniqueName>
     <LocalizedNames>
-      <LocalizedName description="Sygnum PCF Components" languagecode="1033" />
+      <LocalizedName description="Sygnum NP Bootstrap" languagecode="1033" />
     </LocalizedNames>
     <Descriptions>
-      <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
+      <Description description="Bootstrap solution to register NpOnboardingChecklist — delete after managed import" languagecode="1033" />
     </Descriptions>
-    <Version>8.0.16</Version>
-    <Managed>1</Managed>
+    <Version>1.0.0</Version>
+    <Managed>0</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
       <LocalizedNames>
