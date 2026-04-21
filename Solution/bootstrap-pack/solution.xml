@@ -81,15 +81,7 @@
         </Address>
       </Addresses>
     </Publisher>
-    <RootComponents>
-      <RootComponent type="66" schemaName="Syg.AssociationCards" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.CompactSubgrid" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.ComplianceConditionScheduler" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.KycDraftTakeover" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.OnboardingApprovalTracker" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.WealthAllocationControl" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.NpOnboardingChecklist" behavior="0" />
-    </RootComponents>
+    <RootComponents />
     <MissingDependencies />
   </SolutionManifest>
 </ImportExportXml>
