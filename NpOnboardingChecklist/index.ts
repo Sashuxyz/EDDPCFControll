@@ -33,13 +33,18 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     _state: ComponentFramework.Dictionary,
     container: HTMLDivElement
   ): void {
+    // Immediately stamp the container so we know the bundle loaded and init ran
+    container.setAttribute('data-np-version', '1.0.13');
+    console.log('[NpChecklist v1.0.13] init started');
+
     try {
       this.root = createRoot(container);
     } catch (e) {
-      console.error('[NpOnboardingChecklist] createRoot failed:', e);
-      container.innerText = 'Failed to initialize checklist: ' + String(e);
+      console.error('[NpChecklist] createRoot failed:', e);
+      container.innerText = '[NpChecklist] createRoot failed: ' + String(e);
       return;
     }
+
     this.notifyOutputChanged = notifyOutputChanged;
 
     try {
@@ -48,7 +53,6 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
 
     this.userName = (context.userSettings as any).userName ?? (context.userSettings as any).userId ?? 'Unknown';
 
-    // Restore saved answers before loading CRM data so UI is not blank while API calls run
     const savedJson = (context.parameters.checkResults as any)?.raw ?? null;
     const saved = parseCheckResults(savedJson);
     if (saved) {
@@ -60,7 +64,13 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       };
     }
 
-    this.renderReact();
+    try {
+      this.renderReact();
+    } catch (e) {
+      console.error('[NpChecklist] renderReact (initial) failed:', e);
+      container.innerText = '[NpChecklist] React render failed: ' + String(e);
+      return;
+    }
 
     this.loadData(context).then(() => {
       this.state = { ...this.state, loading: false, loadError: null };
