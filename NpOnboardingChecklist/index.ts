@@ -90,9 +90,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const srRecord = await context.webAPI.retrieveRecord(
       sr.entityName,
       sr.entityId,
-      '?$select=_syg_linkedclientonboarding_value'
+      '?$select=_syg_linkedonboardingid_value'
     );
-    const onboardingId = (srRecord['_syg_linkedclientonboarding_value'] as string | null) ?? '';
+    const onboardingId = (srRecord['_syg_linkedonboardingid_value'] as string | null) ?? '';
     console.log('[NpChecklist] CO id from SR:', onboardingId || '(empty)');
     if (!onboardingId) return;
 
