@@ -199,17 +199,18 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
 
       {/* ── Section 1: Client properties ── */}
       <SectionCard title="Client properties check" status={s1.status} summaryText={s1.text} defaultCollapsed={false}>
-        <DisplayItem label="Nationalities" value={crmValues.nationalities} showLock />
-        {(['dob', 'rm', 'risk', 'pep'] as const).map(key => (
+        {(['nat', 'dob', 'rm', 'risk', 'pep', 'sygnemp'] as const).map(key => (
           <div key={key} ref={itemRef(key)}>
             <CheckItem
               itemKey={key}
               label={ITEM_LABELS[key]}
               crmValue={
-                key === 'dob'  ? crmValues.dateOfBirth :
-                key === 'rm'   ? crmValues.relationshipManager :
-                key === 'risk' ? crmValues.riskLevel :
-                                 crmValues.pepStatus
+                key === 'nat'     ? crmValues.nationalities :
+                key === 'dob'     ? crmValues.dateOfBirth :
+                key === 'rm'      ? crmValues.relationshipManager :
+                key === 'risk'    ? crmValues.riskLevel :
+                key === 'pep'     ? crmValues.pepStatus :
+                                    crmValues.sygnumEmployee
               }
               answer={state.answers[key] ?? null}
               mismatch={state.mismatches[key]}

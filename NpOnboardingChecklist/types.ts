@@ -49,8 +49,9 @@ export interface CrmValues {
   pepStatus: string;             // syg_pepcheck
   clientSegment: string;         // syg_cvaultcustomergroup
   referenceCurrency: string;     // _syg_referencecurrencyid_value
-  specialConditions: string;     // syg_specialconditions
+  specialConditions: string;     // syg_specialconditionsnp → "Client has special conditions" / "Client has NO special conditions"
   aiaReporting: string;          // syg_aiareporting
+  sygnumEmployee: string;        // syg_sygnumemployee formatted value
 }
 
 export interface CheckState {
@@ -76,23 +77,25 @@ export type SectionStatus = 'normal' | 'mismatch' | 'blocked' | 'done';
 export const MANUAL_KEYS = new Set<string>([
   'active', 'pms', 'payment', 'block', 'archive',
   'chtax', 'dispatch', 'oms',
-  'omst', 'btct', 'btcv', 'cv4', 'cvw',
+  'omst', 'btct', 'btcv', 'cv4',
 ]);
 
 /** Keys in each section (excludes dynamic tax keys computed at runtime). */
-export const SEC1_KEYS = ['dob', 'rm', 'active', 'risk', 'pep'] as const;
+export const SEC1_KEYS = ['nat', 'dob', 'rm', 'active', 'risk', 'pep', 'sygnemp'] as const;
 export const SEC3_KEYS = ['currency', 'pms', 'payment', 'block', 'special', 'archive'] as const;
 // Section 4: tax record keys (dynamic) + fixed items below
 export const SEC4_FIXED_KEYS = ['chtax', 'dispatch', 'indicia', 'oms'] as const;
-export const SEC5_KEYS = ['omst', 'cv4', 'cvw', 'btct', 'btcv'] as const;
+export const SEC5_KEYS = ['omst', 'cv4', 'btct', 'btcv'] as const;
 
 /** Human-readable labels for alert bars. */
 export const ITEM_LABELS = {
+  nat: 'Nationalities',
   dob: 'Date of Birth',
   rm: 'Relationship Manager',
   active: 'Set Client as Active',
   risk: 'Risk Level',
   pep: 'PEP Status',
+  sygnemp: 'Sygnum Employee',
   currency: 'Portfolio Default Currency',
   pms: 'PMS+',
   payment: 'Payment Rules Matching Main Account Currency',
@@ -107,7 +110,6 @@ export const ITEM_LABELS = {
   btct: 'Add BTC and ETH Trading',
   btcv: 'Add BTC and ETH Vault',
   cv4: 'C-Vault: Business Team Approved with 4-Eyes Check',
-  cvw: 'C-Vault: Wallets',
 } as const;
 
 export function taxKey(index: number): string {

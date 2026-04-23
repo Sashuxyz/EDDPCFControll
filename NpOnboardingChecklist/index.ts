@@ -110,9 +110,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const co = await context.webAPI.retrieveRecord(
       'syg_clientonboarding',
       onboardingId,
-      '?$select=syg_risklevel,syg_pepcheck,syg_specialconditions,' +
+      '?$select=syg_risklevel,syg_pepcheck,syg_specialconditionsnp,' +
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
-      'syg_cvaultcustomergroup,syg_prospectapijson'
+      'syg_cvaultcustomergroup,syg_prospectapijson,syg_sygnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
 
@@ -140,8 +140,13 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
         riskLevel:           fv(co, 'syg_risklevel'),
         pepStatus:           fv(co, 'syg_pepcheck'),
-        specialConditions:   (co['syg_specialconditions'] as string) ?? '',
+        specialConditions:   (co['syg_specialconditionsnp'] as boolean | null) === true
+          ? 'Client has special conditions'
+          : (co['syg_specialconditionsnp'] as boolean | null) === false
+            ? 'Client has NO special conditions'
+            : '',
         aiaReporting:        fv(co, 'syg_aiareporting'),
+        sygnumEmployee:      fv(co, 'syg_sygnumemployee'),
       },
       idDocument: idDet['documentNumber']
         ? {
