@@ -35,7 +35,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
   ): void {
     // Immediately stamp the container so we know the bundle loaded and init ran
     container.setAttribute('data-np-version', '1.0.13');
-    console.log('[NpChecklist v1.0.13] init started');
+    console.log('[NpChecklist v1.0.14] init started');
 
     try {
       this.root = createRoot(container);
