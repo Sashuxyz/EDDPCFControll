@@ -115,6 +115,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
+    console.log('[NpChecklist] syg_specialconditionsnp:', co['syg_specialconditionsnp'], typeof co['syg_specialconditionsnp']);
 
     // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
     let prospect: Record<string, unknown> = {};
@@ -140,9 +141,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
         riskLevel:           fv(co, 'syg_risklevel'),
         pepStatus:           fv(co, 'syg_pepcheck'),
-        specialConditions:   (co['syg_specialconditionsnp'] as boolean | null) === true
+        specialConditions:   (co['syg_specialconditionsnp'] === true || co['syg_specialconditionsnp'] === 1)
           ? 'Client has special conditions'
-          : (co['syg_specialconditionsnp'] as boolean | null) === false
+          : (co['syg_specialconditionsnp'] === false || co['syg_specialconditionsnp'] === 0)
             ? 'Client has NO special conditions'
             : '',
         aiaReporting:        fv(co, 'syg_aiareporting'),
