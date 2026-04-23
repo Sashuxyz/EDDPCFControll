@@ -90,13 +90,26 @@ zip -r ../bin/Release/SygnumPCFComponents_<version>.zip . -x "*.DS_Store"
 **Windows (PowerShell):**
 ```powershell
 cd Solution\manual-pack
-# DO NOT use Compress-Archive — it creates backslash paths that break D365 import.
-# Use 7-Zip or the .NET ZipFile class with forward slashes:
+# DO NOT use Compress-Archive or ZipFile::CreateFromDirectory — both create backslash
+# paths on Windows that break D365 import. Use ZipArchive with explicit forward slashes:
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$src = (Resolve-Path .).Path
+Add-Type -AssemblyName System.IO.Compression
+$srcDir = (Resolve-Path .).Path
 $dst = (Resolve-Path ..\bin\Release).Path + "\SygnumPCFComponents_<version>.zip"
 if (Test-Path $dst) { Remove-Item $dst }
-[System.IO.Compression.ZipFile]::CreateFromDirectory($src, $dst)
+$stream = [System.IO.File]::Open($dst, [System.IO.FileMode]::Create)
+$archive = New-Object System.IO.Compression.ZipArchive($stream, [System.IO.Compression.ZipArchiveMode]::Create)
+Get-ChildItem -Path $srcDir -Recurse -File | ForEach-Object {
+    $entryName = $_.FullName.Substring($srcDir.Length + 1).Replace('\', '/')
+    $entry = $archive.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
+    $entryStream = $entry.Open()
+    $fileStream = [System.IO.File]::OpenRead($_.FullName)
+    $fileStream.CopyTo($entryStream)
+    $fileStream.Close()
+    $entryStream.Close()
+}
+$archive.Dispose()
+$stream.Close()
 ```
 
 Or if 7-Zip is installed:
