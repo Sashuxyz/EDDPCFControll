@@ -115,6 +115,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
+    console.log('[NpChecklist] SC raw:', JSON.stringify(co['syg_specialconditionsnp']), '| FV:', JSON.stringify(co['syg_specialconditionsnp@OData.Community.Display.V1.FormattedValue']));
 
     // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
     let prospect: Record<string, unknown> = {};
