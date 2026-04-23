@@ -140,9 +140,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
         riskLevel:           fv(co, 'syg_risklevel'),
         pepStatus:           fv(co, 'syg_pepcheck'),
-        specialConditions:   fv(co, 'syg_specialconditionsnp').toLowerCase() === 'yes'
+        specialConditions:   (co['syg_specialconditionsnp'] === -1 || fv(co, 'syg_specialconditionsnp').toLowerCase() === 'yes')
           ? 'Client has special conditions'
-          : fv(co, 'syg_specialconditionsnp').toLowerCase() === 'no'
+          : (co['syg_specialconditionsnp'] === 2 || fv(co, 'syg_specialconditionsnp').toLowerCase() === 'no')
             ? 'Client has NO special conditions'
             : '',
         aiaReporting:        fv(co, 'syg_aiareporting'),
