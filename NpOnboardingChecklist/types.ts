@@ -51,7 +51,7 @@ export interface CrmValues {
   referenceCurrency: string;     // _syg_referencecurrencyid_value
   specialConditions: string;     // syg_specialconditionsnp → "Client has special conditions" / "Client has NO special conditions"
   aiaReporting: string;          // syg_aiareporting
-  sygnumEmployee: string;        // syg_sygnumemployee formatted value
+  sygnumEmployee: string;        // syg_sgnumemployee formatted value
 }
 
 export interface CheckState {

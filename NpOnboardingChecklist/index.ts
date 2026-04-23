@@ -112,7 +112,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       onboardingId,
       '?$select=syg_risklevel,syg_pepcheck,syg_specialconditionsnp,' +
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
-      'syg_finsaclassification,syg_prospectapijson,syg_sygnumemployee'
+      'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
 
@@ -146,7 +146,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
             ? 'Client has NO special conditions'
             : '',
         aiaReporting:        fv(co, 'syg_aiareporting'),
-        sygnumEmployee:      fv(co, 'syg_sygnumemployee'),
+        sygnumEmployee:      fv(co, 'syg_sgnumemployee'),
       },
       idDocument: idDet['documentNumber']
         ? {
