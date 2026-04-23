@@ -47,7 +47,7 @@ export interface CrmValues {
   relationshipManager: string;   // _syg_relationshipmanagerid_value
   riskLevel: string;             // syg_risklevel
   pepStatus: string;             // syg_pepcheck
-  clientSegment: string;         // syg_cvaultcustomergroup
+  clientSegment: string;         // syg_finsaclassification
   referenceCurrency: string;     // _syg_referencecurrencyid_value
   specialConditions: string;     // syg_specialconditionsnp → "Client has special conditions" / "Client has NO special conditions"
   aiaReporting: string;          // syg_aiareporting

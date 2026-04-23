@@ -112,7 +112,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       onboardingId,
       '?$select=syg_risklevel,syg_pepcheck,syg_specialconditionsnp,' +
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
-      'syg_cvaultcustomergroup,syg_prospectapijson,syg_sygnumemployee'
+      'syg_finsaclassification,syg_prospectapijson,syg_sygnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
 
@@ -135,7 +135,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       crmValues: {
         dateOfBirth:         formatDate((prospect['dateOfBirth'] as string | undefined) ?? null),
         nationalities:       nats.join(', '),
-        clientSegment:       fv(co, 'syg_cvaultcustomergroup'),
+        clientSegment:       fv(co, 'syg_finsaclassification'),
         relationshipManager: fv(co, '_syg_relationshipmanagerid_value'),
         referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
         riskLevel:           fv(co, 'syg_risklevel'),
