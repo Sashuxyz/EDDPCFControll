@@ -115,7 +115,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
       'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee'
     );
     console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
-    console.log('[NpChecklist] syg_specialconditionsnp:', co['syg_specialconditionsnp'], typeof co['syg_specialconditionsnp']);
+    const _sc = co['syg_specialconditionsnp'];
+    const _scFv = fv(co, 'syg_specialconditionsnp');
+    console.log('[NpChecklist] syg_specialconditionsnp raw:', _sc, typeof _sc, '| fv:', _scFv);
 
     // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
     let prospect: Record<string, unknown> = {};
@@ -141,11 +143,9 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         referenceCurrency:   fv(co, '_syg_referencecurrencyid_value'),
         riskLevel:           fv(co, 'syg_risklevel'),
         pepStatus:           fv(co, 'syg_pepcheck'),
-        specialConditions:   (co['syg_specialconditionsnp'] === true || co['syg_specialconditionsnp'] === 1)
-          ? 'Client has special conditions'
-          : (co['syg_specialconditionsnp'] === false || co['syg_specialconditionsnp'] === 0)
-            ? 'Client has NO special conditions'
-            : '',
+        specialConditions:   _sc == null
+          ? (_scFv ? (_scFv.toLowerCase() === 'no' || _scFv.toLowerCase() === 'false' ? 'Client has NO special conditions' : 'Client has special conditions') : '')
+          : (_sc ? 'Client has special conditions' : 'Client has NO special conditions'),
         aiaReporting:        fv(co, 'syg_aiareporting'),
         sygnumEmployee:      fv(co, 'syg_sgnumemployee'),
       },
