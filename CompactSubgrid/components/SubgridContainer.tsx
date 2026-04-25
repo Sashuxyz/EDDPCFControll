@@ -134,11 +134,17 @@ export const SubgridContainer: React.FC<SubgridContainerProps> = ({
   }, []);
 
   const title = React.useMemo(() => {
-    // Use the control's configured label from the form designer
+    // Try dataset title (subgrid label from form), then context.mode.label
+    const dsAny = dataset as unknown as { getTitle?: () => string; title?: string };
+    if (typeof dsAny.getTitle === 'function') {
+      const t = dsAny.getTitle();
+      if (t) return t;
+    }
+    if (dsAny.title) return dsAny.title;
     const modeLabel = (context.mode as unknown as { label?: string }).label;
     if (modeLabel) return modeLabel;
     return 'Records';
-  }, [context]);
+  }, [context, dataset]);
 
   const expandableIds = React.useMemo(
     () => recordIds.filter((id) => rowDetailMap[id]),

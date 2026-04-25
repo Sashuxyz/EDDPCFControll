@@ -77,11 +77,33 @@ export const CardsContainer: React.FC<CardsContainerProps> = ({
     });
   }, [dataset.sortedRecordIds, dataset.records, primaryColumn, nonNameColumns]);
 
-  // Title from form designer label
+  // Title: try dataset title / view name, then form designer label, then fallback
   const title = React.useMemo(() => {
+    // Source 1: dataset.getTitle() — returns the subgrid label from the form
+    const dsAny = dataset as unknown as { getTitle?: () => string; title?: string };
+    if (typeof dsAny.getTitle === 'function') {
+      const t = dsAny.getTitle();
+      if (t) return t;
+    }
+    if (dsAny.title) return dsAny.title;
+
+    // Source 2: dataset view display name
+    const viewAny = dataset as unknown as {
+      getViewId?: () => string;
+      columns?: Array<{ displayName?: string }>;
+    };
+    const viewId = viewAny.getViewId?.();
+    if (viewId) {
+      // View name is not directly exposed, but the dataset display-name-key
+      // from the form configuration may be available via context
+    }
+
+    // Source 3: context.mode.label — control label from form designer
     const modeLabel = (context.mode as unknown as { label?: string }).label;
-    return modeLabel || 'Records';
-  }, [context]);
+    if (modeLabel) return modeLabel;
+
+    return 'Records';
+  }, [context, dataset]);
 
   // Parent context — try multiple sources
   const parentInfo = React.useMemo(() => {
