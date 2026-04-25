@@ -1,0 +1,19 @@
+/*
+*This is auto generated from the ControlManifest.Input.xml file
+*/
+
+// Define IInputs and IOutputs Type. They should match with ControlManifest.
+export interface IInputs {
+    value: ComponentFramework.PropertyTypes.StringProperty;
+    placeholder: ComponentFramework.PropertyTypes.StringProperty;
+    maxHeight: ComponentFramework.PropertyTypes.WholeNumberProperty;
+    detectUrls: ComponentFramework.PropertyTypes.TwoOptionsProperty;
+    detectEmail: ComponentFramework.PropertyTypes.TwoOptionsProperty;
+    detectSharePoint: ComponentFramework.PropertyTypes.TwoOptionsProperty;
+    sharepointBaseUrl: ComponentFramework.PropertyTypes.StringProperty;
+    detectRecordRefs: ComponentFramework.PropertyTypes.TwoOptionsProperty;
+    recordReferencePatterns: ComponentFramework.PropertyTypes.StringProperty;
+}
+export interface IOutputs {
+    value?: string;
+}

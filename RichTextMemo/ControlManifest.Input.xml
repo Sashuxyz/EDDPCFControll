@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Syg" constructor="RichTextMemo" version="1.0.0"
+           display-name-key="RichTextMemo"
+           description-key="Auto-linking multiline text field"
+           control-type="standard" api-version="1.3.0">
+    <external-service-usage enabled="false" />
+    <property name="value" display-name-key="Value" description-key="Bound multiline text field" of-type="Multiple" usage="bound" required="true" />
+    <property name="placeholder" display-name-key="Placeholder" description-key="Placeholder text when field is empty" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="maxHeight" display-name-key="Max Height" description-key="Maximum height in pixels before scrolling" of-type="Whole.None" usage="input" required="false" default-value="400" />
+    <property name="detectUrls" display-name-key="Detect URLs" description-key="Auto-detect and link HTTP/HTTPS URLs" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="detectEmail" display-name-key="Detect Email" description-key="Auto-detect and link email addresses" of-type="TwoOptions" usage="input" required="false" default-value="true" />
+    <property name="detectSharePoint" display-name-key="Detect SharePoint" description-key="Reserved for v1.1" of-type="TwoOptions" usage="input" required="false" default-value="false" />
+    <property name="sharepointBaseUrl" display-name-key="SharePoint Base URL" description-key="Reserved for v1.1" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="detectRecordRefs" display-name-key="Detect Record References" description-key="Reserved for v1.1" of-type="TwoOptions" usage="input" required="false" default-value="false" />
+    <property name="recordReferencePatterns" display-name-key="Record Reference Patterns" description-key="Reserved for v1.1" of-type="Multiple" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+    </resources>
+  </control>
+</manifest>
