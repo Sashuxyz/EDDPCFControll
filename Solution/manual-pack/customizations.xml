@@ -33,6 +33,9 @@
       <Name>Syg.NpOnboardingChecklist</Name>
       <FileName>/Controls/Syg.NpOnboardingChecklist/ControlManifest.xml</FileName>
     </CustomControl>
-
+    <CustomControl>
+      <Name>Syg.RichTextMemo</Name>
+      <FileName>/Controls/Syg.RichTextMemo/ControlManifest.xml</FileName>
+    </CustomControl>
   </CustomControls>
 </ImportExportXml>

@@ -4,7 +4,7 @@
 
 **The managed solution must ALWAYS contain ALL controls.** Importing a managed solution that is missing a control will DELETE that control from D365. Never remove a control from the manifest to "scope" or "simplify" an import — this destroys existing controls in the target environment.
 
-## Current Controls (8 total)
+## Current Controls (9 total)
 
 | # | SchemaName | Description |
 |---|-----------|-------------|
@@ -16,8 +16,9 @@
 | 6 | Syg.KycDraftTakeover | AI research output review and takeover |
 | 7 | Syg.OnboardingApprovalTracker | Approval progress tracker for client onboarding |
 | 8 | Syg.NpOnboardingChecklist | 4-eyes onboarding verification checklist |
+| 9 | Syg.RichTextMemo | Auto-linking multiline text field |
 
-When a 9th control is added, update this list, `solution.xml`, and `customizations.xml`.
+When a 10th control is added, update this list, `solution.xml`, and `customizations.xml`.
 
 ## Solution structure
 
@@ -74,9 +75,9 @@ Edit `Solution/manual-pack/solution.xml` and increment `<Version>`:
 Check that `solution.xml` has 8 `<RootComponent>` entries and `customizations.xml` has 8 `<CustomControl>` entries. If any are missing, the import will silently remove them from D365.
 
 ```bash
-grep -c "RootComponent type=" Solution/manual-pack/solution.xml    # must be 8
-grep -c "<Name>" Solution/manual-pack/customizations.xml            # must be 8
-ls Solution/manual-pack/Controls/ | wc -l                           # must be 8
+grep -c "RootComponent type=" Solution/manual-pack/solution.xml    # must be 9
+grep -c "<Name>" Solution/manual-pack/customizations.xml            # must be 9
+ls Solution/manual-pack/Controls/ | wc -l                           # must be 9
 ```
 
 ### Step 5: Create the zip

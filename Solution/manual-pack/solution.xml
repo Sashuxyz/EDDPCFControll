@@ -8,7 +8,7 @@
     <Descriptions>
       <Description description="Sygnum custom PCF components for Dynamics 365" languagecode="1033" />
     </Descriptions>
-    <Version>8.0.43</Version>
+    <Version>8.0.44</Version>
     <Managed>1</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
@@ -90,6 +90,7 @@
       <RootComponent type="66" schemaName="Syg.OnboardingApprovalTracker" behavior="0" />
       <RootComponent type="66" schemaName="Syg.WealthAllocationControl" behavior="0" />
       <RootComponent type="66" schemaName="Syg.NpOnboardingChecklist" behavior="0" />
+      <RootComponent type="66" schemaName="Syg.RichTextMemo" behavior="0" />
     </RootComponents>
     <MissingDependencies />
   </SolutionManifest>
