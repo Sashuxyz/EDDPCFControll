@@ -9,6 +9,7 @@ interface RichTextMemoProps {
   value: string;
   disabled: boolean;
   placeholder: string;
+  infoText: string;
   maxHeight: number;
   tokenizerOptions: TokenizerOptions;
   onValueChange: (value: string) => void;
@@ -27,10 +28,18 @@ const RETOKENIZE_KEYS = new Set([
   ' ', 'Enter', 'Tab', '.', ',', ';', ':', '!', '?', ')', ']', '}', '>',
 ]);
 
+const infoTextStyle: React.CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.5,
+  color: '#605E5C',
+  marginBottom: 6,
+};
+
 export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   value,
   disabled,
   placeholder,
+  infoText,
   maxHeight,
   tokenizerOptions,
   onValueChange,
@@ -84,15 +93,18 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     internalValueRef.current = value;
   }, [renderedHtml]);
 
-  // Auto-grow
-  React.useEffect(() => {
+  // Auto-grow helper — called on every input AND on value prop change
+  const adjustHeight = React.useCallback(() => {
     const el = editorRef.current;
     if (!el) return;
     el.style.height = 'auto';
     const scrollH = el.scrollHeight;
     el.style.height = `${Math.min(scrollH, maxHeight)}px`;
     el.style.overflowY = scrollH > maxHeight ? 'auto' : 'hidden';
-  }, [value, maxHeight]);
+  }, [maxHeight]);
+
+  // Auto-grow on external value change
+  React.useEffect(() => { adjustHeight(); }, [value, adjustHeight]);
 
   const retokenize = React.useCallback(() => {
     const el = editorRef.current;
@@ -110,7 +122,8 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     const text = el.textContent ?? '';
     internalValueRef.current = text;
     onValueChange(text);
-  }, [onValueChange]);
+    adjustHeight();
+  }, [onValueChange, adjustHeight]);
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
     if (composingRef.current) return;
@@ -195,6 +208,7 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
 
   return (
     <div style={editorStyles.container}>
+      {infoText && <div style={infoTextStyle}>{infoText}</div>}
       <div
         ref={editorRef}
         className={classNames.join(' ')}

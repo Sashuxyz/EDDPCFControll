@@ -6,6 +6,7 @@
 export interface IInputs {
     value: ComponentFramework.PropertyTypes.StringProperty;
     placeholder: ComponentFramework.PropertyTypes.StringProperty;
+    infoText: ComponentFramework.PropertyTypes.StringProperty;
     maxHeight: ComponentFramework.PropertyTypes.WholeNumberProperty;
     detectUrls: ComponentFramework.PropertyTypes.TwoOptionsProperty;
     detectEmail: ComponentFramework.PropertyTypes.TwoOptionsProperty;

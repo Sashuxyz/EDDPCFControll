@@ -7,6 +7,7 @@
     <external-service-usage enabled="false" />
     <property name="value" display-name-key="Value" description-key="Bound multiline text field" of-type="Multiple" usage="bound" required="true" />
     <property name="placeholder" display-name-key="Placeholder" description-key="Placeholder text when field is empty" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="infoText" display-name-key="Info Text" description-key="Description text shown above the field" of-type="Multiple" usage="input" required="false" />
     <property name="maxHeight" display-name-key="Max Height" description-key="Maximum height in pixels before scrolling" of-type="Whole.None" usage="input" required="false" default-value="400" />
     <property name="detectUrls" display-name-key="Detect URLs" description-key="Auto-detect and link HTTP/HTTPS URLs" of-type="TwoOptions" usage="input" required="false" default-value="true" />
     <property name="detectEmail" display-name-key="Detect Email" description-key="Auto-detect and link email addresses" of-type="TwoOptions" usage="input" required="false" default-value="true" />

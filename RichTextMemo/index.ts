@@ -36,6 +36,7 @@ export class RichTextMemo
 
     const disabled = context.mode.isControlDisabled;
     const placeholder = context.parameters.placeholder?.raw ?? '';
+    const infoText = context.parameters.infoText?.raw ?? '';
     const maxHeight = context.parameters.maxHeight?.raw ?? 400;
 
     const tokenizerOptions: TokenizerOptions = {
@@ -56,6 +57,7 @@ export class RichTextMemo
         value: this.currentValue,
         disabled,
         placeholder,
+        infoText,
         maxHeight,
         tokenizerOptions,
         onValueChange: (newValue: string) =>

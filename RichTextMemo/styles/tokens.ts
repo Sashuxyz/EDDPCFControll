@@ -25,6 +25,7 @@ export const editorStyles: S = {
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
     cursor: 'text',
+    transition: 'height 0.15s ease',
   } as React.CSSProperties,
   editorFocused: {
     borderBottom: '2px solid #0078D4',
