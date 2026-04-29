@@ -165,30 +165,43 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     }
   }, [retokenize]);
 
-  const handlePaste = React.useCallback((e: React.ClipboardEvent) => {
-    // Manually insert plain text — don't rely on native plaintext-only paste
-    // which may not work in D365's embedded browser
-    e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    if (!text) return;
-
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(document.createTextNode(text));
-    range.collapse(false);
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    // Notify parent of the new content
+  // Native paste listener — React's onPaste may not fire in D365's embedded browser
+  React.useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
-    const fullText = el.textContent ?? '';
-    internalValueRef.current = fullText;
-    setIsEmpty(!fullText);
-    onValueChange(fullText);
-    adjustHeight();
+
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const text = e.clipboardData?.getData('text/plain') ??
+                   e.clipboardData?.getData('text') ?? '';
+      if (!text) return;
+
+      // Insert plain text at caret
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } else {
+        // Fallback: append
+        el.appendChild(document.createTextNode(text));
+      }
+
+      // Sync state
+      const fullText = el.textContent ?? '';
+      internalValueRef.current = fullText;
+      setIsEmpty(!fullText);
+      onValueChange(fullText);
+      adjustHeight();
+    };
+
+    el.addEventListener('paste', onPaste, true); // capture phase
+    return () => el.removeEventListener('paste', onPaste, true);
   }, [onValueChange, adjustHeight]);
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
@@ -252,7 +265,6 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
         data-placeholder={placeholder}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
-        onPaste={handlePaste}
         onClick={handleClick}
         onFocus={handleFocus}
         onBlur={handleBlur}
