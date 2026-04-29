@@ -165,7 +165,13 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     }
   }, [retokenize]);
 
-  // Native paste listener — React's onPaste may not fire in D365's embedded browser
+  // Stable refs for paste handler so the listener doesn't need to be re-attached
+  const onValueChangeRef = React.useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
+  const adjustHeightRef = React.useRef(adjustHeight);
+  adjustHeightRef.current = adjustHeight;
+
+  // Native paste listener — attached once, uses refs for stable closure
   React.useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
@@ -178,31 +184,21 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
                    e.clipboardData?.getData('text') ?? '';
       if (!text) return;
 
-      // Insert plain text at caret
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const range = sel.getRangeAt(0);
-        range.deleteContents();
-        range.insertNode(document.createTextNode(text));
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        // Fallback: append
-        el.appendChild(document.createTextNode(text));
-      }
+      // execCommand integrates with undo stack and is more reliable
+      // in embedded Chromium contexts than Range manipulation
+      document.execCommand('insertText', false, text);
 
       // Sync state
       const fullText = el.textContent ?? '';
       internalValueRef.current = fullText;
       setIsEmpty(!fullText);
-      onValueChange(fullText);
-      adjustHeight();
+      onValueChangeRef.current(fullText);
+      adjustHeightRef.current();
     };
 
-    el.addEventListener('paste', onPaste, true); // capture phase
+    el.addEventListener('paste', onPaste, true);
     return () => el.removeEventListener('paste', onPaste, true);
-  }, [onValueChange, adjustHeight]);
+  }, []); // empty deps — attached once, uses refs
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     const target = (e.target as HTMLElement).closest(
