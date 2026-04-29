@@ -49,7 +49,10 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   const [modifierActive, setModifierActive] = React.useState(false);
   const composingRef = React.useRef(false);
   const internalValueRef = React.useRef(value);
-  const isEmpty = !value;
+  const [isEmpty, setIsEmpty] = React.useState(!value);
+
+  // Sync isEmpty from value prop (external changes)
+  React.useEffect(() => { setIsEmpty(!value); }, [value]);
 
   React.useEffect(() => { injectCss(); }, []);
 
@@ -125,8 +128,9 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     if (!el) return;
     const text = el.textContent ?? '';
     internalValueRef.current = text;
+    setIsEmpty(!text);
     onValueChange(text);
-    adjustHeight(); // deferred via rAF — won't block keystroke processing
+    adjustHeight();
   }, [onValueChange, adjustHeight]);
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
