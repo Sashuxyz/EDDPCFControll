@@ -165,40 +165,30 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     }
   }, [retokenize]);
 
-  // Stable refs for paste handler so the listener doesn't need to be re-attached
+  // Stable refs so the paste listener closure doesn't go stale
   const onValueChangeRef = React.useRef(onValueChange);
   onValueChangeRef.current = onValueChange;
   const adjustHeightRef = React.useRef(adjustHeight);
   adjustHeightRef.current = adjustHeight;
 
-  // Native paste listener — attached once, uses refs for stable closure
+  // Let the browser handle paste natively — just sync state afterward
   React.useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
 
-    const onPaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const text = e.clipboardData?.getData('text/plain') ??
-                   e.clipboardData?.getData('text') ?? '';
-      if (!text) return;
-
-      // execCommand integrates with undo stack and is more reliable
-      // in embedded Chromium contexts than Range manipulation
-      document.execCommand('insertText', false, text);
-
-      // Sync state
-      const fullText = el.textContent ?? '';
-      internalValueRef.current = fullText;
-      setIsEmpty(!fullText);
-      onValueChangeRef.current(fullText);
-      adjustHeightRef.current();
+    const onPaste = () => {
+      requestAnimationFrame(() => {
+        const fullText = el.textContent ?? '';
+        internalValueRef.current = fullText;
+        setIsEmpty(!fullText);
+        onValueChangeRef.current(fullText);
+        adjustHeightRef.current();
+      });
     };
 
-    el.addEventListener('paste', onPaste, true);
-    return () => el.removeEventListener('paste', onPaste, true);
-  }, []); // empty deps — attached once, uses refs
+    el.addEventListener('paste', onPaste);
+    return () => el.removeEventListener('paste', onPaste);
+  }, []);
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     const target = (e.target as HTMLElement).closest(
