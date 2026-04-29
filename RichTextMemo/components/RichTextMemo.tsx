@@ -166,8 +166,16 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   }, [retokenize]);
 
   const handlePaste = React.useCallback(() => {
-    requestAnimationFrame(() => retokenize());
-  }, [retokenize]);
+    requestAnimationFrame(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      const text = el.textContent ?? '';
+      internalValueRef.current = text;
+      setIsEmpty(!text);
+      onValueChange(text);
+      adjustHeight();
+    });
+  }, [onValueChange, adjustHeight]);
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
     const target = (e.target as HTMLElement).closest(

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest>
-  <control namespace="Syg" constructor="RichTextMemo" version="1.0.3" display-name-key="RichTextMemo" description-key="Auto-linking multiline text field" control-type="standard" api-version="1.3.18">
+  <control namespace="Syg" constructor="RichTextMemo" version="1.0.4" display-name-key="RichTextMemo" description-key="Auto-linking multiline text field" control-type="standard" api-version="1.3.18">
     <external-service-usage enabled="false"/>
     <property name="value" display-name-key="Value" description-key="Bound multiline text field" of-type="Multiple" usage="bound" required="true"/>
     <property name="placeholder" display-name-key="Placeholder" description-key="Placeholder text when field is empty" of-type="SingleLine.Text" usage="input" required="false"/>
