@@ -93,14 +93,18 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     internalValueRef.current = value;
   }, [renderedHtml]);
 
-  // Auto-grow helper — called on every input AND on value prop change
+  // Auto-grow helper — deferred via rAF to avoid blocking input events
+  const heightRafRef = React.useRef(0);
   const adjustHeight = React.useCallback(() => {
-    const el = editorRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    const scrollH = el.scrollHeight;
-    el.style.height = `${Math.min(scrollH, maxHeight)}px`;
-    el.style.overflowY = scrollH > maxHeight ? 'auto' : 'hidden';
+    cancelAnimationFrame(heightRafRef.current);
+    heightRafRef.current = requestAnimationFrame(() => {
+      const el = editorRef.current;
+      if (!el) return;
+      el.style.height = 'auto';
+      const scrollH = el.scrollHeight;
+      el.style.height = `${Math.min(scrollH, maxHeight)}px`;
+      el.style.overflowY = scrollH > maxHeight ? 'auto' : 'hidden';
+    });
   }, [maxHeight]);
 
   // Auto-grow on external value change
@@ -122,7 +126,7 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     const text = el.textContent ?? '';
     internalValueRef.current = text;
     onValueChange(text);
-    adjustHeight();
+    adjustHeight(); // deferred via rAF — won't block keystroke processing
   }, [onValueChange, adjustHeight]);
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
