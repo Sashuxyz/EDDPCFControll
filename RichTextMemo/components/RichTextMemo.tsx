@@ -165,16 +165,30 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     }
   }, [retokenize]);
 
-  const handlePaste = React.useCallback(() => {
-    requestAnimationFrame(() => {
-      const el = editorRef.current;
-      if (!el) return;
-      const text = el.textContent ?? '';
-      internalValueRef.current = text;
-      setIsEmpty(!text);
-      onValueChange(text);
-      adjustHeight();
-    });
+  const handlePaste = React.useCallback((e: React.ClipboardEvent) => {
+    // Manually insert plain text — don't rely on native plaintext-only paste
+    // which may not work in D365's embedded browser
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(document.createTextNode(text));
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    // Notify parent of the new content
+    const el = editorRef.current;
+    if (!el) return;
+    const fullText = el.textContent ?? '';
+    internalValueRef.current = fullText;
+    setIsEmpty(!fullText);
+    onValueChange(fullText);
+    adjustHeight();
   }, [onValueChange, adjustHeight]);
 
   const handleClick = React.useCallback((e: React.MouseEvent) => {
