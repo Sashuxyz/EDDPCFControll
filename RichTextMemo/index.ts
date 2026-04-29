@@ -11,6 +11,7 @@ export class RichTextMemo
   private notifyOutputChanged!: () => void;
   private pendingOutput = false;
   private currentValue = '';
+  private lastContext!: ComponentFramework.Context<IInputs>;
 
   public init(
     context: ComponentFramework.Context<IInputs>,
@@ -20,12 +21,16 @@ export class RichTextMemo
   ): void {
     this.root = createRoot(container);
     this.notifyOutputChanged = notifyOutputChanged;
+    this.lastContext = context;
     context.mode.trackContainerResize(true);
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
+    this.lastContext = context;
+
     if (this.pendingOutput) {
       this.pendingOutput = false;
+      this.renderReact(context);
       return;
     }
 
@@ -34,6 +39,10 @@ export class RichTextMemo
       this.currentValue = rawValue;
     }
 
+    this.renderReact(context);
+  }
+
+  private renderReact(context: ComponentFramework.Context<IInputs>): void {
     const disabled = context.mode.isControlDisabled;
     const placeholder = context.parameters.placeholder?.raw ?? '';
     const infoText = context.parameters.infoText?.raw ?? '';
@@ -71,6 +80,10 @@ export class RichTextMemo
     this.currentValue = newValue;
     this.pendingOutput = true;
     this.notifyOutputChanged();
+    // Re-render immediately so React gets the updated value prop.
+    // Without this, any React state change (e.g. setIsEmpty) triggers
+    // a re-render with the stale value prop, which overwrites innerHTML.
+    this.renderReact(this.lastContext);
   }
 
   public getOutputs(): IOutputs {
