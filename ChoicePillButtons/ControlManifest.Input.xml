@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="Syg" constructor="ChoicePillButtons" version="1.0.0"
+           display-name-key="ChoicePillButtons"
+           description-key="Pill-style buttons for OptionSet fields"
+           control-type="standard" api-version="1.3.0">
+    <external-service-usage enabled="false" />
+    <property name="value" display-name-key="Value" description-key="Bound OptionSet field"
+              of-type="OptionSet" usage="bound" required="true" />
+    <property name="color1" display-name-key="Color 1" description-key="Hex colour for slot 1"
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="color2" display-name-key="Color 2" description-key="Hex colour for slot 2"
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="color3" display-name-key="Color 3" description-key="Hex colour for slot 3"
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="color4" display-name-key="Color 4" description-key="Hex colour for slot 4"
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="color5" display-name-key="Color 5" description-key="Hex colour for slot 5"
+              of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="value1" display-name-key="Value 1" description-key="OptionSet integer for slot 1"
+              of-type="Whole.None" usage="input" required="false" />
+    <property name="value2" display-name-key="Value 2" description-key="OptionSet integer for slot 2"
+              of-type="Whole.None" usage="input" required="false" />
+    <property name="value3" display-name-key="Value 3" description-key="OptionSet integer for slot 3"
+              of-type="Whole.None" usage="input" required="false" />
+    <property name="value4" display-name-key="Value 4" description-key="OptionSet integer for slot 4"
+              of-type="Whole.None" usage="input" required="false" />
+    <property name="value5" display-name-key="Value 5" description-key="OptionSet integer for slot 5"
+              of-type="Whole.None" usage="input" required="false" />
+    <resources>
+      <code path="index.ts" order="1" />
+    </resources>
+  </control>
+</manifest>
