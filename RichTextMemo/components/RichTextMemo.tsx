@@ -51,6 +51,12 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   const internalValueRef = React.useRef(value);
   const [isEmpty, setIsEmpty] = React.useState(!value);
 
+  // Debug panel — shows last 8 events to diagnose paste issues
+  const [debugLog, setDebugLog] = React.useState<string[]>([]);
+  const addDebug = React.useCallback((msg: string) => {
+    setDebugLog((prev) => [...prev.slice(-7), `${new Date().toLocaleTimeString()}: ${msg}`]);
+  }, []);
+
   // Sync isEmpty from value prop (external changes)
   React.useEffect(() => { setIsEmpty(!value); }, [value]);
 
@@ -86,6 +92,7 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   React.useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
+    addDebug(`useEffect[renderedHtml] — value.len=${value.length}, html.len=${renderedHtml.length}`);
     if (document.activeElement === el) {
       const offset = getCaretOffset(el);
       el.innerHTML = renderedHtml;
@@ -127,11 +134,12 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
     const el = editorRef.current;
     if (!el) return;
     const text = el.textContent ?? '';
+    addDebug(`handleInput — text.len=${text.length}, prev.len=${internalValueRef.current.length}`);
     internalValueRef.current = text;
     setIsEmpty(!text);
     onValueChange(text);
     adjustHeight();
-  }, [onValueChange, adjustHeight]);
+  }, [onValueChange, adjustHeight, addDebug]);
 
   const handleKeyDown = React.useCallback((e: React.KeyboardEvent) => {
     if (composingRef.current) return;
@@ -171,14 +179,22 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
   const adjustHeightRef = React.useRef(adjustHeight);
   adjustHeightRef.current = adjustHeight;
 
+  // Debug ref for paste logging
+  const addDebugRef = React.useRef(addDebug);
+  addDebugRef.current = addDebug;
+
   // Let the browser handle paste natively — just sync state afterward
   React.useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
 
-    const onPaste = () => {
+    const onPaste = (e: ClipboardEvent) => {
+      const clipText = e.clipboardData?.getData('text/plain') ?? '(no clipboardData)';
+      addDebugRef.current(`PASTE event fired — clipboard.len=${clipText.length}, type=${e.type}`);
+
       requestAnimationFrame(() => {
         const fullText = el.textContent ?? '';
+        addDebugRef.current(`PASTE rAF — dom.len=${fullText.length}, prev.len=${internalValueRef.current.length}`);
         internalValueRef.current = fullText;
         setIsEmpty(!fullText);
         onValueChangeRef.current(fullText);
@@ -259,6 +275,16 @@ export const RichTextMemoEditor: React.FC<RichTextMemoProps> = ({
         style={style}
         suppressContentEditableWarning={true}
       />
+      {debugLog.length > 0 && (
+        <div style={{
+          marginTop: 8, padding: '6px 8px', background: '#FFF4CE',
+          border: '1px solid #E1DFDD', borderRadius: 4, fontSize: 11,
+          fontFamily: 'Consolas, monospace', color: '#605E5C', maxHeight: 120,
+          overflowY: 'auto', whiteSpace: 'pre-wrap',
+        }}>
+          {debugLog.map((line, i) => <div key={i}>{line}</div>)}
+        </div>
+      )}
     </div>
   );
 };
