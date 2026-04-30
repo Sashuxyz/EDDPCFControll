@@ -83,5 +83,6 @@ export function emptyCrmValues(): import('./types').CrmValues {
     specialConditions: '',
     aiaReporting: '',
     sygnumEmployee: '',
+    sygnumShareholder: '',
   };
 }

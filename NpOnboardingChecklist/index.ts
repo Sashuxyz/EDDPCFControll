@@ -9,8 +9,12 @@ import { parseCheckResults, resolveSr, formatDate, emptyCrmValues } from './util
 export class NpOnboardingChecklist implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private root!: Root;
   private notifyOutputChanged!: () => void;
+  private context!: ComponentFramework.Context<IInputs>;
   private pendingOutput = false;
   private outputJson = '';
+  private srEntityName = '';
+  private srEntityId = '';
+  private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   private state: CheckState = {
     answers: {},
@@ -33,9 +37,8 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     _state: ComponentFramework.Dictionary,
     container: HTMLDivElement
   ): void {
-    // Immediately stamp the container so we know the bundle loaded and init ran
-    container.setAttribute('data-np-version', '1.0.13');
-    console.log('[NpChecklist v1.0.14] init started');
+    container.setAttribute('data-np-version', '1.0.21');
+    console.log('[NpChecklist v1.0.21] init started');
 
     try {
       this.root = createRoot(container);
@@ -46,14 +49,16 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     }
 
     this.notifyOutputChanged = notifyOutputChanged;
+    this.context = context;
 
     try {
       (context.mode as any).trackContainerResize?.(true);
-    } catch { /* optional API — ignore if unavailable */ }
+    } catch { /* optional API */ }
 
     this.userName = (context.userSettings as any).userName ?? (context.userSettings as any).userId ?? 'Unknown';
 
-    const savedJson = (context.parameters.checkResults as any)?.raw ?? null;
+    // Restore saved answers from the bound field
+    const savedJson = (context.parameters.checklistResults as any)?.raw ?? null;
     const saved = parseCheckResults(savedJson);
     if (saved) {
       this.state = {
@@ -61,6 +66,8 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         answers: (saved.answers ?? {}) as Record<string, AnswerValue>,
         mismatches: (saved.mismatches ?? {}) as Record<string, MismatchData>,
         manualNotDone: (saved.manualNotDone ?? {}) as Record<string, ManualNotDoneData>,
+        completedAt: saved.summary?.completedAt ?? null,
+        completedBy: saved.summary?.completedBy ?? null,
       };
     }
 
@@ -91,41 +98,57 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     const sr = resolveSr(context);
     if (!sr) throw new Error('Cannot resolve Service Request context');
 
+    this.srEntityName = sr.entityName;
+    this.srEntityId   = sr.entityId;
+
     const fv = (obj: ComponentFramework.WebApi.Entity, key: string): string =>
       (obj[`${key}@OData.Community.Display.V1.FormattedValue`] as string | undefined)
       ?? String(obj[key] ?? '');
 
-    // ── Step 1: Get the onboarding ID from the service request ──
+    // ── Step 1: Get onboarding ID + saved checklist JSON from the SR ──
     console.log('[NpChecklist] SR entity:', sr.entityName, '| ID:', sr.entityId);
     const srRecord = await context.webAPI.retrieveRecord(
       sr.entityName,
       sr.entityId,
-      '?$select=_syg_linkedonboardingid_value'
+      '?$select=_syg_linkedonboardingid_value,syg_nponboardingchecklistresults'
     );
+
+    // Restore answers from webAPI-saved field (takes precedence over bound property
+    // because webAPI saves even when the form hasn't been explicitly saved)
+    const savedFromField = (srRecord['syg_nponboardingchecklistresults'] as string | null) ?? null;
+    const savedParsed = parseCheckResults(savedFromField);
+    if (savedParsed) {
+      this.state = {
+        ...this.state,
+        answers:      (savedParsed.answers      ?? {}) as Record<string, AnswerValue>,
+        mismatches:   (savedParsed.mismatches   ?? {}) as Record<string, MismatchData>,
+        manualNotDone:(savedParsed.manualNotDone ?? {}) as Record<string, ManualNotDoneData>,
+        completedAt:  savedParsed.summary?.completedAt ?? null,
+        completedBy:  savedParsed.summary?.completedBy ?? null,
+      };
+    }
+
     const onboardingId = (srRecord['_syg_linkedonboardingid_value'] as string | null) ?? '';
     console.log('[NpChecklist] CO id from SR:', onboardingId || '(empty)');
     if (!onboardingId) return;
 
-    // ── Step 2: Get the client onboarding record (known-safe fields) ──
+    // ── Step 2: Get the client onboarding record ──
     const co = await context.webAPI.retrieveRecord(
       'syg_clientonboarding',
       onboardingId,
       '?$select=syg_risklevel,syg_pepcheck,syg_specialconditionsnp,' +
       'syg_aiareporting,_syg_relationshipmanagerid_value,_syg_referencecurrencyid_value,' +
-      'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee'
+      'syg_finsaclassification,syg_prospectapijson,syg_sgnumemployee,syg_sygnumshareholdernp'
     );
-    console.log('[NpChecklist] CO fields:', Object.keys(co).join(', '));
-    console.log('[NpChecklist] SC raw:', JSON.stringify(co['syg_specialconditionsnp']), '| FV:', JSON.stringify(co['syg_specialconditionsnp@OData.Community.Display.V1.FormattedValue']));
 
-    // ── Step 3: Parse prospect JSON (dateOfBirth, nationalities, ID doc, tax) ──
+    // ── Step 3: Parse prospect JSON ──
     let prospect: Record<string, unknown> = {};
     try {
       const raw = (co['syg_prospectapijson'] as string | null) ?? '';
-      console.log('[NpChecklist] syg_prospectapijson length:', raw?.length ?? 0);
       if (raw) prospect = JSON.parse(raw) as Record<string, unknown>;
     } catch (e) { console.warn('[NpChecklist] JSON parse failed:', e); }
 
-    const idDet  = (prospect['identificationDetails'] as Record<string, unknown> | undefined) ?? {};
+    const idDet   = (prospect['identificationDetails'] as Record<string, unknown> | undefined) ?? {};
     const taxInfo = (prospect['taxInformation']        as Record<string, unknown> | undefined) ?? {};
     const nats    = Array.isArray(prospect['nationalities'])
       ? (prospect['nationalities'] as unknown[]).map(String)
@@ -144,6 +167,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         specialConditions:   fv(co, 'syg_specialconditionsnp'),
         aiaReporting:        fv(co, 'syg_aiareporting'),
         sygnumEmployee:      fv(co, 'syg_sgnumemployee'),
+        sygnumShareholder:   fv(co, 'syg_sygnumshareholdernp'),
       },
       idDocument: idDet['documentNumber']
         ? {
@@ -163,6 +187,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
+    this.context = context;
     this.isReadOnly = context.mode.isControlDisabled;
     if (this.pendingOutput) {
       this.pendingOutput = false;
@@ -175,6 +200,28 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     this.outputJson = json;
     this.pendingOutput = true;
     this.notifyOutputChanged();
+    this.scheduleSave(json);
+  }
+
+  private scheduleSave(json: string): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.persistToField(json);
+    }, 1500);
+  }
+
+  private persistToField(json: string): void {
+    if (!this.srEntityName || !this.srEntityId) return;
+    this.context.webAPI.updateRecord(
+      this.srEntityName,
+      this.srEntityId,
+      { syg_nponboardingchecklistresults: json }
+    ).then(() => {
+      console.log('[NpChecklist] Auto-saved');
+    }).catch((err: unknown) => {
+      console.warn('[NpChecklist] Auto-save failed:', err);
+    });
   }
 
   private renderReact(): void {
@@ -184,15 +231,20 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
         isReadOnly: this.isReadOnly,
         userName: this.userName,
         onOutputChanged: (json: string) => this.handleOutputChanged(json),
+        onRestart: () => {
+          this.state = { ...this.state, completedAt: null, completedBy: null };
+          this.renderReact();
+        },
       })
     );
   }
 
   public getOutputs(): IOutputs {
-    return { checkResults: this.outputJson } as IOutputs;
+    return { checklistResults: this.outputJson } as IOutputs;
   }
 
   public destroy(): void {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
     this.root.unmount();
   }
 }

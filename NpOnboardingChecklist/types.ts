@@ -52,6 +52,7 @@ export interface CrmValues {
   specialConditions: string;     // syg_specialconditionsnp → "Client has special conditions" / "Client has NO special conditions"
   aiaReporting: string;          // syg_aiareporting
   sygnumEmployee: string;        // syg_sgnumemployee formatted value
+  sygnumShareholder: string;     // syg_sygnumshareholdernp formatted value
 }
 
 export interface CheckState {
@@ -78,11 +79,13 @@ export const MANUAL_KEYS = new Set<string>([
   'active', 'pms', 'payment', 'block', 'archive',
   'chtax', 'dispatch', 'oms',
   'omst', 'btct', 'btcv', 'cv4',
+  'idcheck',
 ]);
 
 /** Keys in each section (excludes dynamic tax keys computed at runtime). */
-export const SEC1_KEYS = ['nat', 'dob', 'rm', 'active', 'risk', 'pep', 'sygnemp'] as const;
-export const SEC3_KEYS = ['currency', 'pms', 'payment', 'block', 'special', 'archive'] as const;
+export const SEC1_KEYS = ['nat', 'dob', 'rm', 'active', 'risk', 'pep', 'sygnemp', 'sygshareholder'] as const;
+export const SEC2_KEYS = ['idcheck'] as const;
+export const SEC3_KEYS = ['currency', 'portcurrency', 'pms', 'payment', 'block', 'special', 'archive'] as const;
 // Section 4: tax record keys (dynamic) + fixed items below
 export const SEC4_FIXED_KEYS = ['chtax', 'dispatch', 'indicia', 'oms'] as const;
 export const SEC5_KEYS = ['omst', 'cv4', 'btct', 'btcv'] as const;
@@ -96,7 +99,10 @@ export const ITEM_LABELS = {
   risk: 'Risk Level',
   pep: 'PEP Status',
   sygnemp: 'Sygnum Employee',
-  currency: 'Portfolio Default Currency',
+  sygshareholder: 'Sygnum Shareholder',
+  idcheck: 'ID Data Confirmed',
+  currency: 'Digital Asset Vault Currency',
+  portcurrency: 'Portfolio Default Currency',
   pms: 'PMS+',
   payment: 'Payment Rules Matching Main Account Currency',
   block: 'Remove General Block',

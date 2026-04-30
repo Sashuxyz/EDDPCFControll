@@ -4,10 +4,10 @@
 
 // Define IInputs and IOutputs Type. They should match with ControlManifest.
 export interface IInputs {
-    checkResults: ComponentFramework.PropertyTypes.StringProperty;
+    checklistResults: ComponentFramework.PropertyTypes.StringProperty;
     checklistConfig: ComponentFramework.PropertyTypes.StringProperty;
     isReadOnly: ComponentFramework.PropertyTypes.TwoOptionsProperty;
 }
 export interface IOutputs {
-    checkResults?: string;
+    checklistResults?: string;
 }

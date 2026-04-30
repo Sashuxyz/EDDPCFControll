@@ -5,10 +5,34 @@ interface Props {
   pending: number;
   blocked: number;
   unresolved: number;
+  completedAt: string | null;
+  completedBy: string | null;
   onComplete: () => void;
+  onRestart: () => void;
 }
 
-export function SubmitBar({ pending, blocked, unresolved, onComplete }: Props): React.ReactElement {
+export function SubmitBar({ pending, blocked, unresolved, completedAt, completedBy, onComplete, onRestart }: Props): React.ReactElement {
+  if (completedAt) {
+    const displayDate = new Date(completedAt).toLocaleString('de-CH');
+    return (
+      <div style={{ ...barStyle, background: '#dff6dd', borderTop: '2px solid #107c10' }}>
+        <div style={{ fontSize: 12, color: '#107c10', fontWeight: 600, flex: 1 }}>
+          ✓ Checklist completed — {displayDate}{completedBy ? ` by ${completedBy}` : ''}
+        </div>
+        <button
+          onClick={onRestart}
+          style={{
+            padding: '6px 16px', fontSize: 12, fontFamily: 'inherit', fontWeight: 600,
+            background: '#fff', color: '#323130',
+            border: '1px solid #8a8886', borderRadius: 2, cursor: 'pointer',
+          }}
+        >
+          Restart checklist
+        </button>
+      </div>
+    );
+  }
+
   const canSubmit = pending === 0 && blocked === 0 && unresolved === 0;
 
   let infoText = '';
@@ -17,9 +41,9 @@ export function SubmitBar({ pending, blocked, unresolved, onComplete }: Props): 
     if (pending > 0)    parts.push(`${pending} item${pending > 1 ? 's' : ''} not yet checked`);
     if (blocked > 0)    parts.push(`${blocked} manual check${blocked > 1 ? 's' : ''} not completed`);
     if (unresolved > 0) parts.push(`${unresolved} mismatch${unresolved > 1 ? 'es' : ''} unresolved`);
-    infoText = parts.join(' \u00b7 ');
+    infoText = parts.join(' · ');
   } else {
-    infoText = 'All checks completed \u2014 ready to submit';
+    infoText = 'All checks completed — ready to submit';
   }
 
   return (
@@ -44,9 +68,8 @@ export function SubmitBar({ pending, blocked, unresolved, onComplete }: Props): 
 }
 
 const barStyle: React.CSSProperties = {
-  position: 'fixed', bottom: 0, left: 0, right: 0,
   background: '#fff', borderTop: '1px solid #edebe9',
   padding: '10px 16px',
   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-  zIndex: 200,
+  flexShrink: 0,
 };

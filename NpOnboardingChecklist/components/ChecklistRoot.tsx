@@ -2,7 +2,7 @@
 import * as React from 'react';
 import {
   CheckState, AnswerValue, MismatchData, ManualNotDoneData,
-  MANUAL_KEYS, ITEM_LABELS, SEC1_KEYS, SEC3_KEYS, SEC4_FIXED_KEYS, SEC5_KEYS,
+  MANUAL_KEYS, ITEM_LABELS, SEC1_KEYS, SEC2_KEYS, SEC3_KEYS, SEC4_FIXED_KEYS, SEC5_KEYS,
   taxKey, SectionStatus,
 } from '../types';
 import { serializeCheckResults } from '../utils';
@@ -10,7 +10,6 @@ import { StickyHeader } from './StickyHeader';
 import { SectionCard } from './SectionCard';
 import { CheckItem } from './CheckItem';
 import { ManualCheckItem } from './ManualCheckItem';
-import { DisplayItem } from './DisplayItem';
 import { IdDocumentSection } from './IdDocumentSection';
 import { TaxRecordSection } from './TaxRecordSection';
 import { SubmitBar } from './SubmitBar';
@@ -20,6 +19,7 @@ interface Props {
   isReadOnly: boolean;
   userName: string;
   onOutputChanged: (json: string) => void;
+  onRestart: () => void;
 }
 
 interface Stats {
@@ -38,6 +38,7 @@ function computeStats(s: CheckState): Stats {
 
   const allCheckKeys: string[] = [
     ...SEC1_KEYS,
+    ...SEC2_KEYS,
     ...SEC3_KEYS,
     ...s.taxRecords.map((_, i) => taxKey(i)),
     ...SEC4_FIXED_KEYS,
@@ -67,24 +68,31 @@ function computeStats(s: CheckState): Stats {
   };
 }
 
-export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChanged }: Props): React.ReactElement {
+export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChanged, onRestart }: Props): React.ReactElement {
   const [state, setState] = React.useState<CheckState>(initialState);
   const itemRefs = React.useRef<Record<string, HTMLDivElement | null>>({});
   const prevStateRef = React.useRef(state);
 
-  // Sync CRM-loaded fields from parent once loadData completes.
-  // useState(initialState) captures the first render only, so without this
-  // the UI stays in its initial loading state forever.
+  // Sync full state from parent once loadData completes.
+  // useState(initialState) captures the first render only; this effect fires
+  // when loading transitions to false and syncs everything — CRM values AND
+  // any saved answers that were restored from syg_nponboardingchecklistresults.
   React.useEffect(() => {
+    if (initialState.loading) return;
     setState(prev => ({
       ...prev,
-      loading: initialState.loading,
+      loading: false,
       loadError: initialState.loadError,
       crmValues: initialState.crmValues,
       taxRecords: initialState.taxRecords,
       idDocument: initialState.idDocument,
+      answers: initialState.answers,
+      mismatches: initialState.mismatches,
+      manualNotDone: initialState.manualNotDone,
+      completedAt: initialState.completedAt,
+      completedBy: initialState.completedBy,
     }));
-  }, [initialState.loading, initialState.loadError, initialState.crmValues, initialState.taxRecords, initialState.idDocument]);
+  }, [initialState.loading]);
 
   // Serialize and notify whenever state changes (not during render)
   React.useEffect(() => {
@@ -137,6 +145,14 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
+  // Lock the whole checklist once completed; only explicit restart unlocks it
+  const effectiveReadOnly = isReadOnly || !!state.completedAt;
+
+  const handleRestart = React.useCallback((): void => {
+    setState(prev => ({ ...prev, completedAt: null, completedBy: null }));
+    onRestart();
+  }, [onRestart]);
+
   function itemRef(key: string): (el: HTMLDivElement | null) => void {
     return el => { itemRefs.current[key] = el; };
   }
@@ -176,13 +192,15 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
 
   const stats = computeStats(state);
   const s1 = sectionSummary(SEC1_KEYS);
+  const s2 = sectionSummary(SEC2_KEYS);
   const s3 = sectionSummary(SEC3_KEYS);
   const s4 = sectionSummary(SEC4_FIXED_KEYS, state.taxRecords.length);
   const s5 = sectionSummary(SEC5_KEYS);
   const { crmValues } = state;
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#faf9f8', color: '#201f1e', fontSize: 14, lineHeight: 1.4, paddingBottom: 72 }}>
+    <div style={{ fontFamily: "'Segoe UI', system-ui, sans-serif", background: '#faf9f8', color: '#201f1e', fontSize: 14, lineHeight: 1.4, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{ flex: 1, overflowY: 'auto' }}>
 
       <StickyHeader
         done={stats.done}
@@ -199,22 +217,23 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
 
       {/* ── Section 1: Client properties ── */}
       <SectionCard title="Client properties check" status={s1.status} summaryText={s1.text} defaultCollapsed={false}>
-        {(['nat', 'dob', 'rm', 'risk', 'pep', 'sygnemp'] as const).map(key => (
+        {(['nat', 'dob', 'rm', 'risk', 'pep', 'sygnemp', 'sygshareholder'] as const).map(key => (
           <div key={key} ref={itemRef(key)}>
             <CheckItem
               itemKey={key}
               label={ITEM_LABELS[key]}
               crmValue={
-                key === 'nat'     ? crmValues.nationalities :
-                key === 'dob'     ? crmValues.dateOfBirth :
-                key === 'rm'      ? crmValues.relationshipManager :
-                key === 'risk'    ? crmValues.riskLevel :
-                key === 'pep'     ? crmValues.pepStatus :
-                                    crmValues.sygnumEmployee
+                key === 'nat'          ? crmValues.nationalities :
+                key === 'dob'          ? crmValues.dateOfBirth :
+                key === 'rm'           ? crmValues.relationshipManager :
+                key === 'risk'         ? crmValues.riskLevel :
+                key === 'pep'          ? crmValues.pepStatus :
+                key === 'sygnemp'      ? crmValues.sygnumEmployee :
+                                         crmValues.sygnumShareholder
               }
               answer={state.answers[key] ?? null}
               mismatch={state.mismatches[key]}
-              isReadOnly={isReadOnly}
+              isReadOnly={effectiveReadOnly}
               onAnswer={handleAnswer}
               onMismatchChange={handleMismatchChange}
             />
@@ -226,21 +245,31 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             label={ITEM_LABELS['active']}
             answer={state.answers['active'] ?? null}
             notDone={state.manualNotDone['active']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onNotDoneChange={handleNotDoneChange}
           />
         </div>
       </SectionCard>
 
-      {/* ── Section 2: ID data (display only) ── */}
-      <SectionCard title="ID data" status="normal" summaryText="Display only" defaultCollapsed>
+      {/* ── Section 2: ID data ── */}
+      <SectionCard title="ID data" status={s2.status} summaryText={s2.text} defaultCollapsed>
         <IdDocumentSection idDocument={state.idDocument} clientSegment={crmValues.clientSegment} />
+        <div ref={itemRef('idcheck')}>
+          <ManualCheckItem
+            itemKey="idcheck"
+            label={ITEM_LABELS['idcheck']}
+            answer={state.answers['idcheck'] ?? null}
+            notDone={state.manualNotDone['idcheck']}
+            isReadOnly={effectiveReadOnly}
+            onAnswer={handleAnswer}
+            onNotDoneChange={handleNotDoneChange}
+          />
+        </div>
       </SectionCard>
 
       {/* ── Section 3: Finnova accounts ── */}
       <SectionCard title="Finnova accounts" status={s3.status} summaryText={s3.text}>
-        <DisplayItem label="Digital Asset Vault Currency" value={crmValues.referenceCurrency} />
         <div ref={itemRef('currency')}>
           <CheckItem
             itemKey="currency"
@@ -248,7 +277,19 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             crmValue={crmValues.referenceCurrency}
             answer={state.answers['currency'] ?? null}
             mismatch={state.mismatches['currency']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
+            onAnswer={handleAnswer}
+            onMismatchChange={handleMismatchChange}
+          />
+        </div>
+        <div ref={itemRef('portcurrency')}>
+          <CheckItem
+            itemKey="portcurrency"
+            label={ITEM_LABELS['portcurrency']}
+            crmValue={crmValues.referenceCurrency}
+            answer={state.answers['portcurrency'] ?? null}
+            mismatch={state.mismatches['portcurrency']}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onMismatchChange={handleMismatchChange}
           />
@@ -260,7 +301,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
               label={ITEM_LABELS[key]}
               answer={state.answers[key] ?? null}
               notDone={state.manualNotDone[key]}
-              isReadOnly={isReadOnly}
+              isReadOnly={effectiveReadOnly}
               onAnswer={handleAnswer}
               onNotDoneChange={handleNotDoneChange}
             />
@@ -273,7 +314,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             crmValue={crmValues.specialConditions}
             answer={state.answers['special'] ?? null}
             mismatch={state.mismatches['special']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onMismatchChange={handleMismatchChange}
           />
@@ -286,7 +327,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
           taxRecords={state.taxRecords}
           answers={state.answers}
           mismatches={state.mismatches}
-          isReadOnly={isReadOnly}
+          isReadOnly={effectiveReadOnly}
           onAnswer={handleAnswer}
           onMismatchChange={handleMismatchChange}
         />
@@ -297,7 +338,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             label={ITEM_LABELS['chtax']}
             answer={state.answers['chtax'] ?? null}
             notDone={state.manualNotDone['chtax']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onNotDoneChange={handleNotDoneChange}
           />
@@ -308,7 +349,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             label={ITEM_LABELS['dispatch']}
             answer={state.answers['dispatch'] ?? null}
             notDone={state.manualNotDone['dispatch']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onNotDoneChange={handleNotDoneChange}
           />
@@ -320,7 +361,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             crmValue={crmValues.aiaReporting}
             answer={state.answers['indicia'] ?? null}
             mismatch={state.mismatches['indicia']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onMismatchChange={handleMismatchChange}
           />
@@ -331,7 +372,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
             label={ITEM_LABELS['oms']}
             answer={state.answers['oms'] ?? null}
             notDone={state.manualNotDone['oms']}
-            isReadOnly={isReadOnly}
+            isReadOnly={effectiveReadOnly}
             onAnswer={handleAnswer}
             onNotDoneChange={handleNotDoneChange}
           />
@@ -347,7 +388,7 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
               label={(ITEM_LABELS as Record<string, string>)[key] ?? key}
               answer={state.answers[key] ?? null}
               notDone={state.manualNotDone[key]}
-              isReadOnly={isReadOnly}
+              isReadOnly={effectiveReadOnly}
               onAnswer={handleAnswer}
               onNotDoneChange={handleNotDoneChange}
             />
@@ -356,13 +397,17 @@ export function ChecklistRoot({ initialState, isReadOnly, userName, onOutputChan
       </SectionCard>
 
       <div style={{ height: 20 }} />
+    </div>
 
       {!isReadOnly && (
         <SubmitBar
           pending={stats.pending}
           blocked={stats.blockedKeys.length}
           unresolved={stats.unresolvedKeys.length}
+          completedAt={state.completedAt}
+          completedBy={state.completedBy}
           onComplete={handleComplete}
+          onRestart={handleRestart}
         />
       )}
     </div>

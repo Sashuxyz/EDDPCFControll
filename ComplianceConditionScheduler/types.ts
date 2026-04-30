@@ -1,11 +1,11 @@
 export type FrequencyType = 'One-off' | 'Recurring' | null;
-export type StartTypeValue = 'Fixed' | 'Relative' | null;
+export type StartTypeValue = 'Fixed' | 'Relative' | 'Periodic review' | null;
 export type StatusType = 'Draft' | 'Active' | 'Completed';
 
 export const FREQUENCY_MAP: Record<number, FrequencyType> = { 1: 'One-off', 2: 'Recurring' };
 export const FREQUENCY_REVERSE: Record<string, number> = { 'One-off': 1, 'Recurring': 2 };
-export const START_TYPE_MAP: Record<number, StartTypeValue> = { 1: 'Fixed', 2: 'Relative' };
-export const START_TYPE_REVERSE: Record<string, number> = { 'Fixed': 1, 'Relative': 2 };
+export const START_TYPE_MAP: Record<number, StartTypeValue> = { 1: 'Fixed', 2: 'Relative', 3: 'Periodic review' };
+export const START_TYPE_REVERSE: Record<string, number> = { 'Fixed': 1, 'Relative': 2, 'Periodic review': 3 };
 export const STATUS_MAP: Record<number, StatusType> = { 1: 'Draft', 100000002: 'Active', 2: 'Completed' };
 export const STATUS_REVERSE: Record<string, number> = { 'Draft': 1, 'Active': 100000002, 'Completed': 2 };
 
@@ -27,4 +27,5 @@ export const icons = {
   relative: 'M8 1.5a6.5 6.5 0 110 13 6.5 6.5 0 010-13zM8 3a5 5 0 100 10A5 5 0 008 3zm-.5 2h1v3h2.5v1H7.5V5z',
   pending: 'M8 2.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM8 4a4 4 0 100 8 4 4 0 000-8zm-.25 1.5h.75v2.75l2 1.19-.38.64-2.37-1.42V5.5z',
   reset: 'M2.5 8A5.5 5.5 0 018 2.5c1.58 0 3 .67 4.01 1.73L13 3v4H9l1.3-1.3A3.98 3.98 0 008 4a4 4 0 104 4h1.5A5.5 5.5 0 018 13.5 5.5 5.5 0 012.5 8z',
+  periodicReview: 'M13.5 8A5.5 5.5 0 018 13.5 5.5 5.5 0 012.5 8 5.5 5.5 0 018 2.5V1L11 3.5 8 6V4a4 4 0 100 8 4 4 0 004-4h1.5z',
 };

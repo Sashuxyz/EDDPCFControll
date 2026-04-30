@@ -26,10 +26,12 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
   disabled,
   onChange,
 }) => {
+  const isPeriodicReview = state.startType === 'Periodic review';
+
   const calculatedDueDate =
     state.startType === 'Relative' && state.anchorDate
       ? addDays(state.anchorDate, state.relativeDays ?? 0)
-      : state.startType === 'Fixed'
+      : (state.startType === 'Fixed' || isPeriodicReview)
         ? state.dueDate
         : null;
 
@@ -65,6 +67,7 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
     if (state.startType === 'Fixed' && !state.dueDate) return false;
     if (state.startType === 'Relative' && (!state.relativeDays || state.relativeDays <= 0)) return false;
     if (state.frequency === 'Recurring' && (!state.recurrenceInterval || state.recurrenceInterval <= 0)) return false;
+    // Periodic review: no due date required (set externally by review process)
     return true;
   }, [isConfigured, state]);
 
@@ -78,7 +81,7 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
     return null;
   }, [isConfigured, state]);
 
-  // Show activate button only for Fixed + Draft + valid
+  // Show activate button for Fixed or Periodic review + Draft + valid
   const showActivateButton = isDraft && isConfigured && isValid && !isRelative;
   // Show auto-activate message for Relative + Draft
   const showAutoActivateMsg = isDraft && isConfigured && isRelative;
@@ -185,7 +188,10 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
           />
           <OptionCard
             selected={state.frequency === 'Recurring'}
-            onClick={() => onChange('frequency', 'Recurring')}
+            onClick={() => {
+              onChange('frequency', 'Recurring');
+              if (isPeriodicReview) onChange('startType', null);
+            }}
             iconPath={icons.recurring}
             label="Recurring"
             description="Repeating cycle"
@@ -215,6 +221,16 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
               description="Days after approval"
               locked={structureLocked}
             />
+            {state.frequency === 'One-off' && (
+              <OptionCard
+                selected={isPeriodicReview}
+                onClick={() => onChange('startType', 'Periodic review')}
+                iconPath={icons.periodicReview}
+                label="Periodic review"
+                description="Date set by review cycle"
+                locked={structureLocked}
+              />
+            )}
           </div>
         </div>
       )}
@@ -243,6 +259,25 @@ export const SchedulerContainer: React.FC<SchedulerContainerProps> = ({
                 {state.frequency === 'Recurring'
                   ? 'First due date for the recurring cycle.'
                   : 'The deadline for this condition.'}
+              </div>
+            </div>
+          )}
+
+          {/* Periodic review — locked due date (set externally) */}
+          {isPeriodicReview && (
+            <div style={{ marginBottom: '16px' }}>
+              <div style={sectionStyles.fieldLabel}>Due date</div>
+              <input
+                type="date"
+                value={state.dueDate ?? ''}
+                disabled={true}
+                style={{
+                  ...inputStyles.dateField,
+                  ...inputStyles.dateFieldDisabled,
+                }}
+              />
+              <div style={sectionStyles.helperText}>
+                Due date is set automatically by the periodic review cycle.
               </div>
             </div>
           )}
