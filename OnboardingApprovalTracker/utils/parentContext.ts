@@ -47,7 +47,7 @@ async function fetchOnce(parent: ParentInfo): Promise<FetchOutcome> {
 
   try {
     const resp = await fetch(
-      `${baseUrl}/api/data/v9.2/${setName}(${parent.entityId})?$select=syg_approvalflow`,
+      `${baseUrl}/api/data/v9.2/${setName}(${parent.entityId})?$select=syg_approvalflowformula`,
       {
         credentials: 'include',
         headers: {
@@ -59,7 +59,7 @@ async function fetchOnce(parent: ParentInfo): Promise<FetchOutcome> {
     );
     if (!resp.ok && resp.status !== 304) return { kind: 'error' };
     const data = await resp.json();
-    const raw = data?.syg_approvalflow;
+    const raw = data?.syg_approvalflowformula;
     const approvalFlow = typeof raw === 'number' ? raw : null;
     return { kind: 'ok', approvalFlow };
   } catch {
