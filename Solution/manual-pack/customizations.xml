@@ -33,9 +33,5 @@
       <Name>Syg.NpOnboardingChecklist</Name>
       <FileName>/Controls/Syg.NpOnboardingChecklist/ControlManifest.xml</FileName>
     </CustomControl>
-    <CustomControl>
-      <Name>Syg.RelatedPartiesGraph</Name>
-      <FileName>/Controls/Syg.RelatedPartiesGraph/ControlManifest.xml</FileName>
-    </CustomControl>
   </CustomControls>
 </ImportExportXml>

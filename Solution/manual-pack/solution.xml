@@ -90,7 +90,6 @@
       <RootComponent type="66" schemaName="Syg.OnboardingApprovalTracker" behavior="0" />
       <RootComponent type="66" schemaName="Syg.WealthAllocationControl" behavior="0" />
       <RootComponent type="66" schemaName="Syg.NpOnboardingChecklist" behavior="0" />
-      <RootComponent type="66" schemaName="Syg.RelatedPartiesGraph" behavior="0" />
     </RootComponents>
     <MissingDependencies />
   </SolutionManifest>
