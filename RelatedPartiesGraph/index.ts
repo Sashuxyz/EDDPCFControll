@@ -107,9 +107,11 @@ export class RelatedPartiesGraph
         return;
       }
 
+      const ctxInfo = (context.mode as any)?.contextInfo;
+      const rawEntityId = ctxInfo?.entityId;
       const parentInfo = this.resolveParentProfile(context);
       if (!parentInfo) {
-        this.showError(`No parent profile found. entityTypeName=${(context.mode as any)?.contextInfo?.entityTypeName ?? 'undefined'}, entityId=${(context.mode as any)?.contextInfo?.entityId ?? 'undefined'}`);
+        this.showError(`No parent profile. entityTypeName=${ctxInfo?.entityTypeName ?? 'undefined'}, entityId type=${typeof rawEntityId}, value=${JSON.stringify(rawEntityId)}`);
         return;
       }
 
