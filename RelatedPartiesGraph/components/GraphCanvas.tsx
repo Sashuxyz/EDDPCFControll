@@ -1,0 +1,243 @@
+import * as React from 'react';
+import cytoscape, { Core, EventObject } from 'cytoscape';
+import coseBilkent from 'cytoscape-cose-bilkent';
+import { NodeData, EdgeData, IMPACT_COLORS, CENTRE_COLOR } from '../types';
+import { getConcentricLayout, getNodeDimensions } from '../utils/layout';
+import { containerStyles } from '../styles/tokens';
+
+let layoutRegistered = false;
+if (!layoutRegistered) {
+  cytoscape.use(coseBilkent);
+  layoutRegistered = true;
+}
+
+interface GraphCanvasProps {
+  centreProfileId: string;
+  centreProfileName: string;
+  nodes: Map<string, NodeData>;
+  edges: EdgeData[];
+  selectedNodeId: string | null;
+  onSelectNode: (nodeId: string | null) => void;
+  onDrillNode: (nodeId: string) => void;
+  onCtrlClickNode: (etn: string, id: string) => void;
+}
+
+export const GraphCanvas: React.FC<GraphCanvasProps> = ({
+  centreProfileId,
+  centreProfileName,
+  nodes,
+  edges,
+  selectedNodeId,
+  onSelectNode,
+  onDrillNode,
+  onCtrlClickNode,
+}) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const cyRef = React.useRef<Core | null>(null);
+
+  const elements = React.useMemo(() => {
+    const cyNodes: cytoscape.ElementDefinition[] = [];
+    const cyEdges: cytoscape.ElementDefinition[] = [];
+
+    cyNodes.push({
+      data: {
+        id: `profile-${centreProfileId}`,
+        label: centreProfileName,
+        sublabel: 'KYC Profile',
+        level: 0,
+        isCentre: true,
+        isDrillable: false,
+        isPep: false,
+        impact: null,
+      },
+    });
+
+    nodes.forEach((node) => {
+      cyNodes.push({
+        data: {
+          id: node.id,
+          label: node.displayName,
+          sublabel: node.partyTypeName,
+          level: node.level,
+          isCentre: false,
+          isDrillable: node.ownKycProfileId !== null,
+          isPep: node.pep,
+          impact: node.impact,
+          etn: node.etn,
+        },
+      });
+    });
+
+    for (const edge of edges) {
+      const sourceId = edge.source === centreProfileId
+        ? `profile-${centreProfileId}`
+        : edge.source;
+      cyEdges.push({
+        data: {
+          id: `edge-${edge.source}-${edge.target}`,
+          source: sourceId,
+          target: edge.target,
+        },
+      });
+    }
+
+    return [...cyNodes, ...cyEdges];
+  }, [centreProfileId, centreProfileName, nodes, edges]);
+
+  React.useEffect(() => {
+    if (!containerRef.current) return;
+
+    if (cyRef.current) {
+      cyRef.current.destroy();
+    }
+
+    const cy = cytoscape({
+      container: containerRef.current,
+      elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'shape': 'round-rectangle',
+            'label': 'data(label)',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'font-size': 10,
+            'font-family': "'Segoe UI', sans-serif",
+            'color': '#323130',
+            'background-color': '#FFFFFF',
+            'border-width': 2,
+            'border-color': '#A19F9D',
+            'text-wrap': 'wrap',
+            'text-max-width': '120px',
+          },
+        },
+        {
+          selector: 'node[?isCentre]',
+          style: {
+            'background-color': CENTRE_COLOR.bg,
+            'border-color': CENTRE_COLOR.border,
+            'color': CENTRE_COLOR.text,
+            'font-weight': 'bold',
+            'font-size': 11,
+          },
+        },
+        {
+          selector: 'node[?isDrillable]',
+          style: {
+            'border-style': 'double',
+          },
+        },
+        {
+          selector: 'node[impact = "Major"]',
+          style: {
+            'border-color': IMPACT_COLORS.Major.border,
+          },
+        },
+        {
+          selector: 'node[impact = "Minor"]',
+          style: {
+            'border-color': IMPACT_COLORS.Minor.border,
+          },
+        },
+        {
+          selector: 'node[impact = "No"]',
+          style: {
+            'border-color': IMPACT_COLORS.No.border,
+          },
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-width': 3,
+            'border-color': '#0078D4',
+            'overlay-color': '#0078D4',
+            'overlay-opacity': 0.1,
+          },
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 1,
+            'line-color': '#E1DFDD',
+            'curve-style': 'bezier',
+          },
+        },
+      ],
+      layout: getConcentricLayout() as unknown as cytoscape.LayoutOptions,
+      userZoomingEnabled: true,
+      userPanningEnabled: true,
+      boxSelectionEnabled: false,
+    });
+
+    cy.nodes().forEach((node) => {
+      const level = node.data('level') as number;
+      const dims = getNodeDimensions(level);
+      node.style({ width: dims.width, height: dims.height });
+    });
+
+    // Double-tap detection
+    let lastTapTime = 0;
+    let lastTapNodeId = '';
+
+    cy.on('tap', 'node', (evt: EventObject) => {
+      const originalEvent = evt.originalEvent as MouseEvent;
+
+      // Cmd/Ctrl+click: open record
+      if (originalEvent.metaKey || originalEvent.ctrlKey) {
+        const etn = evt.target.data('etn') as string;
+        const id = evt.target.id();
+        if (etn && id) {
+          onCtrlClickNode(etn, id);
+        }
+        return;
+      }
+
+      const nodeId = evt.target.id();
+      const now = Date.now();
+
+      // Double-tap detection
+      if (nodeId === lastTapNodeId && now - lastTapTime < 300) {
+        const isDrillable = evt.target.data('isDrillable');
+        if (isDrillable) {
+          onDrillNode(nodeId);
+        }
+        lastTapTime = 0;
+        lastTapNodeId = '';
+        return;
+      }
+
+      lastTapTime = now;
+      lastTapNodeId = nodeId;
+
+      // Single tap: select
+      const isCentre = evt.target.data('isCentre');
+      onSelectNode(isCentre ? null : nodeId);
+    });
+
+    cy.on('tap', (evt: EventObject) => {
+      if (evt.target === cy) {
+        onSelectNode(null);
+      }
+    });
+
+    cyRef.current = cy;
+
+    return () => {
+      cy.destroy();
+      cyRef.current = null;
+    };
+  }, [elements, onSelectNode, onDrillNode, onCtrlClickNode]);
+
+  React.useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.nodes().unselect();
+    if (selectedNodeId) {
+      const node = cy.getElementById(selectedNodeId);
+      if (node.length > 0) node.select();
+    }
+  }, [selectedNodeId]);
+
+  return <div ref={containerRef} style={containerStyles.canvas} />;
+};
