@@ -14,17 +14,30 @@ import { containerStyles } from './styles/tokens';
 
 function GraphApp(props: {
   state: GraphState;
+  debugLines: string[];
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, debugLines, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
+
+  const debugPanel = debugLines.length > 0
+    ? React.createElement('div', {
+        style: {
+          margin: '8px 16px', padding: '6px 8px', background: '#FFF4CE',
+          border: '1px solid #E1DFDD', borderRadius: 4, fontSize: 11,
+          fontFamily: 'Consolas, monospace', color: '#605E5C', maxHeight: 200,
+          overflowY: 'auto', whiteSpace: 'pre-wrap',
+        },
+      }, debugLines.map((line, i) => React.createElement('div', { key: i }, line)))
+    : null;
 
   if (state.nodes.size === 0 && state.expandedProfiles.length <= 1) {
     return React.createElement('div', { style: containerStyles.root },
-      React.createElement(EmptyState)
+      React.createElement(EmptyState),
+      debugPanel
     );
   }
 
@@ -48,7 +61,8 @@ function GraphApp(props: {
       onExpand: onDrillNode,
       onOpenRecord,
     }),
-    React.createElement(Legend)
+    React.createElement(Legend),
+    debugPanel
   );
 }
 
@@ -68,6 +82,7 @@ export class RelatedPartiesGraph
     loadingProfiles: new Set(),
   };
   private parentProfileId: string | null = null;
+  private debugLines: string[] = [];
 
   public init(
     context: ComponentFramework.Context<IInputs>,
@@ -113,7 +128,25 @@ export class RelatedPartiesGraph
     }
 
     if (!ds.loading) {
+      this.debugLines = [];
+      this.debugLines.push(`dataset: ${ds.sortedRecordIds.length} records`);
+      this.debugLines.push(`columns: ${ds.columns.map(c => c.name).join(', ')}`);
+      if (ds.sortedRecordIds.length > 0) {
+        const firstId = ds.sortedRecordIds[0];
+        const firstRec = ds.records[firstId];
+        for (const col of ds.columns) {
+          try {
+            const raw = firstRec.getValue(col.name);
+            const fmt = firstRec.getFormattedValue(col.name);
+            this.debugLines.push(`  ${col.name}: raw=${JSON.stringify(raw)}, fmt=${fmt}`);
+          } catch (e) {
+            this.debugLines.push(`  ${col.name}: ERROR ${e}`);
+          }
+        }
+      }
+      this.debugLines.push(`parentProfile: ${parentInfo.id} (${parentInfo.name})`);
       this.buildLevel1FromDataset(ds, parentInfo.id);
+      this.debugLines.push(`nodes after build: ${this.state.nodes.size}`);
     }
 
     this.renderReact();
@@ -234,6 +267,7 @@ export class RelatedPartiesGraph
     this.root.render(
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
+        debugLines: [...this.debugLines],
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
           this.renderReact();
