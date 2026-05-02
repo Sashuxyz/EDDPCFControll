@@ -1,4 +1,5 @@
 import { NodeData, EdgeData, RelatedPartyRecord } from '../types';
+import { cleanGuid, isValidGuid } from './navigation';
 
 export function datasetRecordToPartyRecord(
   record: ComponentFramework.PropertyTypes.DataSet['records'][string],
@@ -11,22 +12,30 @@ export function datasetRecordToPartyRecord(
     try { return record.getFormattedValue(name) ?? ''; } catch { return ''; }
   };
 
-  const relatedPartyId = getValue('syg_relatedpartyid') as string | null;
-  if (!relatedPartyId) return null;
+  const rawRef = getValue('syg_relatedpartyid');
+  if (!rawRef) return null;
 
+  let relatedPartyId: string;
   let etn: 'account' | 'contact' = 'contact';
-  const relatedPartyRef = getValue('syg_relatedpartyid');
-  if (relatedPartyRef && typeof relatedPartyRef === 'object' && 'etn' in (relatedPartyRef as Record<string, unknown>)) {
-    etn = ((relatedPartyRef as Record<string, unknown>).etn as string) === 'account' ? 'account' : 'contact';
+  let refName: string | undefined;
+
+  if (typeof rawRef === 'object' && rawRef !== null) {
+    const ref = rawRef as { id?: string; etn?: string; name?: string };
+    relatedPartyId = cleanGuid(ref.id ?? '');
+    etn = ref.etn === 'account' ? 'account' : 'contact';
+    refName = ref.name;
+  } else {
+    relatedPartyId = cleanGuid(String(rawRef));
   }
 
+  if (!relatedPartyId || !isValidGuid(relatedPartyId)) return null;
+
   const partyTypeName = getFormatted('syg_relatedpartytypeid') || '(Unknown)';
-  const relatedPartyName = getFormatted('syg_relatedpartyid') || '(Unknown)';
+  const relatedPartyName = getFormatted('syg_relatedpartyid') || refName || '(Unknown)';
 
   return {
     junctionId: record.getRecordId(),
-    relatedPartyId: typeof relatedPartyId === 'string' ? relatedPartyId :
-      (relatedPartyId as Record<string, unknown>)?.id as string ?? '',
+    relatedPartyId,
     relatedPartyEtn: etn,
     relatedPartyName,
     partyTypeName,

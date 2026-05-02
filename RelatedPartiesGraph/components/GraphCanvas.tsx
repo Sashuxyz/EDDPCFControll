@@ -1,15 +1,8 @@
 import * as React from 'react';
 import cytoscape, { Core, EventObject } from 'cytoscape';
-import coseBilkent from 'cytoscape-cose-bilkent';
 import { NodeData, EdgeData, IMPACT_COLORS, CENTRE_COLOR } from '../types';
 import { getConcentricLayout, getNodeDimensions } from '../utils/layout';
 import { containerStyles } from '../styles/tokens';
-
-let layoutRegistered = false;
-if (!layoutRegistered) {
-  cytoscape.use(coseBilkent);
-  layoutRegistered = true;
-}
 
 interface GraphCanvasProps {
   centreProfileId: string;
@@ -34,6 +27,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
+
+  const onSelectNodeRef = React.useRef(onSelectNode);
+  onSelectNodeRef.current = onSelectNode;
+  const onDrillNodeRef = React.useRef(onDrillNode);
+  onDrillNodeRef.current = onDrillNode;
+  const onCtrlClickNodeRef = React.useRef(onCtrlClickNode);
+  onCtrlClickNodeRef.current = onCtrlClickNode;
 
   const elements = React.useMemo(() => {
     const cyNodes: cytoscape.ElementDefinition[] = [];
@@ -188,7 +188,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         const etn = evt.target.data('etn') as string;
         const id = evt.target.id();
         if (etn && id) {
-          onCtrlClickNode(etn, id);
+          onCtrlClickNodeRef.current(etn, id);
         }
         return;
       }
@@ -200,7 +200,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       if (nodeId === lastTapNodeId && now - lastTapTime < 300) {
         const isDrillable = evt.target.data('isDrillable');
         if (isDrillable) {
-          onDrillNode(nodeId);
+          onDrillNodeRef.current(nodeId);
         }
         lastTapTime = 0;
         lastTapNodeId = '';
@@ -212,12 +212,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       // Single tap: select
       const isCentre = evt.target.data('isCentre');
-      onSelectNode(isCentre ? null : nodeId);
+      onSelectNodeRef.current(isCentre ? null : nodeId);
     });
 
     cy.on('tap', (evt: EventObject) => {
       if (evt.target === cy) {
-        onSelectNode(null);
+        onSelectNodeRef.current(null);
       }
     });
 
@@ -227,7 +227,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       cy.destroy();
       cyRef.current = null;
     };
-  }, [elements, onSelectNode, onDrillNode, onCtrlClickNode]);
+  }, [elements]);
 
   React.useEffect(() => {
     const cy = cyRef.current;

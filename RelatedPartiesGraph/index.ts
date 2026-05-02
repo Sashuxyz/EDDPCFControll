@@ -14,30 +14,17 @@ import { containerStyles } from './styles/tokens';
 
 function GraphApp(props: {
   state: GraphState;
-  debugLines: string[];
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, debugLines, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
-
-  const debugPanel = debugLines.length > 0
-    ? React.createElement('div', {
-        style: {
-          margin: '8px 16px', padding: '6px 8px', background: '#FFF4CE',
-          border: '1px solid #E1DFDD', borderRadius: 4, fontSize: 11,
-          fontFamily: 'Consolas, monospace', color: '#605E5C', maxHeight: 200,
-          overflowY: 'auto', whiteSpace: 'pre-wrap',
-        },
-      }, debugLines.map((line, i) => React.createElement('div', { key: i }, line)))
-    : null;
 
   if (state.nodes.size === 0 && state.expandedProfiles.length <= 1) {
     return React.createElement('div', { style: containerStyles.root },
-      React.createElement(EmptyState),
-      debugPanel
+      React.createElement(EmptyState)
     );
   }
 
@@ -61,8 +48,7 @@ function GraphApp(props: {
       onExpand: onDrillNode,
       onOpenRecord,
     }),
-    React.createElement(Legend),
-    debugPanel
+    React.createElement(Legend)
   );
 }
 
@@ -82,7 +68,6 @@ export class RelatedPartiesGraph
     loadingProfiles: new Set(),
   };
   private parentProfileId: string | null = null;
-  private debugLines: string[] = [];
 
   public init(
     context: ComponentFramework.Context<IInputs>,
@@ -128,25 +113,8 @@ export class RelatedPartiesGraph
     }
 
     if (!ds.loading) {
-      this.debugLines = [];
-      this.debugLines.push(`dataset: ${ds.sortedRecordIds.length} records`);
-      this.debugLines.push(`columns: ${ds.columns.map(c => c.name).join(', ')}`);
-      if (ds.sortedRecordIds.length > 0) {
-        const firstId = ds.sortedRecordIds[0];
-        const firstRec = ds.records[firstId];
-        for (const col of ds.columns) {
-          try {
-            const raw = firstRec.getValue(col.name);
-            const fmt = firstRec.getFormattedValue(col.name);
-            this.debugLines.push(`  ${col.name}: raw=${JSON.stringify(raw)}, fmt=${fmt}`);
-          } catch (e) {
-            this.debugLines.push(`  ${col.name}: ERROR ${e}`);
-          }
-        }
-      }
-      this.debugLines.push(`parentProfile: ${parentInfo.id} (${parentInfo.name})`);
       this.buildLevel1FromDataset(ds, parentInfo.id);
-      this.debugLines.push(`nodes after build: ${this.state.nodes.size}`);
+      void this.enrichLevel1WithImpact(parentInfo.id);
     }
 
     this.renderReact();
@@ -170,6 +138,13 @@ export class RelatedPartiesGraph
     ds: ComponentFramework.PropertyTypes.DataSet,
     profileId: string
   ): void {
+    // Keep existing level 2-3 nodes and edges
+    const existingHigherNodes = new Map<string, NodeData>();
+    this.state.nodes.forEach((node, id) => {
+      if (node.level > 1) existingHigherNodes.set(id, node);
+    });
+    const existingHigherEdges = this.state.edges.filter(e => e.level > 1);
+
     const nodes = new Map<string, NodeData>();
     const edges: EdgeData[] = [];
 
@@ -184,21 +159,49 @@ export class RelatedPartiesGraph
       }
     }
 
-    this.state.nodes = nodes;
-    this.state.edges = edges;
+    // Merge back higher-level data
+    existingHigherNodes.forEach((node, id) => {
+      if (!nodes.has(id)) nodes.set(id, node);
+    });
 
-    const customerIds = Array.from(nodes.keys());
+    this.state.nodes = nodes;
+    this.state.edges = [...edges, ...existingHigherEdges];
+
+    const customerIds = Array.from(nodes.keys()).filter(id => {
+      const n = nodes.get(id);
+      return n && n.level === 1;
+    });
     if (customerIds.length > 0) {
       void this.resolveDrillability(customerIds);
     }
   }
 
+  private async enrichLevel1WithImpact(profileId: string): Promise<void> {
+    try {
+      const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
+      for (const party of parties) {
+        const existingNode = this.state.nodes.get(party.relatedPartyId);
+        if (existingNode) {
+          existingNode.impact = party.impact;
+          existingNode.score = party.score;
+          existingNode.partyTypeKey = party.partyTypeKey;
+          if (party.partyTypeName && party.partyTypeName !== '(Unknown)') {
+            existingNode.partyTypeName = party.partyTypeName;
+          }
+        }
+      }
+      this.renderReact();
+    } catch { /* silent */ }
+  }
+
   private async resolveDrillability(customerIds: string[]): Promise<void> {
-    this.state.drillCache = await batchResolveDrillability(
+    const resolved = await batchResolveDrillability(
       this.context.webAPI,
       customerIds,
       this.state.drillCache
     );
+    // Merge rather than replace to avoid race with concurrent calls
+    resolved.forEach((v, k) => this.state.drillCache.set(k, v));
     this.state.nodes.forEach((node, id) => {
       if (this.state.drillCache.has(id)) {
         node.ownKycProfileId = this.state.drillCache.get(id) ?? null;
@@ -227,7 +230,9 @@ export class RelatedPartiesGraph
           const newNode = partyRecordToNode(party, nextLevel, profileId, this.state.drillCache);
           this.state.nodes.set(newNode.id, newNode);
         }
-        this.state.edges.push(buildEdge(profileId, party.relatedPartyId, party.partyTypeName, nextLevel));
+        if (!this.state.edges.some(e => e.source === profileId && e.target === party.relatedPartyId)) {
+          this.state.edges.push(buildEdge(profileId, party.relatedPartyId, party.partyTypeName, nextLevel));
+        }
       }
 
       this.state.expandedProfiles.push({ id: profileId, name: node.displayName });
@@ -267,7 +272,6 @@ export class RelatedPartiesGraph
     this.root.render(
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
-        debugLines: [...this.debugLines],
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
           this.renderReact();

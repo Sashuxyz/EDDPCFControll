@@ -1,4 +1,5 @@
 import { RelatedPartyRecord, MAX_CONCURRENT_DRILL_CHECKS } from '../types';
+import { isValidGuid, cleanGuid } from './navigation';
 
 type WebAPI = ComponentFramework.WebApi;
 
@@ -33,6 +34,8 @@ export async function fetchPartiesForProfile(
   webAPI: WebAPI,
   profileId: string
 ): Promise<RelatedPartyRecord[]> {
+  const cleanId = cleanGuid(profileId);
+  if (!isValidGuid(cleanId)) return [];
   const result = await webAPI.retrieveMultipleRecords(
     'syg_relatedclientparties',
     `?$filter=_syg_kycprofileid_value eq ${profileId} and statecode eq 0` +
@@ -46,6 +49,8 @@ export async function findKycProfileForCustomer(
   webAPI: WebAPI,
   customerId: string
 ): Promise<{ id: string; name: string } | null> {
+  const cleanId = cleanGuid(customerId);
+  if (!isValidGuid(cleanId)) return null;
   try {
     const result = await webAPI.retrieveMultipleRecords(
       'syg_kycprofile',
