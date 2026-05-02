@@ -148,16 +148,21 @@ export class RelatedPartiesGraph
 
   private resolveParentProfile(context: ComponentFramework.Context<IInputs>): { id: string; name: string } | null {
     const info = (context.mode as unknown as {
-      contextInfo?: { entityId?: string; entityTypeName?: string };
+      contextInfo?: { entityId?: unknown; entityTypeName?: string };
     }).contextInfo;
-    if (info?.entityId && info?.entityTypeName === 'syg_kycprofile') {
-      const label = (context.mode as unknown as { label?: string }).label;
-      return {
-        id: info.entityId.replace(/[{}]/g, ''),
-        name: label || 'KYC Profile',
-      };
-    }
-    return null;
+    if (!info?.entityId || info?.entityTypeName !== 'syg_kycprofile') return null;
+
+    // entityId can be a string or a GUID object — coerce safely
+    const rawId = info.entityId;
+    const idStr = typeof rawId === 'string' ? rawId : String(rawId);
+    const cleaned = idStr.replace(/[{}]/g, '');
+    if (!cleaned) return null;
+
+    const label = (context.mode as unknown as { label?: string }).label;
+    return {
+      id: cleaned,
+      name: label || 'KYC Profile',
+    };
   }
 
   private buildLevel1FromDataset(
