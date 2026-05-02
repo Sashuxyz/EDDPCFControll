@@ -69,55 +69,81 @@ export class RelatedPartiesGraph
   };
   private parentProfileId: string | null = null;
 
+  private container!: HTMLDivElement;
+  private initError: string | null = null;
+
   public init(
     context: ComponentFramework.Context<IInputs>,
     _notifyOutputChanged: () => void,
     _state: ComponentFramework.Dictionary,
     container: HTMLDivElement
   ): void {
-    this.root = createRoot(container);
-    this.context = context;
-    context.mode.trackContainerResize(true);
+    this.container = container;
     try {
-      context.parameters.parties.paging.setPageSize(250);
-    } catch { /* not available */ }
+      this.root = createRoot(container);
+      this.context = context;
+      context.mode.trackContainerResize(true);
+      try {
+        context.parameters.parties.paging.setPageSize(250);
+      } catch { /* not available */ }
+    } catch (e) {
+      this.initError = `init failed: ${e}`;
+      container.textContent = this.initError;
+    }
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
-    this.context = context;
-    const ds = context.parameters.parties;
-
-    if (!ds.loading && ds.paging?.hasNextPage) {
-      try { ds.paging.loadNextPage(); } catch { /* give up */ }
+    if (this.initError) {
+      this.container.textContent = this.initError;
       return;
     }
 
-    const parentInfo = this.resolveParentProfile(context);
-    if (!parentInfo) {
+    try {
+      this.context = context;
+      const ds = context.parameters.parties;
+
+      if (!ds.loading && ds.paging?.hasNextPage) {
+        try { ds.paging.loadNextPage(); } catch { /* give up */ }
+        return;
+      }
+
+      const parentInfo = this.resolveParentProfile(context);
+      if (!parentInfo) {
+        this.showError(`No parent profile found. entityTypeName=${(context.mode as any)?.contextInfo?.entityTypeName ?? 'undefined'}, entityId=${(context.mode as any)?.contextInfo?.entityId ?? 'undefined'}`);
+        return;
+      }
+
+      if (parentInfo.id !== this.parentProfileId) {
+        this.parentProfileId = parentInfo.id;
+        this.state = {
+          centreProfileId: parentInfo.id,
+          centreProfileName: parentInfo.name,
+          expandedProfiles: [{ id: parentInfo.id, name: parentInfo.name }],
+          nodes: new Map(),
+          edges: [],
+          selectedNodeId: null,
+          drillCache: new Map(),
+          loadingProfiles: new Set(),
+        };
+      }
+
+      if (!ds.loading) {
+        this.buildLevel1FromDataset(ds, parentInfo.id);
+        void this.enrichLevel1WithImpact(parentInfo.id);
+      }
+
       this.renderReact();
-      return;
+    } catch (e) {
+      this.showError(`updateView error: ${e}`);
     }
+  }
 
-    if (parentInfo.id !== this.parentProfileId) {
-      this.parentProfileId = parentInfo.id;
-      this.state = {
-        centreProfileId: parentInfo.id,
-        centreProfileName: parentInfo.name,
-        expandedProfiles: [{ id: parentInfo.id, name: parentInfo.name }],
-        nodes: new Map(),
-        edges: [],
-        selectedNodeId: null,
-        drillCache: new Map(),
-        loadingProfiles: new Set(),
-      };
-    }
-
-    if (!ds.loading) {
-      this.buildLevel1FromDataset(ds, parentInfo.id);
-      void this.enrichLevel1WithImpact(parentInfo.id);
-    }
-
-    this.renderReact();
+  private showError(msg: string): void {
+    this.root.render(
+      React.createElement('div', {
+        style: { padding: 16, fontSize: 12, color: '#A4262C', fontFamily: "'Segoe UI', sans-serif", background: '#FFF4CE', border: '1px solid #E1DFDD', borderRadius: 4, margin: 8 },
+      }, msg)
+    );
   }
 
   private resolveParentProfile(context: ComponentFramework.Context<IInputs>): { id: string; name: string } | null {
