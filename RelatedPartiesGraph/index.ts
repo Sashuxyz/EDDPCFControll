@@ -325,19 +325,22 @@ export class RelatedPartiesGraph
 
     try {
       const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
-      if (parties.length === 0) {
-        this.showError(`Drill: ${node.displayName} profile ${profileId} returned 0 parties`);
-      }
       const nextLevel = (node.level + 1) as 1 | 2 | 3;
       const edgeSourceId = nodeId;
+      let newNodesAdded = 0;
+      let newEdgesAdded = 0;
 
       for (const party of parties) {
         if (!this.state.nodes.has(party.relatedPartyId)) {
           const newNode = partyRecordToNode(party, nextLevel, profileId, this.state.drillCache);
           this.state.nodes.set(newNode.id, newNode);
+          newNodesAdded++;
         }
-        if (!this.state.edges.some(e => e.source === edgeSourceId && e.target === party.relatedPartyId)) {
+        // Always add the edge even if node already exists (shows cross-connection)
+        const edgeId = `${edgeSourceId}-${party.relatedPartyId}`;
+        if (!this.state.edges.some(e => `${e.source}-${e.target}` === edgeId)) {
           this.state.edges.push(buildEdge(edgeSourceId, party.relatedPartyId, party.partyTypeName, nextLevel));
+          newEdgesAdded++;
         }
       }
 

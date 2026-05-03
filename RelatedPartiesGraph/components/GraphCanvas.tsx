@@ -149,7 +149,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
-  const prevNodeCountRef = React.useRef(0);
+  const prevElementCountRef = React.useRef(0);
 
   // Stable callback refs
   const onSelectNodeRef = React.useRef(onSelectNode);
@@ -217,9 +217,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (!cy) return;
 
     const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
-    const newNodeCount = nodes.size + 1;
-    const structureChanged = newNodeCount !== prevNodeCountRef.current;
-    prevNodeCountRef.current = newNodeCount;
+    const newElementCount = newElements.length;
+    const structureChanged = newElementCount !== prevElementCountRef.current;
+    prevElementCountRef.current = newElementCount;
 
     if (structureChanged || cy.nodes().length === 0) {
       // Structural change (nodes added/removed) — full replace + layout
