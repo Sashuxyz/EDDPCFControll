@@ -160,6 +160,7 @@ export class RelatedPartiesGraph
         this.buildLevel1FromDataset(ds, parentInfo.id);
         this.debugInfo += `\nnodes after build: ${this.state.nodes.size}`;
         void this.enrichLevel1WithImpact(parentInfo.id);
+        void this.fetchCentreProfileClientName(parentInfo.id);
       }
 
       this.renderReact();
@@ -199,6 +200,20 @@ export class RelatedPartiesGraph
     ds: ComponentFramework.PropertyTypes.DataSet,
     profileId: string
   ): void {
+    // Try to get the profile name from the dataset's kycprofileid lookup
+    if (ds.sortedRecordIds.length > 0) {
+      const firstRec = ds.records[ds.sortedRecordIds[0]];
+      try {
+        const profileName = firstRec.getFormattedValue('syg_kycprofileid');
+        if (profileName && this.state.centreProfileName !== profileName) {
+          this.state.centreProfileName = profileName;
+          if (this.state.expandedProfiles.length > 0) {
+            this.state.expandedProfiles[0].name = profileName;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     // Keep existing level 2-3 nodes and edges
     const existingHigherNodes = new Map<string, NodeData>();
     this.state.nodes.forEach((node, id) => {
@@ -235,6 +250,23 @@ export class RelatedPartiesGraph
     if (customerIds.length > 0) {
       void this.resolveDrillability(customerIds);
     }
+  }
+
+  private async fetchCentreProfileClientName(profileId: string): Promise<void> {
+    try {
+      const record = await this.context.webAPI.retrieveRecord(
+        'syg_kycprofile', profileId,
+        '?$select=_syg_clientid_value'
+      );
+      const clientName = record['_syg_clientid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined;
+      if (clientName) {
+        this.state.centreProfileName = clientName;
+        if (this.state.expandedProfiles.length > 0) {
+          this.state.expandedProfiles[0].name = clientName;
+        }
+        this.renderReact();
+      }
+    } catch { /* silent */ }
   }
 
   private async enrichLevel1WithImpact(profileId: string): Promise<void> {
