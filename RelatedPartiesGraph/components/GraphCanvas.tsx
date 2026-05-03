@@ -4,6 +4,59 @@ import { NodeData, EdgeData, IMPACT_COLORS, CENTRE_COLOR } from '../types';
 import { getConcentricLayout, getNodeDimensions } from '../utils/layout';
 import { containerStyles } from '../styles/tokens';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const CY_STYLES: any = [
+  {
+    selector: 'node',
+    style: {
+      'shape': 'round-rectangle',
+      'label': 'data(label)',
+      'text-valign': 'center',
+      'text-halign': 'center',
+      'font-size': 10,
+      'font-family': "'Segoe UI', sans-serif",
+      'color': '#323130',
+      'background-color': '#FFFFFF',
+      'border-width': 2,
+      'border-color': 'data(borderColor)',
+      'text-wrap': 'wrap',
+      'text-max-width': '130px',
+      'padding': '8px',
+    } as cytoscape.Css.Node,
+  },
+  {
+    selector: 'node[?isCentre]',
+    style: {
+      'background-color': CENTRE_COLOR.bg,
+      'border-color': CENTRE_COLOR.border,
+      'color': CENTRE_COLOR.text,
+      'font-weight': 'bold',
+      'font-size': 12,
+    },
+  },
+  {
+    selector: 'node[?isDrillable]',
+    style: { 'border-width': 3 },
+  },
+  {
+    selector: 'node:selected',
+    style: {
+      'border-width': 4,
+      'overlay-color': '#0078D4',
+      'overlay-opacity': 0.08,
+    },
+  },
+  {
+    selector: 'edge',
+    style: {
+      'width': 1,
+      'line-color': '#D2D0CE',
+      'curve-style': 'bezier',
+      'target-arrow-shape': 'none',
+    },
+  },
+];
+
 interface GraphCanvasProps {
   centreProfileId: string;
   centreProfileName: string;
@@ -13,6 +66,63 @@ interface GraphCanvasProps {
   onSelectNode: (nodeId: string | null) => void;
   onDrillNode: (nodeId: string) => void;
   onCtrlClickNode: (etn: string, id: string) => void;
+}
+
+function buildElements(
+  centreProfileId: string,
+  centreProfileName: string,
+  nodes: Map<string, NodeData>,
+  edges: EdgeData[]
+): cytoscape.ElementDefinition[] {
+  const els: cytoscape.ElementDefinition[] = [];
+
+  els.push({
+    data: {
+      id: `profile-${centreProfileId}`,
+      label: centreProfileName,
+      level: 0,
+      isCentre: true,
+      isDrillable: false,
+      isPep: false,
+      impact: null,
+      borderColor: CENTRE_COLOR.border,
+    },
+  });
+
+  nodes.forEach((node) => {
+    const impact = node.impact ?? 'No';
+    const colors = IMPACT_COLORS[impact] ?? IMPACT_COLORS.No;
+    const pepSuffix = node.pep ? ' [PEP]' : '';
+    const drillSuffix = node.ownKycProfileId ? ' +' : '';
+    els.push({
+      data: {
+        id: node.id,
+        label: node.displayName + pepSuffix + drillSuffix + '\n' + node.partyTypeName,
+        level: node.level,
+        isCentre: false,
+        isDrillable: node.ownKycProfileId !== null,
+        isPep: node.pep,
+        impact,
+        etn: node.etn,
+        borderColor: colors.border,
+      },
+    });
+  });
+
+  for (const edge of edges) {
+    const sourceId = edge.source === centreProfileId
+      ? `profile-${centreProfileId}`
+      : edge.source;
+    els.push({
+      data: {
+        id: `edge-${edge.source}-${edge.target}`,
+        source: sourceId,
+        target: edge.target,
+      },
+    });
+  }
+
+  return els;
 }
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -27,7 +137,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
+  const prevNodeCountRef = React.useRef(0);
 
+  // Stable callback refs
   const onSelectNodeRef = React.useRef(onSelectNode);
   onSelectNodeRef.current = onSelectNode;
   const onDrillNodeRef = React.useRef(onDrillNode);
@@ -35,133 +147,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const onCtrlClickNodeRef = React.useRef(onCtrlClickNode);
   onCtrlClickNodeRef.current = onCtrlClickNode;
 
-  const elements = React.useMemo(() => {
-    const cyNodes: cytoscape.ElementDefinition[] = [];
-    const cyEdges: cytoscape.ElementDefinition[] = [];
-
-    cyNodes.push({
-      data: {
-        id: `profile-${centreProfileId}`,
-        label: centreProfileName,
-        level: 0,
-        isCentre: true,
-        isDrillable: false,
-        isPep: false,
-        impact: null,
-        borderColor: CENTRE_COLOR.border,
-      },
-    });
-
-    nodes.forEach((node) => {
-      const impact = node.impact ?? 'No';
-      const colors = IMPACT_COLORS[impact] ?? IMPACT_COLORS.No;
-      const pepSuffix = node.pep ? ' [PEP]' : '';
-      const drillSuffix = node.ownKycProfileId ? ' +' : '';
-      cyNodes.push({
-        data: {
-          id: node.id,
-          label: node.displayName + pepSuffix + drillSuffix + '\n' + node.partyTypeName,
-          level: node.level,
-          isCentre: false,
-          isDrillable: node.ownKycProfileId !== null,
-          isPep: node.pep,
-          impact: impact,
-          etn: node.etn,
-          borderColor: colors.border,
-          roleColor: colors.text,
-        },
-      });
-    });
-
-    for (const edge of edges) {
-      const sourceId = edge.source === centreProfileId
-        ? `profile-${centreProfileId}`
-        : edge.source;
-      cyEdges.push({
-        data: {
-          id: `edge-${edge.source}-${edge.target}`,
-          source: sourceId,
-          target: edge.target,
-        },
-      });
-    }
-
-    return [...cyNodes, ...cyEdges];
-  }, [centreProfileId, centreProfileName, nodes, edges]);
-
+  // Create Cytoscape once on mount
   React.useEffect(() => {
     if (!containerRef.current) return;
 
-    if (cyRef.current) {
-      cyRef.current.destroy();
-    }
-
     const cy = cytoscape({
       container: containerRef.current,
-      elements,
-      style: [
-        {
-          selector: 'node',
-          style: {
-            'shape': 'round-rectangle',
-            'label': 'data(label)',
-            'text-valign': 'center',
-            'text-halign': 'center',
-            'font-size': 10,
-            'font-family': "'Segoe UI', sans-serif",
-            'color': '#323130',
-            'background-color': '#FFFFFF',
-            'border-width': 2,
-            'border-color': 'data(borderColor)',
-            'text-wrap': 'wrap',
-            'text-max-width': '130px',
-            'padding': '8px',
-          } as cytoscape.Css.Node,
-        },
-        {
-          selector: 'node[?isCentre]',
-          style: {
-            'background-color': CENTRE_COLOR.bg,
-            'border-color': CENTRE_COLOR.border,
-            'color': CENTRE_COLOR.text,
-            'font-weight': 'bold',
-            'font-size': 12,
-          },
-        },
-        {
-          selector: 'node[?isDrillable]',
-          style: {
-            'border-width': 3,
-          },
-        },
-        {
-          selector: 'node:selected',
-          style: {
-            'border-width': 4,
-            'overlay-color': '#0078D4',
-            'overlay-opacity': 0.08,
-          },
-        },
-        {
-          selector: 'edge',
-          style: {
-            'width': 1,
-            'line-color': '#D2D0CE',
-            'curve-style': 'bezier',
-            'target-arrow-shape': 'none',
-          },
-        },
-      ],
-      layout: getConcentricLayout() as unknown as cytoscape.LayoutOptions,
+      elements: [],
+      style: CY_STYLES,
       userZoomingEnabled: true,
       userPanningEnabled: true,
       boxSelectionEnabled: false,
-    });
-
-    cy.nodes().forEach((node) => {
-      const level = node.data('level') as number;
-      const dims = getNodeDimensions(level);
-      node.style({ width: dims.width, height: dims.height });
     });
 
     // Double-tap detection
@@ -170,26 +166,19 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     cy.on('tap', 'node', (evt: EventObject) => {
       const originalEvent = evt.originalEvent as MouseEvent;
-
-      // Cmd/Ctrl+click: open record
       if (originalEvent.metaKey || originalEvent.ctrlKey) {
         const etn = evt.target.data('etn') as string;
         const id = evt.target.id();
-        if (etn && id) {
-          onCtrlClickNodeRef.current(etn, id);
-        }
+        if (etn && id) onCtrlClickNodeRef.current(etn, id);
         return;
       }
 
       const nodeId = evt.target.id();
       const now = Date.now();
 
-      // Double-tap detection
       if (nodeId === lastTapNodeId && now - lastTapTime < 300) {
         const isDrillable = evt.target.data('isDrillable');
-        if (isDrillable) {
-          onDrillNodeRef.current(nodeId);
-        }
+        if (isDrillable) onDrillNodeRef.current(nodeId);
         lastTapTime = 0;
         lastTapNodeId = '';
         return;
@@ -198,25 +187,46 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       lastTapTime = now;
       lastTapNodeId = nodeId;
 
-      // Single tap: select
       const isCentre = evt.target.data('isCentre');
       onSelectNodeRef.current(isCentre ? null : nodeId);
     });
 
     cy.on('tap', (evt: EventObject) => {
-      if (evt.target === cy) {
-        onSelectNodeRef.current(null);
-      }
+      if (evt.target === cy) onSelectNodeRef.current(null);
     });
 
     cyRef.current = cy;
+    return () => { cy.destroy(); cyRef.current = null; };
+  }, []); // mount only
 
-    return () => {
-      cy.destroy();
-      cyRef.current = null;
-    };
-  }, [elements]);
+  // Update elements in-place — only re-layout when node count changes
+  React.useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
 
+    const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
+    const newNodeCount = nodes.size + 1; // +1 for centre
+    const needsLayout = newNodeCount !== prevNodeCountRef.current;
+    prevNodeCountRef.current = newNodeCount;
+
+    // Remove all existing elements and add new ones
+    cy.elements().remove();
+    cy.add(newElements);
+
+    // Set node dimensions
+    cy.nodes().forEach((node) => {
+      const level = node.data('level') as number;
+      const dims = getNodeDimensions(level);
+      node.style({ width: dims.width, height: dims.height });
+    });
+
+    // Only run layout animation when nodes were added/removed
+    if (needsLayout) {
+      cy.layout(getConcentricLayout() as unknown as cytoscape.LayoutOptions).run();
+    }
+  }, [centreProfileId, centreProfileName, nodes, edges]);
+
+  // Sync selection without recreating graph
   React.useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
