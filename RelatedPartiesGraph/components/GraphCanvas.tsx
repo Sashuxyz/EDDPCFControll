@@ -42,28 +42,33 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     cyNodes.push({
       data: {
         id: `profile-${centreProfileId}`,
-        label: centreProfileName,
-        sublabel: 'KYC Profile',
+        label: centreProfileName + '\nKYC Profile',
         level: 0,
         isCentre: true,
         isDrillable: false,
         isPep: false,
         impact: null,
+        borderColor: CENTRE_COLOR.border,
       },
     });
 
     nodes.forEach((node) => {
+      const impact = node.impact ?? 'No';
+      const colors = IMPACT_COLORS[impact] ?? IMPACT_COLORS.No;
+      const pepSuffix = node.pep ? ' [PEP]' : '';
+      const drillSuffix = node.ownKycProfileId ? ' +' : '';
       cyNodes.push({
         data: {
           id: node.id,
-          label: node.displayName,
-          sublabel: node.partyTypeName,
+          label: node.displayName + pepSuffix + drillSuffix + '\n' + node.partyTypeName,
           level: node.level,
           isCentre: false,
           isDrillable: node.ownKycProfileId !== null,
           isPep: node.pep,
-          impact: node.impact,
+          impact: impact,
           etn: node.etn,
+          borderColor: colors.border,
+          roleColor: colors.text,
         },
       });
     });
@@ -107,10 +112,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             'color': '#323130',
             'background-color': '#FFFFFF',
             'border-width': 2,
-            'border-color': '#A19F9D',
+            'border-color': 'data(borderColor)',
             'text-wrap': 'wrap',
-            'text-max-width': '120px',
-          },
+            'text-max-width': '130px',
+            'padding': '8px',
+          } as cytoscape.Css.Node,
         },
         {
           selector: 'node[?isCentre]',
@@ -119,48 +125,30 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             'border-color': CENTRE_COLOR.border,
             'color': CENTRE_COLOR.text,
             'font-weight': 'bold',
-            'font-size': 11,
+            'font-size': 12,
           },
         },
         {
           selector: 'node[?isDrillable]',
           style: {
-            'border-style': 'double',
-          },
-        },
-        {
-          selector: 'node[impact = "Major"]',
-          style: {
-            'border-color': IMPACT_COLORS.Major.border,
-          },
-        },
-        {
-          selector: 'node[impact = "Minor"]',
-          style: {
-            'border-color': IMPACT_COLORS.Minor.border,
-          },
-        },
-        {
-          selector: 'node[impact = "No"]',
-          style: {
-            'border-color': IMPACT_COLORS.No.border,
+            'border-width': 3,
           },
         },
         {
           selector: 'node:selected',
           style: {
-            'border-width': 3,
-            'border-color': '#0078D4',
+            'border-width': 4,
             'overlay-color': '#0078D4',
-            'overlay-opacity': 0.1,
+            'overlay-opacity': 0.08,
           },
         },
         {
           selector: 'edge',
           style: {
             'width': 1,
-            'line-color': '#E1DFDD',
+            'line-color': '#D2D0CE',
             'curve-style': 'bezier',
+            'target-arrow-shape': 'none',
           },
         },
       ],

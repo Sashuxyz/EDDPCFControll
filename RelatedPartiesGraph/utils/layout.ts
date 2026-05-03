@@ -17,7 +17,7 @@ export function getConcentricLayout(): ConcentricLayoutOptions {
       return 4 - level;
     },
     levelWidth: () => 1,
-    minNodeSpacing: 40,
+    minNodeSpacing: 60,
     animate: true,
     animationDuration: 400,
     fit: true,
@@ -27,10 +27,10 @@ export function getConcentricLayout(): ConcentricLayoutOptions {
 
 export function getNodeDimensions(level: number): { width: number; height: number } {
   switch (level) {
-    case 0: return { width: 160, height: 50 };
-    case 1: return { width: 140, height: 44 };
-    case 2: return { width: 130, height: 40 };
-    case 3: return { width: 120, height: 36 };
-    default: return { width: 120, height: 36 };
+    case 0: return { width: 180, height: 60 };
+    case 1: return { width: 170, height: 54 };
+    case 2: return { width: 160, height: 50 };
+    case 3: return { width: 150, height: 46 };
+    default: return { width: 150, height: 46 };
   }
 }
