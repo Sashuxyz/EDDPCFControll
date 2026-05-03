@@ -4,8 +4,8 @@ export function isValidGuid(id: string): boolean {
   return GUID_RE.test(id);
 }
 
-export function cleanGuid(raw: string): string {
-  return raw.replace(/[{}]/g, '').toLowerCase();
+export function cleanGuid(raw: unknown): string {
+  return String(raw ?? '').replace(/[{}]/g, '').toLowerCase();
 }
 
 export function openRecord(entityName: string, entityId: string): void {
