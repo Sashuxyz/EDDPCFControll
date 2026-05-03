@@ -5,6 +5,11 @@ type WebAPI = ComponentFramework.WebApi;
 
 function parseImpact(raw: unknown): 'Major' | 'Minor' | 'No' | null {
   if (raw === 'Major' || raw === 'Minor' || raw === 'No') return raw;
+  // D365 may return the OptionSet as a numeric value
+  const str = String(raw ?? '').toLowerCase();
+  if (str === 'major' || str.includes('major')) return 'Major';
+  if (str === 'minor' || str.includes('minor')) return 'Minor';
+  if (str === 'no' || str.includes('no impact') || str.includes('no ')) return 'No';
   return null;
 }
 
@@ -20,7 +25,8 @@ function extractPartyRecords(entities: ComponentFramework.WebApi.Entity[]): Rela
         (e['_syg_relatedpartyid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? '(Unknown)',
       partyTypeName: (partyType?.['syg_name'] as string) ?? '(Unknown)',
       partyTypeKey: (partyType?.['syg_propertykey'] as number) ?? 0,
-      impact: parseImpact(partyType?.['syg_impact']),
+      impact: parseImpact(partyType?.['syg_impact']) ??
+        parseImpact(partyType?.['syg_impact@OData.Community.Display.V1.FormattedValue']),
       score: (partyType?.['syg_score'] as number) ?? null,
       pep: e['syg_pep'] === true || e['syg_pep'] === 1,
       pepLevel:

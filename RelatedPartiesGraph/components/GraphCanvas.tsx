@@ -42,7 +42,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     cyNodes.push({
       data: {
         id: `profile-${centreProfileId}`,
-        label: centreProfileName + '\nKYC Profile',
+        label: centreProfileName,
         level: 0,
         isCentre: true,
         isDrillable: false,

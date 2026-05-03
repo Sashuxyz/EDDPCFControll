@@ -319,14 +319,17 @@ export class RelatedPartiesGraph
     try {
       const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
       const nextLevel = (node.level + 1) as 1 | 2 | 3;
+      // Use the node's account/contact ID as edge source (not the KYC profile ID)
+      // because that's the node ID in the Cytoscape graph
+      const edgeSourceId = nodeId;
 
       for (const party of parties) {
         if (!this.state.nodes.has(party.relatedPartyId)) {
           const newNode = partyRecordToNode(party, nextLevel, profileId, this.state.drillCache);
           this.state.nodes.set(newNode.id, newNode);
         }
-        if (!this.state.edges.some(e => e.source === profileId && e.target === party.relatedPartyId)) {
-          this.state.edges.push(buildEdge(profileId, party.relatedPartyId, party.partyTypeName, nextLevel));
+        if (!this.state.edges.some(e => e.source === edgeSourceId && e.target === party.relatedPartyId)) {
+          this.state.edges.push(buildEdge(edgeSourceId, party.relatedPartyId, party.partyTypeName, nextLevel));
         }
       }
 
@@ -336,8 +339,8 @@ export class RelatedPartiesGraph
         const newCustomers = parties.map((p) => ({ id: p.relatedPartyId, etn: p.relatedPartyEtn }));
         void this.resolveDrillability(newCustomers);
       }
-    } catch {
-      // Silently fail
+    } catch (e) {
+      this.showError(`Drill error: ${e}`);
     } finally {
       this.state.loadingProfiles.delete(profileId);
       this.renderReact();
