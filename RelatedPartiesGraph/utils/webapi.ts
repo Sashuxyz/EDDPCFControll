@@ -47,22 +47,23 @@ export async function fetchPartiesForProfile(
 
 export async function findKycProfileForCustomer(
   webAPI: WebAPI,
-  customerId: string
+  customerId: string,
+  entityLogicalName: 'account' | 'contact'
 ): Promise<{ id: string; name: string } | null> {
   const cleanId = cleanGuid(customerId);
   if (!isValidGuid(cleanId)) return null;
   try {
-    const result = await webAPI.retrieveMultipleRecords(
-      'syg_kycprofile',
-      `?$filter=(_syg_clientid_value eq ${cleanId}) and statecode eq 0` +
-      `&$select=syg_kycprofileid,syg_name&$top=1`
+    // The KYC profile link is on the contact/account record (syg_kycprofileid field)
+    const record = await webAPI.retrieveRecord(
+      entityLogicalName, cleanId,
+      '?$select=_syg_kycprofileid_value'
     );
-    const first = result.entities?.[0];
-    if (!first) return null;
-    const profileId = cleanGuid(first['syg_kycprofileid']);
+    const profileId = record['_syg_kycprofileid_value'] as string | null;
+    if (!profileId) return null;
+    const profileName = (record['_syg_kycprofileid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? '(Unknown)';
     return {
-      id: profileId,
-      name: (first['syg_name'] as string) ?? '(Unknown)',
+      id: cleanGuid(profileId),
+      name: profileName,
     };
   } catch {
     return null;
@@ -71,19 +72,19 @@ export async function findKycProfileForCustomer(
 
 export async function batchResolveDrillability(
   webAPI: WebAPI,
-  customerIds: string[],
+  customers: Array<{ id: string; etn: 'account' | 'contact' }>,
   existingCache: Map<string, string | null>
 ): Promise<Map<string, string | null>> {
-  const uncached = customerIds.filter((id) => !existingCache.has(id));
+  const uncached = customers.filter((c) => !existingCache.has(c.id));
   if (uncached.length === 0) return existingCache;
 
   const results = new Map(existingCache);
 
   for (let i = 0; i < uncached.length; i += MAX_CONCURRENT_DRILL_CHECKS) {
     const batch = uncached.slice(i, i + MAX_CONCURRENT_DRILL_CHECKS);
-    const promises = batch.map(async (id) => {
-      const profile = await findKycProfileForCustomer(webAPI, id);
-      return { id, profileId: profile?.id ?? null };
+    const promises = batch.map(async (c) => {
+      const profile = await findKycProfileForCustomer(webAPI, c.id, c.etn);
+      return { id: c.id, profileId: profile?.id ?? null };
     });
     const resolved = await Promise.all(promises);
     for (const { id, profileId } of resolved) {

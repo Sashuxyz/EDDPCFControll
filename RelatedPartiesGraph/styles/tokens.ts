@@ -14,7 +14,7 @@ export const containerStyles: S = {
   },
   canvas: {
     width: '100%',
-    height: 450,
+    height: 550,
     background: '#FAFAFA',
     position: 'relative',
     overflow: 'hidden',

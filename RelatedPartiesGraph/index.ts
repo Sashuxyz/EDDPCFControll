@@ -243,12 +243,14 @@ export class RelatedPartiesGraph
     this.state.nodes = nodes;
     this.state.edges = [...edges, ...existingHigherEdges];
 
-    const customerIds = Array.from(nodes.keys()).filter(id => {
-      const n = nodes.get(id);
-      return n && n.level === 1;
+    const customers: Array<{ id: string; etn: 'account' | 'contact' }> = [];
+    nodes.forEach((node) => {
+      if (node.level === 1) {
+        customers.push({ id: node.id, etn: node.etn });
+      }
     });
-    if (customerIds.length > 0) {
-      void this.resolveDrillability(customerIds);
+    if (customers.length > 0) {
+      void this.resolveDrillability(customers);
     }
   }
 
@@ -287,10 +289,10 @@ export class RelatedPartiesGraph
     } catch { /* silent */ }
   }
 
-  private async resolveDrillability(customerIds: string[]): Promise<void> {
+  private async resolveDrillability(customers: Array<{ id: string; etn: 'account' | 'contact' }>): Promise<void> {
     const resolved = await batchResolveDrillability(
       this.context.webAPI,
-      customerIds,
+      customers,
       this.state.drillCache
     );
     // Merge rather than replace to avoid race with concurrent calls
@@ -331,8 +333,8 @@ export class RelatedPartiesGraph
       this.state.expandedProfiles.push({ id: profileId, name: node.displayName });
 
       if (nextLevel < MAX_DEPTH) {
-        const newCustomerIds = parties.map((p) => p.relatedPartyId);
-        void this.resolveDrillability(newCustomerIds);
+        const newCustomers = parties.map((p) => ({ id: p.relatedPartyId, etn: p.relatedPartyEtn }));
+        void this.resolveDrillability(newCustomers);
       }
     } catch {
       // Silently fail
