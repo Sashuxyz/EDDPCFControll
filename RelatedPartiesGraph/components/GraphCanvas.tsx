@@ -209,30 +209,49 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return () => { cy.destroy(); cyRef.current = null; };
   }, []); // mount only
 
-  // Update elements in-place — only re-layout when node count changes
+  // Update elements — diff-based to avoid unnecessary layout runs
   React.useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
     const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
-    const newNodeCount = nodes.size + 1; // +1 for centre
-    const needsLayout = newNodeCount !== prevNodeCountRef.current;
+    const newNodeCount = nodes.size + 1;
+    const structureChanged = newNodeCount !== prevNodeCountRef.current;
     prevNodeCountRef.current = newNodeCount;
 
-    // Remove all existing elements and add new ones
-    cy.elements().remove();
-    cy.add(newElements);
+    if (structureChanged || cy.nodes().length === 0) {
+      // Structural change (nodes added/removed) — full replace + layout
+      cy.elements().remove();
+      cy.add(newElements);
 
-    // Set node dimensions
-    cy.nodes().forEach((node) => {
-      const level = node.data('level') as number;
-      const dims = getNodeDimensions(level);
-      node.style({ width: dims.width, height: dims.height });
-    });
+      cy.nodes().forEach((node) => {
+        const level = node.data('level') as number;
+        const dims = getNodeDimensions(level);
+        node.style({ width: dims.width, height: dims.height });
+      });
 
-    // Only run layout animation when nodes were added/removed
-    if (needsLayout) {
-      cy.layout(getConcentricLayout() as unknown as cytoscape.LayoutOptions).run();
+      const layoutOpts = getConcentricLayout();
+      // Animate only if not the first render
+      if (cy.nodes().length > 1) {
+        cy.layout({ ...layoutOpts, animate: structureChanged } as unknown as cytoscape.LayoutOptions).run();
+      }
+    } else {
+      // Data-only change (labels, colours, drillability) — update in place
+      for (const el of newElements) {
+        const existing = cy.getElementById(el.data.id as string);
+        if (existing.length > 0) {
+          // Update data fields without removing the node
+          Object.entries(el.data).forEach(([key, val]) => {
+            if (key !== 'id') existing.data(key, val);
+          });
+        }
+      }
+      // Re-apply node dimensions in case level changed
+      cy.nodes().forEach((node) => {
+        const level = node.data('level') as number;
+        const dims = getNodeDimensions(level);
+        node.style({ width: dims.width, height: dims.height });
+      });
     }
   }, [centreProfileId, centreProfileName, nodes, edges]);
 
