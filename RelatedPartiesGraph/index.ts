@@ -8,19 +8,21 @@ import { Legend } from './components/Legend';
 import { EmptyState } from './components/EmptyState';
 import { fetchPartiesForProfile, batchResolveDrillability } from './utils/webapi';
 import { datasetRecordToPartyRecord, partyRecordToNode, buildEdge } from './utils/graphModel';
-import { openRecord } from './utils/navigation';
+import { openRecord, cleanGuid } from './utils/navigation';
 import { GraphState, NodeData, EdgeData, MAX_DEPTH } from './types';
 import { containerStyles } from './styles/tokens';
 
 function GraphApp(props: {
   state: GraphState;
   debugInfo: string;
+  hasDrillableNodes: boolean;
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
+  onExpandAll: () => void;
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, debugInfo, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, debugInfo, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
 
   const debugPanel = debugInfo
@@ -58,6 +60,15 @@ function GraphApp(props: {
           onExpand: onDrillNode,
           onOpenRecord,
         }),
+        hasDrillableNodes && React.createElement('div', {
+          style: { padding: '8px 16px', borderTop: '1px solid #edebe9' },
+        },
+          React.createElement('button', {
+            style: { fontSize: 12, fontWeight: 600, color: '#0078D4', background: 'none', border: '1px solid #0078D4', borderRadius: 4, padding: '5px 14px', cursor: 'pointer', fontFamily: "'Segoe UI', sans-serif", width: '100%' },
+            onClick: onExpandAll,
+            type: 'button',
+          }, 'Expand All')
+        ),
         React.createElement(Legend)
       )
     )
@@ -80,6 +91,7 @@ export class RelatedPartiesGraph
     loadingProfiles: new Set(),
   };
   private parentProfileId: string | null = null;
+  private centreClientId: string | null = null;
   private debugInfo = '';
 
   private container!: HTMLDivElement;
@@ -264,7 +276,11 @@ export class RelatedPartiesGraph
         'syg_kycprofile', profileId,
         '?$select=_syg_clientid_value'
       );
+      const clientId = record['_syg_clientid_value'] as string | null;
       const clientName = record['_syg_clientid_value@OData.Community.Display.V1.FormattedValue'] as string | undefined;
+      if (clientId) {
+        this.centreClientId = cleanGuid(clientId);
+      }
       if (clientName) {
         this.state.centreProfileName = clientName;
         if (this.state.expandedProfiles.length > 0) {
@@ -335,15 +351,21 @@ export class RelatedPartiesGraph
       let newEdgesAdded = 0;
 
       for (const party of parties) {
-        if (!this.state.nodes.has(party.relatedPartyId)) {
+        // If this related party IS the root client, link to centre node instead
+        const isCentreClient = this.centreClientId && party.relatedPartyId === this.centreClientId;
+        const targetNodeId = isCentreClient
+          ? `profile-${this.state.centreProfileId}`
+          : party.relatedPartyId;
+
+        if (!isCentreClient && !this.state.nodes.has(party.relatedPartyId)) {
           const newNode = partyRecordToNode(party, nextLevel, profileId, this.state.drillCache);
           this.state.nodes.set(newNode.id, newNode);
           newNodesAdded++;
         }
-        // Always add the edge even if node already exists (shows cross-connection)
-        const edgeId = `${edgeSourceId}-${party.relatedPartyId}`;
+        // Always add the edge (shows cross-connection or link back to centre)
+        const edgeId = `${edgeSourceId}-${targetNodeId}`;
         if (!this.state.edges.some(e => `${e.source}-${e.target}` === edgeId)) {
-          this.state.edges.push(buildEdge(edgeSourceId, party.relatedPartyId, party.partyTypeName, nextLevel));
+          this.state.edges.push(buildEdge(edgeSourceId, targetNodeId, party.partyTypeName, nextLevel));
           newEdgesAdded++;
         }
       }
@@ -381,16 +403,43 @@ export class RelatedPartiesGraph
     this.renderReact();
   }
 
+  private async handleExpandAll(): Promise<void> {
+    // Find all drillable nodes not yet expanded
+    const expandedProfileIds = new Set(this.state.expandedProfiles.map(p => p.id));
+    const drillableNodes: string[] = [];
+    this.state.nodes.forEach((node) => {
+      if (node.ownKycProfileId && !expandedProfileIds.has(node.ownKycProfileId) && node.level < MAX_DEPTH) {
+        drillableNodes.push(node.id);
+      }
+    });
+
+    // Drill each one sequentially to avoid race conditions
+    for (const nodeId of drillableNodes) {
+      await this.handleDrill(nodeId);
+    }
+  }
+
   private renderReact(): void {
+    // Check if there are unexpanded drillable nodes
+    const expandedProfileIds = new Set(this.state.expandedProfiles.map(p => p.id));
+    let hasDrillable = false;
+    this.state.nodes.forEach((node) => {
+      if (node.ownKycProfileId && !expandedProfileIds.has(node.ownKycProfileId) && node.level < MAX_DEPTH) {
+        hasDrillable = true;
+      }
+    });
+
     this.root.render(
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
         debugInfo: this.debugInfo,
+        hasDrillableNodes: hasDrillable,
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
           this.renderReact();
         },
         onDrillNode: (id: string) => { void this.handleDrill(id); },
+        onExpandAll: () => { void this.handleExpandAll(); },
         onBreadcrumbNav: (index: number) => { this.handleBreadcrumbNav(index); },
         onOpenRecord: (etn: string, id: string) => { openRecord(etn, id); },
       })
