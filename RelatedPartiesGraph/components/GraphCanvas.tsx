@@ -149,7 +149,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
-  const prevElementCountRef = React.useRef(0);
+  const prevElementHashRef = React.useRef('');
 
   // Stable callback refs
   const onSelectNodeRef = React.useRef(onSelectNode);
@@ -217,44 +217,31 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (!cy) return;
 
     const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
-    const newElementCount = newElements.length;
-    const structureChanged = newElementCount !== prevElementCountRef.current;
-    prevElementCountRef.current = newElementCount;
 
-    if (structureChanged || cy.nodes().length === 0) {
-      // Structural change (nodes added/removed) — full replace + layout
-      cy.elements().remove();
-      cy.add(newElements);
+    // Build a hash of element IDs + key data to detect actual changes
+    const hash = newElements.map(el => {
+      const d = el.data;
+      return `${d.id}|${d.label ?? ''}|${d.borderColor ?? ''}|${d.isDrillable ?? ''}|${d.source ?? ''}`;
+    }).join(';');
 
-      cy.nodes().forEach((node) => {
-        const level = node.data('level') as number;
-        const dims = getNodeDimensions(level);
-        node.style({ width: dims.width, height: dims.height });
-      });
+    if (hash === prevElementHashRef.current) return; // nothing changed
+    const isFirstRender = prevElementHashRef.current === '';
+    prevElementHashRef.current = hash;
 
-      const layoutOpts = getConcentricLayout();
-      // Animate only if not the first render
-      if (cy.nodes().length > 1) {
-        cy.layout({ ...layoutOpts, animate: structureChanged } as unknown as cytoscape.LayoutOptions).run();
-      }
-    } else {
-      // Data-only change (labels, colours, drillability) — update in place
-      for (const el of newElements) {
-        const existing = cy.getElementById(el.data.id as string);
-        if (existing.length > 0) {
-          // Update data fields without removing the node
-          Object.entries(el.data).forEach(([key, val]) => {
-            if (key !== 'id') existing.data(key, val);
-          });
-        }
-      }
-      // Re-apply node dimensions in case level changed
-      cy.nodes().forEach((node) => {
-        const level = node.data('level') as number;
-        const dims = getNodeDimensions(level);
-        node.style({ width: dims.width, height: dims.height });
-      });
-    }
+    // Full replace + layout
+    cy.elements().remove();
+    cy.add(newElements);
+
+    cy.nodes().forEach((node) => {
+      const level = node.data('level') as number;
+      const dims = getNodeDimensions(level);
+      node.style({ width: dims.width, height: dims.height });
+    });
+
+    cy.layout({
+      ...getConcentricLayout(),
+      animate: !isFirstRender,
+    } as unknown as cytoscape.LayoutOptions).run();
   }, [centreProfileId, centreProfileName, nodes, edges]);
 
   // Sync selection without recreating graph
