@@ -14,17 +14,25 @@ import { containerStyles } from './styles/tokens';
 
 function GraphApp(props: {
   state: GraphState;
+  debugInfo: string;
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, debugInfo, onSelectNode, onDrillNode, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
+
+  const debugPanel = debugInfo
+    ? React.createElement('div', {
+        style: { margin: '8px 16px', padding: '6px 8px', background: '#FFF4CE', border: '1px solid #E1DFDD', borderRadius: 4, fontSize: 11, fontFamily: 'Consolas, monospace', color: '#605E5C', maxHeight: 250, overflowY: 'auto', whiteSpace: 'pre-wrap' },
+      }, debugInfo)
+    : null;
 
   if (state.nodes.size === 0 && state.expandedProfiles.length <= 1) {
     return React.createElement('div', { style: containerStyles.root },
-      React.createElement(EmptyState)
+      React.createElement(EmptyState),
+      debugPanel
     );
   }
 
@@ -68,6 +76,7 @@ export class RelatedPartiesGraph
     loadingProfiles: new Set(),
   };
   private parentProfileId: string | null = null;
+  private debugInfo = '';
 
   private container!: HTMLDivElement;
   private initError: string | null = null;
@@ -130,7 +139,26 @@ export class RelatedPartiesGraph
       }
 
       if (!ds.loading) {
+        // Diagnostic: inspect dataset contents
+        this.debugInfo = `records: ${ds.sortedRecordIds.length}, cols: ${ds.columns.map(c => c.name).join(', ')}`;
+        if (ds.sortedRecordIds.length > 0) {
+          const firstId = ds.sortedRecordIds[0];
+          const firstRec = ds.records[firstId];
+          const diag: string[] = [];
+          for (const col of ds.columns) {
+            try {
+              const raw = firstRec.getValue(col.name);
+              const fmt = firstRec.getFormattedValue(col.name);
+              diag.push(`${col.name}: type=${typeof raw}, raw=${JSON.stringify(raw)?.slice(0, 80)}, fmt=${fmt}`);
+            } catch (ex) {
+              diag.push(`${col.name}: ERR ${ex}`);
+            }
+          }
+          this.debugInfo += '\n' + diag.join('\n');
+        }
+
         this.buildLevel1FromDataset(ds, parentInfo.id);
+        this.debugInfo += `\nnodes after build: ${this.state.nodes.size}`;
         void this.enrichLevel1WithImpact(parentInfo.id);
       }
 
@@ -305,6 +333,7 @@ export class RelatedPartiesGraph
     this.root.render(
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
+        debugInfo: this.debugInfo,
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
           this.renderReact();
