@@ -38,7 +38,7 @@ export async function fetchPartiesForProfile(
   if (!isValidGuid(cleanId)) return [];
   const result = await webAPI.retrieveMultipleRecords(
     'syg_relatedclientparties',
-    `?$filter=_syg_kycprofileid_value eq ${profileId} and statecode eq 0` +
+    `?$filter=_syg_kycprofileid_value eq ${cleanId} and statecode eq 0` +
     `&$select=syg_relatedclientpartiesid,_syg_relatedpartyid_value,syg_pep,syg_riskscore,_syg_peplevelid_value` +
     `&$expand=syg_relatedpartytypeid($select=syg_name,syg_propertykey,syg_score,syg_impact)`
   );
@@ -54,13 +54,14 @@ export async function findKycProfileForCustomer(
   try {
     const result = await webAPI.retrieveMultipleRecords(
       'syg_kycprofile',
-      `?$filter=(_syg_clientid_value eq ${customerId}) and statecode eq 0` +
+      `?$filter=(_syg_clientid_value eq ${cleanId}) and statecode eq 0` +
       `&$select=syg_kycprofileid,syg_name&$top=1`
     );
     const first = result.entities?.[0];
     if (!first) return null;
+    const profileId = cleanGuid(first['syg_kycprofileid']);
     return {
-      id: (first['syg_kycprofileid'] as string) ?? '',
+      id: profileId,
       name: (first['syg_name'] as string) ?? '(Unknown)',
     };
   } catch {

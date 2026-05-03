@@ -17,11 +17,11 @@ export function getConcentricLayout(): ConcentricLayoutOptions {
       return 4 - level;
     },
     levelWidth: () => 1,
-    minNodeSpacing: 60,
+    minNodeSpacing: 100,
     animate: true,
     animationDuration: 400,
     fit: true,
-    padding: 40,
+    padding: 50,
   };
 }
 
