@@ -325,9 +325,10 @@ export class RelatedPartiesGraph
 
     try {
       const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
+      if (parties.length === 0) {
+        this.showError(`Drill: ${node.displayName} profile ${profileId} returned 0 parties`);
+      }
       const nextLevel = (node.level + 1) as 1 | 2 | 3;
-      // Use the node's account/contact ID as edge source (not the KYC profile ID)
-      // because that's the node ID in the Cytoscape graph
       const edgeSourceId = nodeId;
 
       for (const party of parties) {

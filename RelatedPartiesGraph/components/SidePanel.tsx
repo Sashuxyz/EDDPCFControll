@@ -38,8 +38,11 @@ export const SidePanel: React.FC<SidePanelProps> = ({ node, onExpand, onOpenReco
         )}
         <span>
           <span style={sidePanelStyles.fieldLabel}>Own KYC Profile:</span>{' '}
-          {isDrillable ? 'Yes' : 'No'}
+          {isDrillable ? `Yes (${node.ownKycProfileId})` : `No (raw: ${String(node.ownKycProfileId)})`}
         </span>
+      </div>
+      <div style={{ fontSize: 10, color: '#A19F9D', marginTop: 4 }}>
+        debug: id={node.id}, level={node.level}, isDrillable={String(isDrillable)}, isDepthCapped={String(isDepthCapped)}, isCentre={String(isCentre)}
       </div>
       <div style={sidePanelStyles.actions}>
         {isDrillable && !isDepthCapped && !isCentre && (
