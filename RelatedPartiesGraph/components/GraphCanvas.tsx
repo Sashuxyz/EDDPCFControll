@@ -53,6 +53,15 @@ const CY_STYLES: any = [
       'line-color': '#D2D0CE',
       'curve-style': 'bezier',
       'target-arrow-shape': 'none',
+      'label': 'data(label)',
+      'font-size': 8,
+      'font-family': "'Segoe UI', sans-serif",
+      'color': '#A19F9D',
+      'text-rotation': 'autorotate',
+      'text-margin-y': -8,
+      'text-background-color': '#FAFAFA',
+      'text-background-opacity': 0.9,
+      'text-background-padding': '2px',
     },
   },
 ];
@@ -97,7 +106,7 @@ function buildElements(
     els.push({
       data: {
         id: node.id,
-        label: node.displayName + pepSuffix + drillSuffix + '\n' + node.partyTypeName,
+        label: node.displayName + pepSuffix + drillSuffix,
         level: node.level,
         isCentre: false,
         isDrillable: node.ownKycProfileId !== null,
@@ -118,6 +127,7 @@ function buildElements(
         id: `edge-${edge.source}-${edge.target}`,
         source: sourceId,
         target: edge.target,
+        label: edge.label,
       },
     });
   }

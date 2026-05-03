@@ -27,10 +27,10 @@ export function getConcentricLayout(): ConcentricLayoutOptions {
 
 export function getNodeDimensions(level: number): { width: number; height: number } {
   switch (level) {
-    case 0: return { width: 180, height: 60 };
-    case 1: return { width: 170, height: 54 };
-    case 2: return { width: 160, height: 50 };
-    case 3: return { width: 150, height: 46 };
-    default: return { width: 150, height: 46 };
+    case 0: return { width: 160, height: 44 };
+    case 1: return { width: 150, height: 40 };
+    case 2: return { width: 140, height: 36 };
+    case 3: return { width: 130, height: 34 };
+    default: return { width: 130, height: 34 };
   }
 }
