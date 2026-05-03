@@ -12,13 +12,29 @@ export const containerStyles: S = {
     display: 'flex',
     flexDirection: 'column',
   },
+  body: {
+    display: 'flex',
+    flexDirection: 'row',
+    flex: 1,
+    minHeight: 0,
+  } as React.CSSProperties,
   canvas: {
-    width: '100%',
+    flex: 1,
+    minWidth: 0,
     height: 550,
     background: '#FAFAFA',
     position: 'relative',
     overflow: 'hidden',
   },
+  sidebar: {
+    width: 260,
+    flexShrink: 0,
+    borderLeft: '1px solid #edebe9',
+    background: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    overflowY: 'auto',
+  } as React.CSSProperties,
 };
 
 export const breadcrumbStyles: S = {
@@ -57,10 +73,9 @@ export const breadcrumbStyles: S = {
 export const sidePanelStyles: S = {
   root: {
     padding: '12px 16px',
-    borderTop: '1px solid #edebe9',
     background: '#fff',
     fontFamily: FONT,
-    minHeight: 60,
+    flex: 1,
   },
   label: {
     fontSize: 11,
@@ -82,11 +97,12 @@ export const sidePanelStyles: S = {
   },
   row: {
     display: 'flex',
-    gap: 24,
+    flexDirection: 'column',
+    gap: 4,
     marginTop: 6,
     fontSize: 12,
     color: '#605E5C',
-  },
+  } as React.CSSProperties,
   fieldLabel: {
     fontWeight: 600,
     color: '#323130',
@@ -122,15 +138,15 @@ export const sidePanelStyles: S = {
 
 export const legendStyles: S = {
   bar: {
-    padding: '8px 16px',
+    padding: '12px 16px',
     borderTop: '1px solid #edebe9',
     background: '#FAFAFA',
     display: 'flex',
-    gap: 16,
+    flexDirection: 'column',
+    gap: 6,
     fontSize: 10,
     color: '#605E5C',
-    flexWrap: 'wrap',
-  },
+  } as React.CSSProperties,
   item: {
     display: 'flex',
     alignItems: 'center',

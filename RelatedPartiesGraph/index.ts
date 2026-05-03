@@ -41,22 +41,26 @@ function GraphApp(props: {
       chain: state.expandedProfiles,
       onNavigate: onBreadcrumbNav,
     }),
-    React.createElement(GraphCanvas, {
-      centreProfileId: state.centreProfileId,
-      centreProfileName: state.expandedProfiles[0]?.name ?? '',
-      nodes: state.nodes,
-      edges: state.edges,
-      selectedNodeId: state.selectedNodeId,
-      onSelectNode,
-      onDrillNode,
-      onCtrlClickNode: onOpenRecord,
-    }),
-    React.createElement(SidePanel, {
-      node: selectedNode,
-      onExpand: onDrillNode,
-      onOpenRecord,
-    }),
-    React.createElement(Legend)
+    React.createElement('div', { style: containerStyles.body },
+      React.createElement(GraphCanvas, {
+        centreProfileId: state.centreProfileId,
+        centreProfileName: state.expandedProfiles[0]?.name ?? '',
+        nodes: state.nodes,
+        edges: state.edges,
+        selectedNodeId: state.selectedNodeId,
+        onSelectNode,
+        onDrillNode,
+        onCtrlClickNode: onOpenRecord,
+      }),
+      React.createElement('div', { style: containerStyles.sidebar },
+        React.createElement(SidePanel, {
+          node: selectedNode,
+          onExpand: onDrillNode,
+          onOpenRecord,
+        }),
+        React.createElement(Legend)
+      )
+    )
   );
 }
 
