@@ -20,12 +20,17 @@ export function datasetRecordToPartyRecord(
   let refName: string | undefined;
 
   if (typeof rawRef === 'object' && rawRef !== null) {
-    const ref = rawRef as { id?: string; etn?: string; name?: string };
-    relatedPartyId = cleanGuid(ref.id ?? '');
+    const ref = rawRef as { id?: unknown; etn?: string; name?: string };
+    // D365 dataset lookups nest the GUID: id can be a string OR {guid: string}
+    const rawId = ref.id;
+    const idStr = (typeof rawId === 'object' && rawId !== null && 'guid' in rawId)
+      ? (rawId as { guid: string }).guid
+      : rawId;
+    relatedPartyId = cleanGuid(idStr);
     etn = ref.etn === 'account' ? 'account' : 'contact';
     refName = ref.name;
   } else {
-    relatedPartyId = cleanGuid(String(rawRef));
+    relatedPartyId = cleanGuid(rawRef);
   }
 
   if (!relatedPartyId || !isValidGuid(relatedPartyId)) return null;
@@ -42,7 +47,7 @@ export function datasetRecordToPartyRecord(
     partyTypeKey: 0,
     impact: null,
     score: null,
-    pep: getValue('syg_pep') === true || getValue('syg_pep') === 1,
+    pep: getValue('syg_pep') === true || getValue('syg_pep') === 1 || getValue('syg_pep') === '1',
     pepLevel: getFormatted('syg_peplevelid') || null,
     riskScore: (getValue('syg_riskscore') as number) ?? null,
   };
