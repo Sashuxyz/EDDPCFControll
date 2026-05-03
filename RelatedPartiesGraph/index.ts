@@ -154,7 +154,9 @@ export class RelatedPartiesGraph
         };
       }
 
-      if (!ds.loading) {
+      // Only build from dataset on initial load or when parent changes.
+      // Once nodes exist, the drill handlers manage all state changes.
+      if (!ds.loading && this.state.nodes.size === 0) {
         // Diagnostic: inspect dataset contents
         this.debugInfo = `records: ${ds.sortedRecordIds.length}, cols: ${ds.columns.map(c => c.name).join(', ')}`;
         if (ds.sortedRecordIds.length > 0) {
