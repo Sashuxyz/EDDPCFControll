@@ -311,6 +311,8 @@ export class RelatedPartiesGraph
     } catch { /* silent */ }
   }
 
+  private autoExpandDone = false;
+
   private async resolveDrillability(customers: Array<{ id: string; etn: 'account' | 'contact' }>): Promise<void> {
     const resolved = await batchResolveDrillability(
       this.context.webAPI,
@@ -325,6 +327,12 @@ export class RelatedPartiesGraph
       }
     });
     this.renderReact();
+
+    // Auto-expand all drillable nodes on first load
+    if (!this.autoExpandDone) {
+      this.autoExpandDone = true;
+      void this.handleExpandAll();
+    }
   }
 
   private async handleDrill(nodeId: string): Promise<void> {

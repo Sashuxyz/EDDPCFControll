@@ -1,27 +1,17 @@
-export interface ConcentricLayoutOptions {
-  name: 'concentric';
-  concentric: (node: { data: (key: string) => unknown }) => number;
-  levelWidth: () => number;
-  minNodeSpacing: number;
-  animate: boolean;
-  animationDuration: number;
-  fit: boolean;
-  padding: number;
-}
-
-export function getConcentricLayout(): ConcentricLayoutOptions {
+export function getGraphLayout(): Record<string, unknown> {
   return {
-    name: 'concentric',
-    concentric: (node) => {
-      const level = node.data('level') as number;
-      return 4 - level;
-    },
-    levelWidth: () => 1,
-    minNodeSpacing: 100,
-    animate: true,
+    name: 'cose',
+    idealEdgeLength: 180,
+    nodeOverlap: 40,
+    nodeRepulsion: 8000,
+    edgeElasticity: 100,
+    gravity: 0.25,
+    numIter: 1000,
+    animate: 'end',
     animationDuration: 400,
     fit: true,
     padding: 50,
+    randomize: false,
   };
 }
 

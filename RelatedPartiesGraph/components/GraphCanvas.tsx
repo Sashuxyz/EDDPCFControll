@@ -1,7 +1,7 @@
 import * as React from 'react';
 import cytoscape, { Core, EventObject } from 'cytoscape';
 import { NodeData, EdgeData, IMPACT_COLORS, CENTRE_COLOR } from '../types';
-import { getConcentricLayout, getNodeDimensions } from '../utils/layout';
+import { getGraphLayout, getNodeDimensions } from '../utils/layout';
 import { containerStyles } from '../styles/tokens';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -190,7 +190,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       if (nodeId === lastTapNodeId && now - lastTapTime < 300) {
         const isDrillable = evt.target.data('isDrillable');
-        if (isDrillable) onDrillNodeRef.current(nodeId);
+        if (isDrillable) setTimeout(() => onDrillNodeRef.current(nodeId), 0);
         lastTapTime = 0;
         lastTapNodeId = '';
         return;
@@ -199,12 +199,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       lastTapTime = now;
       lastTapNodeId = nodeId;
 
+      // Defer selection out of the Cytoscape event handler to avoid
+      // modifying elements while the event dispatch is on the call stack
       const isCentre = evt.target.data('isCentre');
-      onSelectNodeRef.current(isCentre ? null : nodeId);
+      setTimeout(() => onSelectNodeRef.current(isCentre ? null : nodeId), 0);
     });
 
     cy.on('tap', (evt: EventObject) => {
-      if (evt.target === cy) onSelectNodeRef.current(null);
+      if (evt.target === cy) setTimeout(() => onSelectNodeRef.current(null), 0);
     });
 
     cyRef.current = cy;
@@ -249,8 +251,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       });
 
       cy.layout({
-        ...getConcentricLayout(),
-        animate: !isFirstRender,
+        ...getGraphLayout(),
+        animate: isFirstRender ? false : 'end',
     } as unknown as cytoscape.LayoutOptions).run();
     } catch { /* Cytoscape error — graph stays as-is */ }
   }, [centreProfileId, centreProfileName, nodes, edges]);
