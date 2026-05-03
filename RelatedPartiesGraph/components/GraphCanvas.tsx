@@ -228,20 +228,31 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const isFirstRender = prevElementHashRef.current === '';
     prevElementHashRef.current = hash;
 
-    // Full replace + layout
-    cy.elements().remove();
-    cy.add(newElements);
+    try {
+      // Filter out edges that reference non-existent nodes
+      const nodeIds = new Set(newElements.filter(e => !e.data.source).map(e => e.data.id as string));
+      const validElements = newElements.filter(el => {
+        if (el.data.source) {
+          // It's an edge — check both source and target exist
+          return nodeIds.has(el.data.source as string) && nodeIds.has(el.data.target as string);
+        }
+        return true; // nodes always valid
+      });
 
-    cy.nodes().forEach((node) => {
-      const level = node.data('level') as number;
-      const dims = getNodeDimensions(level);
-      node.style({ width: dims.width, height: dims.height });
-    });
+      cy.elements().remove();
+      cy.add(validElements);
 
-    cy.layout({
-      ...getConcentricLayout(),
-      animate: !isFirstRender,
+      cy.nodes().forEach((node) => {
+        const level = node.data('level') as number;
+        const dims = getNodeDimensions(level);
+        node.style({ width: dims.width, height: dims.height });
+      });
+
+      cy.layout({
+        ...getConcentricLayout(),
+        animate: !isFirstRender,
     } as unknown as cytoscape.LayoutOptions).run();
+    } catch { /* Cytoscape error — graph stays as-is */ }
   }, [centreProfileId, centreProfileName, nodes, edges]);
 
   // Sync selection without recreating graph
