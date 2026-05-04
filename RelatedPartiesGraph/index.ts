@@ -14,6 +14,7 @@ import { containerStyles } from './styles/tokens';
 
 function GraphApp(props: {
   state: GraphState;
+  graphVersion: number;
   debugInfo: string;
   hasDrillableNodes: boolean;
   onSelectNode: (id: string | null) => void;
@@ -22,7 +23,7 @@ function GraphApp(props: {
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, debugInfo, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, graphVersion, debugInfo, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
 
   const debugPanel = debugInfo
@@ -49,6 +50,7 @@ function GraphApp(props: {
         centreProfileName: state.expandedProfiles[0]?.name ?? '',
         nodes: state.nodes,
         edges: state.edges,
+        graphVersion,
         selectedNodeId: state.selectedNodeId,
         onSelectNode,
         onDrillNode,
@@ -93,6 +95,13 @@ export class RelatedPartiesGraph
   private parentProfileId: string | null = null;
   private centreClientId: string | null = null;
   private debugInfo = '';
+  private graphVersion = 0;
+
+  /** Call when graph data (nodes, edges, names) changes — triggers Cytoscape update */
+  private graphDataChanged(): void {
+    this.graphVersion++;
+    this.renderReact();
+  }
 
   private container!: HTMLDivElement;
   private initError: string | null = null;
@@ -181,7 +190,7 @@ export class RelatedPartiesGraph
         void this.fetchCentreProfileClientName(parentInfo.id);
       }
 
-      this.renderReact();
+      this.graphDataChanged();
     } catch (e) {
       this.showError(`updateView error: ${e}`);
     }
@@ -288,7 +297,7 @@ export class RelatedPartiesGraph
         if (this.state.expandedProfiles.length > 0) {
           this.state.expandedProfiles[0].name = clientName;
         }
-        this.renderReact();
+        this.graphDataChanged();
       }
     } catch { /* silent */ }
   }
@@ -307,7 +316,7 @@ export class RelatedPartiesGraph
           }
         }
       }
-      this.renderReact();
+      this.graphDataChanged();
     } catch { /* silent */ }
   }
 
@@ -326,7 +335,7 @@ export class RelatedPartiesGraph
         node.ownKycProfileId = this.state.drillCache.get(id) ?? null;
       }
     });
-    this.renderReact();
+    this.graphDataChanged();
 
     // Auto-expand all drillable nodes on first load
     if (!this.autoExpandDone) {
@@ -351,7 +360,7 @@ export class RelatedPartiesGraph
     if (this.state.expandedProfiles.some((p) => p.id === profileId)) return;
 
     this.state.loadingProfiles.add(profileId);
-    this.renderReact();
+    this.graphDataChanged();
 
     try {
       const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
@@ -390,7 +399,7 @@ export class RelatedPartiesGraph
       this.showError(`Drill error: ${e}`);
     } finally {
       this.state.loadingProfiles.delete(profileId);
-      this.renderReact();
+      this.graphDataChanged();
     }
   }
 
@@ -410,7 +419,7 @@ export class RelatedPartiesGraph
     this.state.nodes = newNodes;
     this.state.edges = newEdges;
     this.state.selectedNodeId = null;
-    this.renderReact();
+    this.graphDataChanged();
   }
 
   private async handleExpandAll(): Promise<void> {
@@ -442,6 +451,7 @@ export class RelatedPartiesGraph
     this.root.render(
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
+        graphVersion: this.graphVersion,
         debugInfo: this.debugInfo,
         hasDrillableNodes: hasDrillable,
         onSelectNode: (id: string | null) => {

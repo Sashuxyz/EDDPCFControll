@@ -73,6 +73,7 @@ interface GraphCanvasProps {
   centreProfileName: string;
   nodes: Map<string, NodeData>;
   edges: EdgeData[];
+  graphVersion: number;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string | null) => void;
   onDrillNode: (nodeId: string) => void;
@@ -142,6 +143,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   centreProfileName,
   nodes,
   edges,
+  graphVersion,
   selectedNodeId,
   onSelectNode,
   onDrillNode,
@@ -149,7 +151,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
-  const prevElementHashRef = React.useRef('');
+  const prevVersionRef = React.useRef(-1);
 
   // Stable callback refs
   const onSelectNodeRef = React.useRef(onSelectNode);
@@ -213,34 +215,26 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return () => { cy.destroy(); cyRef.current = null; };
   }, []); // mount only
 
-  // Update elements — diff-based to avoid unnecessary layout runs
+  // Only update Cytoscape elements when graphVersion changes.
+  // Selection changes do NOT trigger this — only data changes do.
   React.useEffect(() => {
     const cy = cyRef.current;
-    if (!cy) return;
+    if (!cy || graphVersion === prevVersionRef.current) return;
+    const isFirst = prevVersionRef.current === -1;
+    prevVersionRef.current = graphVersion;
 
     const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
 
-    // Build a hash of element IDs + key data to detect actual changes
-    const hash = newElements.map(el => {
-      const d = el.data;
-      return `${d.id}|${d.label ?? ''}|${d.borderColor ?? ''}|${d.isDrillable ?? ''}|${d.source ?? ''}`;
-    }).join(';');
-
-    if (hash === prevElementHashRef.current) return; // nothing changed
-    const isFirstRender = prevElementHashRef.current === '';
-    prevElementHashRef.current = hash;
+    // Filter edges referencing non-existent nodes
+    const nodeIds = new Set(newElements.filter(e => !e.data.source).map(e => e.data.id as string));
+    const validElements = newElements.filter(el => {
+      if (el.data.source) {
+        return nodeIds.has(el.data.source as string) && nodeIds.has(el.data.target as string);
+      }
+      return true;
+    });
 
     try {
-      // Filter out edges that reference non-existent nodes
-      const nodeIds = new Set(newElements.filter(e => !e.data.source).map(e => e.data.id as string));
-      const validElements = newElements.filter(el => {
-        if (el.data.source) {
-          // It's an edge — check both source and target exist
-          return nodeIds.has(el.data.source as string) && nodeIds.has(el.data.target as string);
-        }
-        return true; // nodes always valid
-      });
-
       cy.elements().remove();
       cy.add(validElements);
 
@@ -252,10 +246,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
       cy.layout({
         ...getGraphLayout(),
-        animate: isFirstRender ? false : 'end',
-    } as unknown as cytoscape.LayoutOptions).run();
-    } catch { /* Cytoscape error — graph stays as-is */ }
-  }, [centreProfileId, centreProfileName, nodes, edges]);
+        animate: isFirst ? false : 'end',
+      } as unknown as cytoscape.LayoutOptions).run();
+    } catch { /* Cytoscape error */ }
+  }, [graphVersion]);
 
   // Sync selection without recreating graph
   React.useEffect(() => {
