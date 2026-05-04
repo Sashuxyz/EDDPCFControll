@@ -51,6 +51,7 @@ function GraphApp(props: {
       React.createElement('div', { style: containerStyles.sidebar },
         React.createElement(SidePanel, {
           node: selectedNode,
+          expandedProfileIds: new Set(state.expandedProfiles.map(p => p.id)),
           onExpand: onDrillNode,
           onOpenRecord,
         }),
