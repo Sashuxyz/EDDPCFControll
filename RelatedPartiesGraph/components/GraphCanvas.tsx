@@ -235,19 +235,46 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     });
 
     try {
-      cy.elements().remove();
-      cy.add(validElements);
+      const existingIds = new Set<string>();
+      (cy.elements() as any).forEach((e: any) => existingIds.add(e.id()));
 
-      cy.nodes().forEach((node) => {
+      const newIds = new Set(validElements.map(e => e.data.id as string));
+
+      // Remove elements no longer present
+      const removeIds: string[] = [];
+      (cy.elements() as any).forEach((e: any) => { if (!newIds.has(e.id())) removeIds.push(e.id()); });
+      for (const rid of removeIds) cy.getElementById(rid).remove();
+
+      // Add new elements
+      const toAdd = validElements.filter(e => !existingIds.has(e.data.id as string));
+      if (toAdd.length > 0) cy.add(toAdd);
+
+      // Update data for existing elements (in-place, no remove)
+      for (const el of validElements) {
+        if (existingIds.has(el.data.id as string)) {
+          const existing = cy.getElementById(el.data.id as string);
+          if (existing.length > 0) {
+            Object.entries(el.data).forEach(([key, val]) => {
+              if (key !== 'id') existing.data(key, val);
+            });
+          }
+        }
+      }
+
+      // Set node dimensions
+      (cy.nodes() as any).forEach((node: any) => {
         const level = node.data('level') as number;
         const dims = getNodeDimensions(level);
         node.style({ width: dims.width, height: dims.height });
       });
 
-      cy.layout({
-        ...getGraphLayout(),
-        animate: isFirst ? false : 'end',
-      } as unknown as cytoscape.LayoutOptions).run();
+      // Only re-layout when structure changed (nodes/edges added or removed)
+      if (toAdd.length > 0 || cy.elements().length !== validElements.length) {
+        cy.layout({
+          ...getGraphLayout(),
+          animate: isFirst ? false : 'end',
+        } as unknown as cytoscape.LayoutOptions).run();
+      }
     } catch { /* Cytoscape error */ }
   }, [graphVersion]);
 

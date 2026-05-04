@@ -41,9 +41,6 @@ export const SidePanel: React.FC<SidePanelProps> = ({ node, onExpand, onOpenReco
           {isDrillable ? `Yes (${node.ownKycProfileId})` : `No (raw: ${String(node.ownKycProfileId)})`}
         </span>
       </div>
-      <div style={{ fontSize: 10, color: '#A19F9D', marginTop: 4 }}>
-        debug: id={node.id}, level={node.level}, isDrillable={String(isDrillable)}, isDepthCapped={String(isDepthCapped)}, isCentre={String(isCentre)}
-      </div>
       <div style={sidePanelStyles.actions}>
         {isDrillable && !isDepthCapped && !isCentre && (
           <button style={sidePanelStyles.actionButton} onClick={() => onExpand(node.id)} type="button">

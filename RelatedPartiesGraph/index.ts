@@ -15,7 +15,6 @@ import { containerStyles } from './styles/tokens';
 function GraphApp(props: {
   state: GraphState;
   graphVersion: number;
-  debugInfo: string;
   hasDrillableNodes: boolean;
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
@@ -23,19 +22,12 @@ function GraphApp(props: {
   onBreadcrumbNav: (index: number) => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, graphVersion, debugInfo, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, graphVersion, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
-
-  const debugPanel = debugInfo
-    ? React.createElement('div', {
-        style: { margin: '8px 16px', padding: '6px 8px', background: '#FFF4CE', border: '1px solid #E1DFDD', borderRadius: 4, fontSize: 11, fontFamily: 'Consolas, monospace', color: '#605E5C', maxHeight: 250, overflowY: 'auto', whiteSpace: 'pre-wrap' },
-      }, debugInfo)
-    : null;
 
   if (state.nodes.size === 0 && state.expandedProfiles.length <= 1) {
     return React.createElement('div', { style: containerStyles.root },
-      React.createElement(EmptyState),
-      debugPanel
+      React.createElement(EmptyState)
     );
   }
 
@@ -94,7 +86,6 @@ export class RelatedPartiesGraph
   };
   private parentProfileId: string | null = null;
   private centreClientId: string | null = null;
-  private debugInfo = '';
   private graphVersion = 0;
 
   /** Call when graph data (nodes, edges, names) changes — triggers Cytoscape update */
@@ -166,26 +157,7 @@ export class RelatedPartiesGraph
       // Only build from dataset on initial load or when parent changes.
       // Once nodes exist, the drill handlers manage all state changes.
       if (!ds.loading && this.state.nodes.size === 0) {
-        // Diagnostic: inspect dataset contents
-        this.debugInfo = `records: ${ds.sortedRecordIds.length}, cols: ${ds.columns.map(c => c.name).join(', ')}`;
-        if (ds.sortedRecordIds.length > 0) {
-          const firstId = ds.sortedRecordIds[0];
-          const firstRec = ds.records[firstId];
-          const diag: string[] = [];
-          for (const col of ds.columns) {
-            try {
-              const raw = firstRec.getValue(col.name);
-              const fmt = firstRec.getFormattedValue(col.name);
-              diag.push(`${col.name}: type=${typeof raw}, raw=${JSON.stringify(raw)?.slice(0, 80)}, fmt=${fmt}`);
-            } catch (ex) {
-              diag.push(`${col.name}: ERR ${ex}`);
-            }
-          }
-          this.debugInfo += '\n' + diag.join('\n');
-        }
-
         this.buildLevel1FromDataset(ds, parentInfo.id);
-        this.debugInfo += `\nnodes after build: ${this.state.nodes.size}`;
         void this.enrichLevel1WithImpact(parentInfo.id);
         void this.fetchCentreProfileClientName(parentInfo.id);
       }
@@ -452,7 +424,6 @@ export class RelatedPartiesGraph
       React.createElement(GraphApp, {
         state: { ...this.state, nodes: new Map(this.state.nodes) },
         graphVersion: this.graphVersion,
-        debugInfo: this.debugInfo,
         hasDrillableNodes: hasDrillable,
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
