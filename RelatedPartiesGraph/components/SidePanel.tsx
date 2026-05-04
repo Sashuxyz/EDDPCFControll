@@ -38,7 +38,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({ node, onExpand, onOpenReco
         )}
         <span>
           <span style={sidePanelStyles.fieldLabel}>Own KYC Profile:</span>{' '}
-          {isDrillable ? `Yes (${node.ownKycProfileId})` : `No (raw: ${String(node.ownKycProfileId)})`}
+          {isDrillable ? 'Yes' : 'No'}
         </span>
       </div>
       <div style={sidePanelStyles.actions}>

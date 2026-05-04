@@ -318,15 +318,7 @@ export class RelatedPartiesGraph
 
   private async handleDrill(nodeId: string): Promise<void> {
     const node = this.state.nodes.get(nodeId);
-    if (!node) {
-      this.showError(`Drill: node ${nodeId} not found in state`);
-      return;
-    }
-    if (!node.ownKycProfileId) {
-      this.showError(`Drill: ${node.displayName} has no KYC profile (ownKycProfileId=null, drillCache=${this.state.drillCache.get(nodeId) ?? 'not cached'})`);
-      return;
-    }
-    if (node.level >= MAX_DEPTH) return;
+    if (!node || !node.ownKycProfileId || node.level >= MAX_DEPTH) return;
 
     const profileId = node.ownKycProfileId;
     if (this.state.expandedProfiles.some((p) => p.id === profileId)) return;
@@ -367,8 +359,8 @@ export class RelatedPartiesGraph
         const newCustomers = parties.map((p) => ({ id: p.relatedPartyId, etn: p.relatedPartyEtn }));
         void this.resolveDrillability(newCustomers);
       }
-    } catch (e) {
-      this.showError(`Drill error: ${e}`);
+    } catch {
+      // Silent — drill failed, graph stays as-is
     } finally {
       this.state.loadingProfiles.delete(profileId);
       this.graphDataChanged();
