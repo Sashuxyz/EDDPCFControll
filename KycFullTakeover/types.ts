@@ -101,7 +101,7 @@ export interface NewContactAttributes {
   firstname?:                       string;
   lastname?:                        string;
   fullname?:                        string;
-  new_typeofcontact:                number;        // Phase 1 ships value 9
+  new_typeofcontact:                9;        // Phase 1 ships value 9 — literal type prevents drift
   syg_dateofbirth?:                 string;
   syg_accountholdernationalityid?:  LookupRef;
   syg_accountholderdomicileid?:     LookupRef;
@@ -110,7 +110,7 @@ export interface NewContactAttributes {
 }
 
 export interface NewAccountAttributes {
-  new_typeofcontact:           number;        // Phase 1 ships value 9
+  new_typeofcontact:           9;        // Phase 1 ships value 9 — literal type prevents drift
   syg_domicilecountryid?:      LookupRef;
   syg_mainbusinessactivityid?: LookupRef;
   emailaddress1?:              string;
@@ -120,10 +120,10 @@ export interface NewAccountAttributes {
 // === Financial Situation ===
 
 export interface TotalWealthIncomeSection {
-  syg_TotalWealth_currency?:           number;
-  syg_TotalWealth?:                    number;
-  syg_annualincome?:                   number;
-  syg_TimeframeforWealthAccumulation?: number;
+  syg_TotalWealth_currency?:            number;      // money — CHF fiat amount
+  syg_TotalWealth?:                     number;      // OptionSet integer — banded total wealth; see optionSets.ts
+  syg_annualincome?:                    number;      // OptionSet integer — annual income band; see optionSets.ts
+  syg_TimeframeforWealthAccumulation?:  number;      // int — confirmed not narrative; likely "years" or banded code
 }
 
 export interface SourceOfWealthSection {
@@ -219,17 +219,17 @@ export interface DigitalAssetFundRow {
 
 export interface PepSanctionsRiskSection {
   syg_PEP?:                                       boolean;
-  syg_pepstatus?:                                 number;
+  syg_pepstatus?:                                 0 | 1 | 2 | 3 | 4;
   syg_pepstatusid?:                               LookupRef;
   syg_peplevelid?:                                LookupRef;
   syg_pepdetails?:                                string;
   syg_pepderivationdetails?:                      string;
   syg_formerpepdetails?:                          string;
 
-  syg_ReputationalRisk?:                          number;
+  syg_ReputationalRisk?:                          1 | 2 | 3;
   syg_mediascreeningandreputationalriskcomment?:  string;
 
-  syg_SanctionCheck?:                             number;
+  syg_SanctionCheck?:                             2 | 3;
   syg_sanctioncheckcomment?:                      string;
 }
 
@@ -247,17 +247,25 @@ export type SectionId =
   | 'transactionalBehaviour' | 'plannedFiatFunds' | 'plannedDAFunds'
   | 'pepSanctionsRisk' | 'additionalComments';
 
+export interface SectionResult {
+  patched?:    number;
+  created?:    number;
+  associated?: number;
+  failed?:     number;
+}
+
+export interface SectionError {
+  rowIndex?: number;
+  field?:    string;
+  message:   string;
+}
+
 export interface SectionStatusRecord {
-  state:      SectionState;
-  lastRunAt?: string;       // ISO 8601
-  result?:    {
-    patched?: number;
-    created?: number;
-    associated?: number;
-    failed?:  number;
-  };
-  errors?:    Array<{ rowIndex?: number; field?: string; message: string }>;
-  payloadHash?: string;     // sha-1 hex of the serialised payload slice at takeover
+  state:        SectionState;
+  lastRunAt?:   string;       // ISO 8601
+  result?:      SectionResult;
+  errors?:      SectionError[];
+  payloadHash?: string;       // sha-1 hex of the serialised payload slice at takeover
 }
 
 export interface TakeoverStatusBlob {
