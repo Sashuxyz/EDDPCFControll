@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import { HeaderStrip } from './HeaderStrip';
-import { TocSidebar, TocEntry } from './TocSidebar';
+import { TocSidebar } from './TocSidebar';
 import { FindingsSection } from './sections/FindingsSection';
 import { ProposedEmailSection } from './sections/ProposedEmailSection';
 import { NarrativeSection } from './sections/NarrativeSection';

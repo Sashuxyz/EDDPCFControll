@@ -1,5 +1,6 @@
-// Sticky left sidebar with 5 groups, 17 entries, status icon per entry,
-// scrollspy-style highlight for the section currently in view.
+// Sticky left sidebar with 5 groups, 17 entries, status icon per entry.
+// `activeId` is set on click via `onNavigate`; scroll-driven highlighting
+// (IntersectionObserver-based scrollspy) is deferred to a later milestone.
 
 import * as React from 'react';
 import { StatusIcon } from './common/StatusIcon';
