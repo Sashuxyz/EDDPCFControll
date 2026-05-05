@@ -5,6 +5,7 @@ import { GridRow } from './GridRow';
 import { EmptyState } from './EmptyState';
 import { classifyColumns, rowHasDetailData } from '../utils/columnClassifier';
 import { navigateToRecord, openNewRecordForm } from '../utils/navigationHelpers';
+import { resolveDatasetTitle, resolveHostControlLabel } from '../utils/titleResolver';
 import {
   deleteRecords,
   disassociateRecords,
@@ -133,8 +134,31 @@ export const SubgridContainer: React.FC<SubgridContainerProps> = ({
     setColumnWidths((prev) => ({ ...prev, [columnName]: newWidthPx }));
   }, []);
 
+  const [resolvedTitle, setResolvedTitle] = React.useState<string | null>(null);
+
+  // Resolve the bar title in two passes:
+  //   1. Synchronously walk up the DOM and ask Xrm.Page for the host control's
+  //      label (form designer's "Beschriftung", returned even when "Hide label"
+  //      is checked on the form).
+  //   2. If that yields nothing, async-fall-back to savedquery / entity name.
+  React.useEffect(() => {
+    const hostLabel = resolveHostControlLabel(containerRef.current);
+    if (hostLabel) {
+      setResolvedTitle(hostLabel);
+      return;
+    }
+
+    let cancelled = false;
+    void resolveDatasetTitle(context.webAPI, dataset).then((t) => {
+      if (!cancelled && t) setResolvedTitle(t);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const title = React.useMemo(() => {
-    // Try dataset title (subgrid label from form), then context.mode.label
+    if (resolvedTitle) return resolvedTitle;
+    // Synchronous fallback chain while the async resolver is in flight.
     const dsAny = dataset as unknown as { getTitle?: () => string; title?: string };
     if (typeof dsAny.getTitle === 'function') {
       const t = dsAny.getTitle();
@@ -144,7 +168,7 @@ export const SubgridContainer: React.FC<SubgridContainerProps> = ({
     const modeLabel = (context.mode as unknown as { label?: string }).label;
     if (modeLabel) return modeLabel;
     return 'Records';
-  }, [context, dataset]);
+  }, [resolvedTitle, context, dataset]);
 
   const expandableIds = React.useMemo(
     () => recordIds.filter((id) => rowDetailMap[id]),
@@ -297,7 +321,7 @@ export const SubgridContainer: React.FC<SubgridContainerProps> = ({
   }
 
   return (
-    <div style={containerStyles.root}>
+    <div ref={containerRef} style={containerStyles.root}>
       <CommandBar title={title} recordCount={recordIds.length} selectedCount={selectedIds.size} hasExpandableRows={hasExpandableRows} allExpanded={allExpanded} isNtoN={isNtoN} onExpandAll={handleExpandAll} onNewClick={handleNewClick} onAddExistingClick={handleAddExistingClick} onDeleteClick={handleDeleteClick} onClearSelection={handleClearSelection} />
 
       {recordIds.length === 0 ? (

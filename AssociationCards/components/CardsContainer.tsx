@@ -5,6 +5,7 @@ import { CardItem } from './CardItem';
 import { Tooltip } from './Tooltip';
 import { getCellValue } from '../utils/cellRenderer';
 import { disassociateRecord, associateRecords, openLookupPicker } from '../utils/recordActions';
+import { resolveDatasetTitle, resolveHostControlLabel } from '../utils/titleResolver';
 import { containerStyles, chipStyles, cardStyles } from '../styles/tokens';
 
 interface RecordData {
@@ -77,33 +78,41 @@ export const CardsContainer: React.FC<CardsContainerProps> = ({
     });
   }, [dataset.sortedRecordIds, dataset.records, primaryColumn, nonNameColumns]);
 
-  // Title: try dataset title / view name, then form designer label, then fallback
+  const [resolvedTitle, setResolvedTitle] = React.useState<string | null>(null);
+
+  // Resolve the bar title in two passes:
+  //   1. Synchronously walk up the DOM and ask Xrm.Page for the host control's
+  //      label (form designer "Beschriftung", returned even when "Hide label"
+  //      is checked).
+  //   2. Else async-fall-back to savedquery / entity-collection name.
+  React.useEffect(() => {
+    const hostLabel = resolveHostControlLabel(containerRef.current);
+    if (hostLabel) {
+      setResolvedTitle(hostLabel);
+      return;
+    }
+
+    let cancelled = false;
+    void resolveDatasetTitle(context.webAPI, dataset).then((t) => {
+      if (!cancelled && t) setResolvedTitle(t);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Title: resolved view/entity name when available, else best-effort sync sources, else fallback.
   const title = React.useMemo(() => {
-    // Source 1: dataset.getTitle() — returns the subgrid label from the form
+    if (resolvedTitle) return resolvedTitle;
     const dsAny = dataset as unknown as { getTitle?: () => string; title?: string };
     if (typeof dsAny.getTitle === 'function') {
       const t = dsAny.getTitle();
       if (t) return t;
     }
     if (dsAny.title) return dsAny.title;
-
-    // Source 2: dataset view display name
-    const viewAny = dataset as unknown as {
-      getViewId?: () => string;
-      columns?: Array<{ displayName?: string }>;
-    };
-    const viewId = viewAny.getViewId?.();
-    if (viewId) {
-      // View name is not directly exposed, but the dataset display-name-key
-      // from the form configuration may be available via context
-    }
-
-    // Source 3: context.mode.label — control label from form designer
     const modeLabel = (context.mode as unknown as { label?: string }).label;
     if (modeLabel) return modeLabel;
-
     return 'Records';
-  }, [context, dataset]);
+  }, [resolvedTitle, context, dataset]);
 
   // Parent context — try multiple sources
   const parentInfo = React.useMemo(() => {
