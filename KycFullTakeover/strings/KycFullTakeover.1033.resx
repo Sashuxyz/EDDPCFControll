@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" id="root">
+    <xsd:element name="root" msdata:IsDataSet="true">
+    </xsd:element>
+  </xsd:schema>
+  <data name="KycFullTakeover_Display_Key">
+    <value>KYC Full Takeover</value>
+  </data>
+  <data name="KycFullTakeover_Desc_Key">
+    <value>Review and persist AI-extracted KYC profile data section by section.</value>
+  </data>
+  <data name="aiAnalyticsAudit"><value>AI Analytics Audit (JSON)</value></data>
+  <data name="aiAnalyticsAudit_Desc"><value>Bound text field containing the agent-produced JSON payload (typically syg_aianalytics_audit).</value></data>
+  <data name="takeoverStatus"><value>Takeover Status (JSON)</value></data>
+  <data name="takeoverStatus_Desc"><value>Bound text field where the PCF persists per-section status, timestamps and payload hashes.</value></data>
+  <data name="takeoverLastRunAt"><value>Last Run At</value></data>
+  <data name="takeoverLastRunAt_Desc"><value>Timestamp of the most recent takeover operation across any section.</value></data>
+  <data name="takeoverLastError"><value>Last Error</value></data>
+  <data name="takeoverLastError_Desc"><value>Most recent failure message; cleared on next successful section takeover.</value></data>
+</root>
