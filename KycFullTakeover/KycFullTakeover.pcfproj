@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ProjectGuid>{a1b2c3d4-e5f6-4a5b-9c8d-fedcba987654}</ProjectGuid>
+    <OutputPath>$(MSBuildThisFileDirectory)out\controls\</OutputPath>
+  </PropertyGroup>
+</Project>
