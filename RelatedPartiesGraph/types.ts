@@ -20,17 +20,16 @@ export interface EdgeData {
   target: string;
   label: string;
   level: 1 | 2 | 3;
-}
-
-export interface ProfileBreadcrumb {
-  id: string;
-  name: string;
+  // Reverse links: another KYC profile lists the centre's customer as a related
+  // party. Rendered as a dashed edge to indicate the relationship is owned by
+  // the OTHER side, not visible from the centre's own data.
+  reverse?: boolean;
 }
 
 export interface GraphState {
   centreProfileId: string;
   centreProfileName: string;
-  expandedProfiles: ProfileBreadcrumb[];
+  expandedProfileIds: Set<string>;
   nodes: Map<string, NodeData>;
   edges: EdgeData[];
   selectedNodeId: string | null;
@@ -50,6 +49,22 @@ export interface RelatedPartyRecord {
   pep: boolean;
   pepLevel: string | null;
   riskScore: number | null;
+}
+
+// A junction row found by querying the relationship from the OTHER side: some
+// other KYC profile lists OUR centre customer as a related party. Used to draw
+// the dashed back-link edges.
+export interface ReversePartyRecord {
+  junctionId: string;
+  // The KYC profile that owns this relationship (e.g. BitCap's profile when
+  // viewing Greta).
+  sourceProfileId: string;
+  // The customer record (account/contact) the source profile is about.
+  sourceCustomerId: string;
+  sourceCustomerEtn: 'account' | 'contact';
+  sourceCustomerName: string;
+  // The role the centre plays in the source profile (e.g. "Beneficial Owner").
+  partyTypeName: string;
 }
 
 export const IMPACT_COLORS: Record<string, { border: string; text: string }> = {

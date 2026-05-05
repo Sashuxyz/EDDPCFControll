@@ -6,8 +6,8 @@ import { SidePanel } from './components/SidePanel';
 import { Breadcrumb } from './components/Breadcrumb';
 import { Legend } from './components/Legend';
 import { EmptyState } from './components/EmptyState';
-import { fetchPartiesForProfile, batchResolveDrillability } from './utils/webapi';
-import { datasetRecordToPartyRecord, partyRecordToNode, buildEdge } from './utils/graphModel';
+import { fetchPartiesForProfile, fetchReversePartiesForCustomer, batchResolveDrillability } from './utils/webapi';
+import { datasetRecordToPartyRecord, partyRecordToNode, reverseRecordToNode, buildEdge } from './utils/graphModel';
 import { openRecord, cleanGuid } from './utils/navigation';
 import { GraphState, NodeData, EdgeData, MAX_DEPTH } from './types';
 import { containerStyles } from './styles/tokens';
@@ -16,30 +16,35 @@ function GraphApp(props: {
   state: GraphState;
   graphVersion: number;
   hasDrillableNodes: boolean;
+  expandAllStatus: string;
   onSelectNode: (id: string | null) => void;
   onDrillNode: (id: string) => void;
   onExpandAll: () => void;
-  onBreadcrumbNav: (index: number) => void;
+  onResetView: () => void;
   onOpenRecord: (etn: string, id: string) => void;
 }): React.ReactElement {
-  const { state, graphVersion, hasDrillableNodes, onSelectNode, onDrillNode, onExpandAll, onBreadcrumbNav, onOpenRecord } = props;
+  const { state, graphVersion, hasDrillableNodes, expandAllStatus, onSelectNode, onDrillNode, onExpandAll, onResetView, onOpenRecord } = props;
   const selectedNode = state.selectedNodeId ? state.nodes.get(state.selectedNodeId) ?? null : null;
 
-  if (state.nodes.size === 0 && state.expandedProfiles.length <= 1) {
+  if (state.nodes.size === 0) {
     return React.createElement('div', { style: containerStyles.root },
       React.createElement(EmptyState)
     );
   }
 
+  // "Has expansions" = anything expanded beyond the centre profile itself
+  const hasExpansions = state.expandedProfileIds.size > 1;
+
   return React.createElement('div', { style: containerStyles.root },
     React.createElement(Breadcrumb, {
-      chain: state.expandedProfiles,
-      onNavigate: onBreadcrumbNav,
+      centreName: state.centreProfileName,
+      hasExpansions,
+      onReset: onResetView,
     }),
     React.createElement('div', { style: containerStyles.body },
       React.createElement(GraphCanvas, {
         centreProfileId: state.centreProfileId,
-        centreProfileName: state.expandedProfiles[0]?.name ?? '',
+        centreProfileName: state.centreProfileName,
         nodes: state.nodes,
         edges: state.edges,
         graphVersion,
@@ -51,18 +56,21 @@ function GraphApp(props: {
       React.createElement('div', { style: containerStyles.sidebar },
         React.createElement(SidePanel, {
           node: selectedNode,
-          expandedProfileIds: new Set(state.expandedProfiles.map(p => p.id)),
+          expandedProfileIds: state.expandedProfileIds,
           onExpand: onDrillNode,
           onOpenRecord,
         }),
-        hasDrillableNodes && React.createElement('div', {
+        React.createElement('div', {
           style: { padding: '8px 16px', borderTop: '1px solid #edebe9' },
         },
-          React.createElement('button', {
+          hasDrillableNodes && React.createElement('button', {
             style: { fontSize: 12, fontWeight: 600, color: '#0078D4', background: 'none', border: '1px solid #0078D4', borderRadius: 4, padding: '5px 14px', cursor: 'pointer', fontFamily: "'Segoe UI', sans-serif", width: '100%' },
             onClick: onExpandAll,
             type: 'button',
-          }, 'Expand All')
+          }, 'Expand All'),
+          expandAllStatus && React.createElement('div', {
+            style: { fontSize: 10, color: '#605E5C', marginTop: 6, lineHeight: 1.4, wordBreak: 'break-word' },
+          }, expandAllStatus)
         ),
         React.createElement(Legend)
       )
@@ -78,7 +86,7 @@ export class RelatedPartiesGraph
   private state: GraphState = {
     centreProfileId: '',
     centreProfileName: '',
-    expandedProfiles: [],
+    expandedProfileIds: new Set(),
     nodes: new Map(),
     edges: [],
     selectedNodeId: null,
@@ -88,6 +96,7 @@ export class RelatedPartiesGraph
   private parentProfileId: string | null = null;
   private centreClientId: string | null = null;
   private graphVersion = 0;
+  private expandAllStatus = '';
 
   /** Call when graph data (nodes, edges, names) changes — triggers Cytoscape update */
   private graphDataChanged(): void {
@@ -146,7 +155,7 @@ export class RelatedPartiesGraph
         this.state = {
           centreProfileId: parentInfo.id,
           centreProfileName: parentInfo.name,
-          expandedProfiles: [{ id: parentInfo.id, name: parentInfo.name }],
+          expandedProfileIds: new Set([parentInfo.id]),
           nodes: new Map(),
           edges: [],
           selectedNodeId: null,
@@ -207,9 +216,6 @@ export class RelatedPartiesGraph
         const profileName = firstRec.getFormattedValue('syg_kycprofileid');
         if (profileName && this.state.centreProfileName !== profileName) {
           this.state.centreProfileName = profileName;
-          if (this.state.expandedProfiles.length > 0) {
-            this.state.expandedProfiles[0].name = profileName;
-          }
         }
       } catch { /* ignore */ }
     }
@@ -267,12 +273,56 @@ export class RelatedPartiesGraph
       }
       if (clientName) {
         this.state.centreProfileName = clientName;
-        if (this.state.expandedProfiles.length > 0) {
-          this.state.expandedProfiles[0].name = clientName;
-        }
         this.graphDataChanged();
       }
+      if (this.centreClientId) {
+        void this.loadReverseLinks(this.centreClientId);
+      }
     } catch { /* silent */ }
+  }
+
+  // Fetches all junction rows where the centre's customer is the related party
+  // on someone ELSE's KYC profile, then merges the source-side profiles into
+  // the graph as level-1 nodes connected by reverse (dashed) edges.
+  private async loadReverseLinks(centreCustomerId: string): Promise<void> {
+    try {
+      const reverse = await fetchReversePartiesForCustomer(
+        this.context.webAPI,
+        centreCustomerId,
+        this.state.centreProfileId
+      );
+      if (reverse.length === 0) return;
+
+      const centreNodeId = `profile-${this.state.centreProfileId}`;
+      let added = false;
+
+      for (const rec of reverse) {
+        // Skip if a reverse edge from this source already exists (idempotent
+        // across re-renders).
+        const exists = this.state.edges.some(
+          (e) => e.reverse === true && e.source === rec.sourceCustomerId && e.target === centreNodeId
+        );
+        if (exists) continue;
+
+        // Add the source customer as a node only if it isn't already in the
+        // graph (it might already be a regular related party — in that case we
+        // just attach the reverse edge alongside the existing node).
+        if (!this.state.nodes.has(rec.sourceCustomerId)) {
+          const node = reverseRecordToNode(rec);
+          this.state.nodes.set(node.id, node);
+          // Pre-populate drill cache so the node renders as drillable without
+          // an extra round-trip — we already know its profile id.
+          this.state.drillCache.set(rec.sourceCustomerId, rec.sourceProfileId);
+        }
+
+        this.state.edges.push(
+          buildEdge(rec.sourceCustomerId, centreNodeId, rec.partyTypeName, 1, true)
+        );
+        added = true;
+      }
+
+      if (added) this.graphDataChanged();
+    } catch { /* silent — reverse links are best-effort */ }
   }
 
   private async enrichLevel1WithImpact(profileId: string): Promise<void> {
@@ -314,7 +364,7 @@ export class RelatedPartiesGraph
     if (!node || !node.ownKycProfileId || node.level >= MAX_DEPTH) return;
 
     const profileId = node.ownKycProfileId;
-    if (this.state.expandedProfiles.some((p) => p.id === profileId)) return;
+    if (this.state.expandedProfileIds.has(profileId)) return;
 
     this.state.loadingProfiles.add(profileId);
     this.graphDataChanged();
@@ -323,8 +373,6 @@ export class RelatedPartiesGraph
       const parties = await fetchPartiesForProfile(this.context.webAPI, profileId);
       const nextLevel = (node.level + 1) as 1 | 2 | 3;
       const edgeSourceId = nodeId;
-      let newNodesAdded = 0;
-      let newEdgesAdded = 0;
 
       for (const party of parties) {
         // If this related party IS the root client, link to centre node instead
@@ -336,21 +384,19 @@ export class RelatedPartiesGraph
         if (!isCentreClient && !this.state.nodes.has(party.relatedPartyId)) {
           const newNode = partyRecordToNode(party, nextLevel, profileId, this.state.drillCache);
           this.state.nodes.set(newNode.id, newNode);
-          newNodesAdded++;
         }
-        // Always add the edge (shows cross-connection or link back to centre)
         const edgeId = `${edgeSourceId}-${targetNodeId}`;
         if (!this.state.edges.some(e => `${e.source}-${e.target}` === edgeId)) {
           this.state.edges.push(buildEdge(edgeSourceId, targetNodeId, party.partyTypeName, nextLevel));
-          newEdgesAdded++;
         }
       }
 
-      this.state.expandedProfiles.push({ id: profileId, name: node.displayName });
+      this.state.expandedProfileIds.add(profileId);
 
       if (nextLevel < MAX_DEPTH) {
         const newCustomers = parties.map((p) => ({ id: p.relatedPartyId, etn: p.relatedPartyEtn }));
-        void this.resolveDrillability(newCustomers);
+        // Await so handleExpandAll's next iteration sees the resolved drillability
+        await this.resolveDrillability(newCustomers);
       }
     } catch {
       // Silent — drill failed, graph stays as-is
@@ -360,19 +406,15 @@ export class RelatedPartiesGraph
     }
   }
 
-  private handleBreadcrumbNav(index: number): void {
-    const keepProfiles = this.state.expandedProfiles.slice(0, index + 1);
-    const keepLevels = index + 1;
-
+  private handleResetView(): void {
+    // Collapse everything back to level 1 (centre + direct related parties)
     const newNodes = new Map<string, NodeData>();
     this.state.nodes.forEach((node, id) => {
-      if (node.level <= keepLevels) {
-        newNodes.set(id, node);
-      }
+      if (node.level <= 1) newNodes.set(id, node);
     });
-    const newEdges = this.state.edges.filter((e) => e.level <= keepLevels);
+    const newEdges = this.state.edges.filter((e) => e.level <= 1);
 
-    this.state.expandedProfiles = keepProfiles;
+    this.state.expandedProfileIds = new Set([this.state.centreProfileId]);
     this.state.nodes = newNodes;
     this.state.edges = newEdges;
     this.state.selectedNodeId = null;
@@ -380,43 +422,70 @@ export class RelatedPartiesGraph
   }
 
   private async handleExpandAll(): Promise<void> {
-    // Find all drillable nodes not yet expanded
-    const expandedProfileIds = new Set(this.state.expandedProfiles.map(p => p.id));
-    const drillableNodes: string[] = [];
-    this.state.nodes.forEach((node) => {
-      if (node.ownKycProfileId && !expandedProfileIds.has(node.ownKycProfileId) && node.level < MAX_DEPTH) {
-        drillableNodes.push(node.id);
-      }
-    });
+    // Iteratively expand until no more drillable nodes remain. Each round
+    // may surface new drillable nodes at deeper levels.
+    let safety = 0;
+    let totalDrilled = 0;
+    while (safety++ < 20) {
+      const drillableNodes: Array<{ id: string; level: number; profileId: string }> = [];
+      this.state.nodes.forEach((node) => {
+        if (
+          node.ownKycProfileId &&
+          !this.state.expandedProfileIds.has(node.ownKycProfileId) &&
+          node.level < MAX_DEPTH
+        ) {
+          drillableNodes.push({ id: node.id, level: node.level, profileId: node.ownKycProfileId });
+        }
+      });
 
-    // Drill each one sequentially to avoid race conditions
-    for (const nodeId of drillableNodes) {
-      await this.handleDrill(nodeId);
+      this.expandAllStatus = `Round ${safety}: found ${drillableNodes.length} drillable | total drilled=${totalDrilled} | nodes=${this.state.nodes.size} | expanded=${this.state.expandedProfileIds.size}`;
+      this.graphDataChanged();
+
+      if (drillableNodes.length === 0) {
+        const nodeList: string[] = [];
+        this.state.nodes.forEach((n) => nodeList.push(`L${n.level}:${n.displayName}`));
+        this.expandAllStatus = `Done after ${safety - 1} rounds. ${totalDrilled} drilled. nodes(${this.state.nodes.size}): ${nodeList.join(', ')}`;
+        this.graphDataChanged();
+        return;
+      }
+
+      await Promise.all(drillableNodes.map((d) => this.handleDrill(d.id)));
+      totalDrilled += drillableNodes.length;
     }
+    this.expandAllStatus = `Stopped at safety limit. drilled=${totalDrilled}`;
+    this.graphDataChanged();
   }
 
   private renderReact(): void {
     // Check if there are unexpanded drillable nodes
-    const expandedProfileIds = new Set(this.state.expandedProfiles.map(p => p.id));
     let hasDrillable = false;
     this.state.nodes.forEach((node) => {
-      if (node.ownKycProfileId && !expandedProfileIds.has(node.ownKycProfileId) && node.level < MAX_DEPTH) {
+      if (
+        node.ownKycProfileId &&
+        !this.state.expandedProfileIds.has(node.ownKycProfileId) &&
+        node.level < MAX_DEPTH
+      ) {
         hasDrillable = true;
       }
     });
 
     this.root.render(
       React.createElement(GraphApp, {
-        state: { ...this.state, nodes: new Map(this.state.nodes) },
+        state: {
+          ...this.state,
+          nodes: new Map(this.state.nodes),
+          expandedProfileIds: new Set(this.state.expandedProfileIds),
+        },
         graphVersion: this.graphVersion,
         hasDrillableNodes: hasDrillable,
+        expandAllStatus: this.expandAllStatus,
         onSelectNode: (id: string | null) => {
           this.state.selectedNodeId = id;
           this.renderReact();
         },
         onDrillNode: (id: string) => { void this.handleDrill(id); },
         onExpandAll: () => { void this.handleExpandAll(); },
-        onBreadcrumbNav: (index: number) => { this.handleBreadcrumbNav(index); },
+        onResetView: () => { this.handleResetView(); },
         onOpenRecord: (etn: string, id: string) => { openRecord(etn, id); },
       })
     );

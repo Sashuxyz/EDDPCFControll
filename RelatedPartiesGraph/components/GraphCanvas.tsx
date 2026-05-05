@@ -1,7 +1,7 @@
 import * as React from 'react';
 import cytoscape, { Core, EventObject } from 'cytoscape';
 import { NodeData, EdgeData, IMPACT_COLORS, CENTRE_COLOR } from '../types';
-import { getGraphLayout, getNodeDimensions } from '../utils/layout';
+import { getNodeDimensions, computePositions } from '../utils/layout';
 import { containerStyles } from '../styles/tokens';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -64,6 +64,17 @@ const CY_STYLES: any = [
       'text-background-color': '#FAFAFA',
       'text-background-opacity': 0.9,
       'text-background-padding': '2px',
+    },
+  },
+  {
+    // Reverse edges: dashed line to indicate the relationship is owned by the
+    // OTHER side (some external KYC profile lists the centre as a related
+    // party). Slightly cooler color so they read as "incoming" not "outgoing".
+    selector: 'edge[?reverse]',
+    style: {
+      'line-style': 'dashed',
+      'line-color': '#A19F9D',
+      'color': '#605E5C',
     },
   },
 ];
@@ -131,6 +142,7 @@ function buildElements(
         source: sourceId,
         target: edge.target,
         label: edge.label,
+        reverse: edge.reverse === true,
       },
     });
   }
@@ -152,6 +164,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const containerRef = React.useRef<HTMLDivElement>(null);
   const cyRef = React.useRef<Core | null>(null);
   const prevVersionRef = React.useRef(-1);
+  const layoutTimerRef = React.useRef<number | null>(null);
 
   // Stable callback refs
   const onSelectNodeRef = React.useRef(onSelectNode);
@@ -225,9 +238,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
     const newElements = buildElements(centreProfileId, centreProfileName, nodes, edges);
 
+    // Drop nodes with empty/missing ids (defense in depth — the data layer
+    // already filters these, but cy.add throws on the whole batch if even one
+    // element has an invalid id, so we double-guard here).
+    const sanitized = newElements.filter(el => {
+      const id = el.data.id;
+      return typeof id === 'string' && id.length > 0;
+    });
+
     // Filter edges referencing non-existent nodes
-    const nodeIds = new Set(newElements.filter(e => !e.data.source).map(e => e.data.id as string));
-    const validElements = newElements.filter(el => {
+    const nodeIds = new Set(sanitized.filter(e => !e.data.source).map(e => e.data.id as string));
+    const validElements = sanitized.filter(el => {
       if (el.data.source) {
         return nodeIds.has(el.data.source as string) && nodeIds.has(el.data.target as string);
       }
@@ -235,31 +256,31 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     });
 
     try {
-      const existingIds = new Set<string>();
-      (cy.elements() as any).forEach((e: any) => existingIds.add(e.id()));
-
-      const newIds = new Set(validElements.map(e => e.data.id as string));
-
-      // Remove elements no longer present
-      const removeIds: string[] = [];
-      (cy.elements() as any).forEach((e: any) => { if (!newIds.has(e.id())) removeIds.push(e.id()); });
-      for (const rid of removeIds) cy.getElementById(rid).remove();
-
-      // Add new elements
-      const toAdd = validElements.filter(e => !existingIds.has(e.data.id as string));
-      if (toAdd.length > 0) cy.add(toAdd);
-
-      // Update data for existing elements (in-place, no remove)
+      // Compute deterministic ring positions for every node before adding
+      // them. We bypass Cytoscape's layouts entirely because they kept
+      // mishandling the incremental-add case.
+      const centreId = `profile-${centreProfileId}`;
+      const nodeLevels = new Map<string, number>();
       for (const el of validElements) {
-        if (existingIds.has(el.data.id as string)) {
-          const existing = cy.getElementById(el.data.id as string);
-          if (existing.length > 0) {
-            Object.entries(el.data).forEach(([key, val]) => {
-              if (key !== 'id') existing.data(key, val);
-            });
-          }
-        }
+        if (el.data.source) continue;
+        const lvl = el.data.id === centreId ? 0 : (el.data.level as number);
+        nodeLevels.set(el.data.id as string, lvl);
       }
+      const edgeList = validElements
+        .filter(e => e.data.source)
+        .map(e => ({ source: e.data.source as string, target: e.data.target as string }));
+      const positions = computePositions(centreId, nodeLevels, edgeList);
+
+      // Apply positions to elements before cy.add so they take effect
+      for (const el of validElements) {
+        if (el.data.source) continue;
+        const pos = positions.get(el.data.id as string);
+        if (pos) (el as any).position = pos;
+      }
+
+      // Full rebuild
+      cy.elements().remove();
+      cy.add(validElements);
 
       // Set node dimensions
       (cy.nodes() as any).forEach((node: any) => {
@@ -268,14 +289,24 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         node.style({ width: dims.width, height: dims.height });
       });
 
-      // Only re-layout when structure changed (nodes/edges added or removed)
-      if (toAdd.length > 0 || cy.elements().length !== validElements.length) {
-        cy.layout({
-          ...getGraphLayout(),
-          animate: isFirst ? false : 'end',
-        } as unknown as cytoscape.LayoutOptions).run();
+      // Debounce fit so parallel-drill bursts coalesce into one fit
+      if (layoutTimerRef.current !== null) {
+        window.clearTimeout(layoutTimerRef.current);
       }
-    } catch { /* Cytoscape error */ }
+      layoutTimerRef.current = window.setTimeout(() => {
+        layoutTimerRef.current = null;
+        try {
+          cy.fit(undefined, 40);
+          cy.center();
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error('[RPG] fit/center failed', err);
+        }
+      }, isFirst ? 0 : 60);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('[RPG] graph rebuild failed', err);
+    }
   }, [graphVersion]);
 
   // Sync selection without recreating graph

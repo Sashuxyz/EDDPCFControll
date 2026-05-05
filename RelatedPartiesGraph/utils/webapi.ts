@@ -1,4 +1,4 @@
-import { RelatedPartyRecord, MAX_CONCURRENT_DRILL_CHECKS } from '../types';
+import { RelatedPartyRecord, ReversePartyRecord, MAX_CONCURRENT_DRILL_CHECKS } from '../types';
 import { isValidGuid, cleanGuid } from './navigation';
 
 type WebAPI = ComponentFramework.WebApi;
@@ -14,11 +14,19 @@ function parseImpact(raw: unknown): 'Major' | 'Minor' | 'No' | null {
 }
 
 function extractPartyRecords(entities: ComponentFramework.WebApi.Entity[]): RelatedPartyRecord[] {
-  return entities.map((e) => {
+  const records: RelatedPartyRecord[] = [];
+  for (const e of entities) {
+    // Drop orphaned junction rows where the related party reference is null
+    // or invalid — they would otherwise propagate into nodes with empty IDs
+    // and crash Cytoscape's cy.add().
+    const rawPartyId = e['_syg_relatedpartyid_value'];
+    const partyId = typeof rawPartyId === 'string' ? cleanGuid(rawPartyId) : '';
+    if (!isValidGuid(partyId)) continue;
+
     const partyType = e['syg_relatedpartytypeid'] as Record<string, unknown> | null;
-    return {
+    records.push({
       junctionId: (e['syg_relatedclientpartiesid'] as string) ?? '',
-      relatedPartyId: (e['_syg_relatedpartyid_value'] as string) ?? '',
+      relatedPartyId: partyId,
       relatedPartyEtn:
         ((e['_syg_relatedpartyid_value@Microsoft.Dynamics.CRM.lookuplogicalname'] as string) ?? 'contact') as 'account' | 'contact',
       relatedPartyName:
@@ -32,8 +40,9 @@ function extractPartyRecords(entities: ComponentFramework.WebApi.Entity[]): Rela
       pepLevel:
         (e['_syg_peplevelid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? null,
       riskScore: (e['syg_riskscore'] as number) ?? null,
-    };
-  });
+    });
+  }
+  return records;
 }
 
 export async function fetchPartiesForProfile(
@@ -49,6 +58,63 @@ export async function fetchPartiesForProfile(
     `&$expand=syg_relatedpartytypeid($select=syg_name,syg_propertykey,syg_score,syg_impact)`
   );
   return extractPartyRecords(result.entities ?? []);
+}
+
+// Reverse lookup: find every KYC profile that lists `customerId` as a related
+// party. Each result maps to a node representing the OTHER profile's customer.
+// `excludeProfileId` filters out the centre itself so we don't draw a self-loop.
+export async function fetchReversePartiesForCustomer(
+  webAPI: WebAPI,
+  customerId: string,
+  excludeProfileId: string
+): Promise<ReversePartyRecord[]> {
+  const cleanCustomerId = cleanGuid(customerId);
+  if (!isValidGuid(cleanCustomerId)) return [];
+  const cleanExclude = cleanGuid(excludeProfileId);
+
+  const filter = isValidGuid(cleanExclude)
+    ? `_syg_relatedpartyid_value eq ${cleanCustomerId} and _syg_kycprofileid_value ne ${cleanExclude} and statecode eq 0`
+    : `_syg_relatedpartyid_value eq ${cleanCustomerId} and statecode eq 0`;
+
+  const result = await webAPI.retrieveMultipleRecords(
+    'syg_relatedclientparties',
+    `?$filter=${filter}` +
+    `&$select=syg_relatedclientpartiesid,_syg_kycprofileid_value` +
+    `&$expand=syg_kycprofileid($select=syg_kycprofileid,_syg_clientid_value),syg_relatedpartytypeid($select=syg_name)`
+  );
+
+  const records: ReversePartyRecord[] = [];
+  for (const e of result.entities ?? []) {
+    const profile = e['syg_kycprofileid'] as Record<string, unknown> | null;
+    if (!profile) continue;
+
+    const rawProfileId = profile['syg_kycprofileid'];
+    const sourceProfileId = typeof rawProfileId === 'string' ? cleanGuid(rawProfileId) : '';
+    if (!isValidGuid(sourceProfileId)) continue;
+
+    const rawCustId = profile['_syg_clientid_value'];
+    const sourceCustomerId = typeof rawCustId === 'string' ? cleanGuid(rawCustId) : '';
+    if (!isValidGuid(sourceCustomerId)) continue;
+
+    const sourceCustomerEtn =
+      ((profile['_syg_clientid_value@Microsoft.Dynamics.CRM.lookuplogicalname'] as string) ?? 'contact') as
+        'account' | 'contact';
+    const sourceCustomerName =
+      (profile['_syg_clientid_value@OData.Community.Display.V1.FormattedValue'] as string) ?? '(Unknown)';
+
+    const partyType = e['syg_relatedpartytypeid'] as Record<string, unknown> | null;
+    const partyTypeName = (partyType?.['syg_name'] as string) ?? '(Unknown)';
+
+    records.push({
+      junctionId: (e['syg_relatedclientpartiesid'] as string) ?? '',
+      sourceProfileId,
+      sourceCustomerId,
+      sourceCustomerEtn,
+      sourceCustomerName,
+      partyTypeName,
+    });
+  }
+  return records;
 }
 
 export async function findKycProfileForCustomer(

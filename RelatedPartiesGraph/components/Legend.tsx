@@ -34,5 +34,12 @@ export const Legend: React.FC = () => (
       }}>PEP</span>
       PEP flagged
     </span>
+    <span style={legendStyles.item}>
+      <span style={{
+        width: 18, height: 0, display: 'inline-block',
+        borderTop: '1px dashed #A19F9D',
+      }} />
+      Reverse link
+    </span>
   </div>
 );

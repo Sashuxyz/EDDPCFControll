@@ -1,32 +1,23 @@
 import * as React from 'react';
-import { ProfileBreadcrumb } from '../types';
 import { breadcrumbStyles } from '../styles/tokens';
 
-interface BreadcrumbProps {
-  chain: ProfileBreadcrumb[];
-  onNavigate: (index: number) => void;
+interface GraphHeaderProps {
+  centreName: string;
+  hasExpansions: boolean;
+  onReset: () => void;
 }
 
-export const Breadcrumb: React.FC<BreadcrumbProps> = ({ chain, onNavigate }) => (
+export const Breadcrumb: React.FC<GraphHeaderProps> = ({ centreName, hasExpansions, onReset }) => (
   <div style={breadcrumbStyles.bar}>
-    {chain.map((item, idx) => {
-      const isLast = idx === chain.length - 1;
-      return (
-        <React.Fragment key={item.id}>
-          {idx > 0 && <span style={breadcrumbStyles.separator}>{'>'}</span>}
-          {isLast ? (
-            <span style={breadcrumbStyles.segmentCurrent}>{item.name}</span>
-          ) : (
-            <button
-              style={breadcrumbStyles.segment}
-              onClick={() => onNavigate(idx)}
-              type="button"
-            >
-              {item.name}
-            </button>
-          )}
-        </React.Fragment>
-      );
-    })}
+    <span style={breadcrumbStyles.segmentCurrent}>{centreName}</span>
+    {hasExpansions && (
+      <button
+        style={breadcrumbStyles.resetButton}
+        onClick={onReset}
+        type="button"
+      >
+        Reset view
+      </button>
+    )}
   </div>
 );

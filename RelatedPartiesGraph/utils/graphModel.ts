@@ -1,4 +1,4 @@
-import { NodeData, EdgeData, RelatedPartyRecord } from '../types';
+import { NodeData, EdgeData, RelatedPartyRecord, ReversePartyRecord } from '../types';
 import { cleanGuid, isValidGuid } from './navigation';
 
 export function datasetRecordToPartyRecord(
@@ -77,11 +77,35 @@ export function partyRecordToNode(
   };
 }
 
+// Build a peer-level node from a reverse junction row. The node represents the
+// SOURCE profile's client (e.g. BitCap when viewing Greta), placed at level 1
+// alongside direct related parties. ownKycProfileId is pre-populated so the
+// node is immediately drillable without needing a drillability check.
+export function reverseRecordToNode(record: ReversePartyRecord): NodeData {
+  return {
+    id: record.sourceCustomerId,
+    etn: record.sourceCustomerEtn,
+    displayName: record.sourceCustomerName,
+    level: 1,
+    ownKycProfileId: record.sourceProfileId,
+    parentProfileId: record.sourceProfileId,
+    partyTypeName: record.partyTypeName,
+    partyTypeKey: 0,
+    impact: null,
+    score: null,
+    pep: false,
+    pepLevel: null,
+    riskScore: null,
+    junctionId: record.junctionId,
+  };
+}
+
 export function buildEdge(
   sourceProfileId: string,
   targetPartyId: string,
   label: string,
-  level: 1 | 2 | 3
+  level: 1 | 2 | 3,
+  reverse = false
 ): EdgeData {
-  return { source: sourceProfileId, target: targetPartyId, label, level };
+  return { source: sourceProfileId, target: targetPartyId, label, level, reverse };
 }
