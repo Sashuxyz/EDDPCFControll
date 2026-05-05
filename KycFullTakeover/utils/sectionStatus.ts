@@ -8,7 +8,13 @@ export function parseStatusBlob(raw: string | null | undefined): TakeoverStatusB
   if (typeof raw !== 'string' || raw.trim() === '') return initialStatus();
   try {
     const parsed = JSON.parse(raw);
-    if (!parsed || parsed.schemaVersion !== '1.0' || typeof parsed.sections !== 'object') {
+    if (
+      !parsed ||
+      parsed.schemaVersion !== '1.0' ||
+      typeof parsed.sections !== 'object' ||
+      parsed.sections === null ||
+      Array.isArray(parsed.sections)
+    ) {
       return initialStatus();
     }
     return parsed as TakeoverStatusBlob;
@@ -47,7 +53,7 @@ function stableStringify(v: unknown): string {
 
 // Minimal pure-JS sha-1 implementation; avoids a node:crypto dependency that
 // would tree-shake out of the browser build but trip jest's module resolution.
-function sha1Hex(s: string): string {
+export function sha1Hex(s: string): string {
   function rotl(x: number, n: number): number { return (x << n) | (x >>> (32 - n)); }
   const bytes: number[] = [];
   for (let i = 0; i < s.length; i++) {
@@ -60,7 +66,12 @@ function sha1Hex(s: string): string {
   bytes.push(0x80);
   while (bytes.length % 64 !== 56) bytes.push(0);
   const bitLen = len * 8;
-  for (let i = 7; i >= 0; i--) bytes.push((bitLen >>> (i * 8)) & 0xff);
+  // SHA-1 message length is 64 bits, big-endian. Split into hi/lo 32-bit words to
+  // avoid JS bit-shift wrapping (`>>>` only uses the low 5 bits of the shift amount).
+  const hi = Math.floor(bitLen / 0x100000000);
+  const lo = bitLen >>> 0;
+  for (let i = 3; i >= 0; i--) bytes.push((hi >>> (i * 8)) & 0xff);
+  for (let i = 3; i >= 0; i--) bytes.push((lo >>> (i * 8)) & 0xff);
 
   let h0 = 0x67452301, h1 = 0xefcdab89, h2 = 0x98badcfe, h3 = 0x10325476, h4 = 0xc3d2e1f0;
   const w = new Array<number>(80);
