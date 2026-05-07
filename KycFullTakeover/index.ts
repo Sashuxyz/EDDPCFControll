@@ -115,9 +115,44 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
           this.pendingError   = null;
           this.pendingOutput  = true;
           this.notifyOutputChanged();
+          // Auto-save the form so the takeoverStatus/takeoverLastRunAt outputs
+          // reach the database. notifyOutputChanged only marks the bound fields
+          // as dirty; without an explicit save the per-section status would be
+          // lost on form reload, and RMs would see "pending" badges instead of
+          // "done" when they return.
+          this.triggerFormSave();
         },
       })
     );
+  }
+
+  // Force the form to save dirty bound-output fields. Called after every
+  // takeover so per-section status persists. Deferred via setTimeout so the
+  // framework has time to apply the new bound-field values before save runs.
+  private triggerFormSave(): void {
+    const xrm = (window as unknown as {
+      Xrm?: { Page?: { data?: { save?: () => Promise<unknown> } } };
+    }).Xrm;
+    const saveFn = xrm?.Page?.data?.save;
+    if (typeof saveFn !== 'function') {
+      // eslint-disable-next-line no-console
+      console.warn('[KycFullTakeover] Xrm.Page.data.save unavailable — form must be saved manually to persist takeover status');
+      return;
+    }
+    setTimeout(() => {
+      try {
+        const result = saveFn();
+        if (result && typeof (result as Promise<unknown>).catch === 'function') {
+          (result as Promise<unknown>).catch((e: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('[KycFullTakeover] auto-save rejected', e);
+          });
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[KycFullTakeover] auto-save threw', e);
+      }
+    }, 200);
   }
 
   private resolveProfile(): { id: string; name: string } | null {
