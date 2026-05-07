@@ -9,7 +9,8 @@ import { OptionSetSelect } from '../common/OptionSetSelect';
 import { LookupReadonly } from '../common/LookupReadonly';
 import { PepSanctionsRiskSection as PepPayload, SectionState } from '../../types';
 import { PEP_STATUS, REPUTATIONAL_RISK, SANCTION_CHECK } from '../../utils/optionSets';
-import { colors, typography, spacing, inputStyle } from '../../styles/tokens';
+import { AutoTextarea } from '../common/AutoTextarea';
+import { colors, typography, spacing } from '../../styles/tokens';
 
 interface PepSanctionsRiskSectionProps {
   payload:     PepPayload;
@@ -67,24 +68,24 @@ export const PepSanctionsRiskSection: React.FC<PepSanctionsRiskSectionProps> = (
           <LookupReadonly value={payload.syg_peplevelid} />
         </Field>
         <Field label="PEP details" wide>
-          <Textarea
+          <AutoTextarea
             value={(edits.syg_pepdetails ?? payload.syg_pepdetails) ?? ''}
             onChange={(s) => onEdit('syg_pepdetails', s)}
-            rows={3}
+            minRows={3}
           />
         </Field>
         <Field label="PEP derivation details" wide>
-          <Textarea
+          <AutoTextarea
             value={(edits.syg_pepderivationdetails ?? payload.syg_pepderivationdetails) ?? ''}
             onChange={(s) => onEdit('syg_pepderivationdetails', s)}
-            rows={3}
+            minRows={3}
           />
         </Field>
         <Field label="Former PEP details" wide>
-          <Textarea
+          <AutoTextarea
             value={(edits.syg_formerpepdetails ?? payload.syg_formerpepdetails) ?? ''}
             onChange={(s) => onEdit('syg_formerpepdetails', s)}
-            rows={3}
+            minRows={3}
           />
         </Field>
       </div>
@@ -103,10 +104,10 @@ export const PepSanctionsRiskSection: React.FC<PepSanctionsRiskSectionProps> = (
         </Field>
         <div />
         <Field label="Media screening / reputational risk comment" wide>
-          <Textarea
+          <AutoTextarea
             value={(edits.syg_mediascreeningandreputationalriskcomment ?? payload.syg_mediascreeningandreputationalriskcomment) ?? ''}
             onChange={(s) => onEdit('syg_mediascreeningandreputationalriskcomment', s)}
-            rows={4}
+            minRows={4}
           />
         </Field>
       </div>
@@ -125,10 +126,10 @@ export const PepSanctionsRiskSection: React.FC<PepSanctionsRiskSectionProps> = (
         </Field>
         <div />
         <Field label="Sanction check comment" wide>
-          <Textarea
+          <AutoTextarea
             value={(edits.syg_sanctioncheckcomment ?? payload.syg_sanctioncheckcomment) ?? ''}
             onChange={(s) => onEdit('syg_sanctioncheckcomment', s)}
-            rows={3}
+            minRows={3}
           />
         </Field>
       </div>
@@ -170,24 +171,6 @@ const CheckboxRow: React.FC<{ checked: boolean; onChange: (c: boolean) => void }
     {checked ? 'Yes' : 'No'}
   </label>
 );
-
-const Textarea: React.FC<{ value: string; onChange: (s: string) => void; rows: number }> = ({ value, onChange, rows }) => {
-  const [focused, setFocused] = React.useState(false);
-  return (
-    <textarea
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onFocus={() => setFocused(true)}
-      onBlur={()  => setFocused(false)}
-      rows={rows}
-      style={{
-        ...inputStyle(focused),
-        resize:    'vertical',
-        minHeight: rows * 22,
-      }}
-    />
-  );
-};
 
 function countFields(payload: PepPayload, edits: PepSanctionsRiskSectionProps['edits']): number {
   let n = 0;
