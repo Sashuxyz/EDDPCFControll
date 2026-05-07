@@ -13,13 +13,14 @@ import { PersonalDetailsSection } from './sections/PersonalDetailsSection';
 import { TotalWealthIncomeSection } from './sections/TotalWealthIncomeSection';
 import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
 import { AssetAllocationSection } from './sections/AssetAllocationSection';
+import { AssociationChipsSection } from './sections/AssociationChipsSection';
 import {
   KycPayload, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
 } from '../types';
 import { colors, spacing } from '../styles/tokens';
 import { showConfirmation } from '../utils/confirmationDialog';
 import { hashSlice, setSectionState } from '../utils/sectionStatus';
-import { patchKycProfile } from '../utils/dataverse';
+import { patchKycProfile, associateRecords } from '../utils/dataverse';
 import { openProposedEmail } from '../utils/emailActivity';
 
 export interface KycFullTakeoverProps {
@@ -217,6 +218,54 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     persistStatus(setSectionState(statusBlob, id, record));
   };
 
+  // N:N association takeover. Iterates the agent's LookupRef list and POSTs
+  // $ref records via associateRecords. Already-associated targets are silently
+  // counted as `duplicates` (success); only hard failures count toward the
+  // partial-failed status.
+  const takeoverNN = async (
+    id:                 SectionId,
+    sectionLabel:       string,
+    entityLabel:        string,
+    relationshipName:   string,
+    targetEntitySet:    string,
+    items:              { id: string; name: string }[],
+  ) => {
+    const current = statusBlob.sections[id];
+    const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
+
+    const ok = await showConfirmation({
+      type: 'nton',
+      sectionLabel,
+      entityLabel,
+      itemCount: items.length,
+      isReRun,
+    });
+    if (!ok) return;
+
+    const result = await associateRecords(
+      kycProfileId,
+      relationshipName,
+      targetEntitySet,
+      items.map((i) => i.id),
+    );
+
+    const record: SectionStatusRecord = result.failed === 0
+      ? {
+          state:       'done',
+          lastRunAt:   new Date().toISOString(),
+          result:      { associated: result.associated + result.duplicates },
+          payloadHash: hashSlice(items),
+        }
+      : {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { associated: result.associated + result.duplicates, failed: result.failed },
+          errors:      result.errors.map((e) => ({ message: `${e.targetId}: ${e.message}` })),
+          payloadHash: hashSlice(items),
+        };
+    persistStatus(setSectionState(statusBlob, id, record));
+  };
+
   // === Patch-builder helpers ================================================
 
   const buildPersonalDetailsPatch = (): Record<string, unknown> => {
@@ -373,8 +422,44 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          <div id="section-businessActivities">    <PlaceholderSection title="Business Activities"     milestone="M4" /></div>
-          <div id="section-countriesOfActivity">   <PlaceholderSection title="Countries of Activity"   milestone="M4" /></div>
+          {payload.businessActivities && (
+            <div id="section-businessActivities">
+              <AssociationChipsSection
+                title="Business Activities"
+                items={payload.businessActivities}
+                state={sectionState('businessActivities', true)}
+                onTakeover={() => takeoverNN(
+                  'businessActivities',
+                  'Business Activities',
+                  'Business Activity',
+                  'syg_businessactivities_syg_KYCProfile_syg_KYCProfile',
+                  'syg_businessactivitieses',
+                  payload.businessActivities ?? [],
+                )}
+                lastRunAt={statusBlob.sections.businessActivities?.lastRunAt}
+                errorMsg={statusBlob.sections.businessActivities?.errors?.[0]?.message}
+              />
+            </div>
+          )}
+          {payload.countriesOfActivity && (
+            <div id="section-countriesOfActivity">
+              <AssociationChipsSection
+                title="Countries of Activity"
+                items={payload.countriesOfActivity}
+                state={sectionState('countriesOfActivity', true)}
+                onTakeover={() => takeoverNN(
+                  'countriesOfActivity',
+                  'Countries of Activity',
+                  'Country',
+                  'syg_new_country_syg_KYCProfile_syg_KYCProfile',
+                  'syg_new_countries',
+                  payload.countriesOfActivity ?? [],
+                )}
+                lastRunAt={statusBlob.sections.countriesOfActivity?.lastRunAt}
+                errorMsg={statusBlob.sections.countriesOfActivity?.errors?.[0]?.message}
+              />
+            </div>
+          )}
           <div id="section-relatedParties">        <PlaceholderSection title="Related Parties"         milestone="M6" /></div>
 
           {/* Financial Situation */}
