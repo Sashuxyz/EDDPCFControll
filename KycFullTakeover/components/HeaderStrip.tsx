@@ -21,8 +21,8 @@ export const HeaderStrip: React.FC<HeaderStripProps> = ({ profileName, schemaVer
     color:         colors.textOnBrand,
     fontFamily:    typography.fontFamily,
   }}>
-    <span style={{ fontSize: typography.fontSizeTitle, fontWeight: typography.fontWeightBold }}>
-      KYC Full Takeover{profileName ? ` — ${profileName}` : ''}
+    <span style={{ fontSize: typography.fontSizeTitle, fontWeight: typography.fontWeightBold, letterSpacing: '0.05em' }}>
+      KYC AGENT OUTPUT
     </span>
     <span style={{ flex: 1 }} />
     {schemaVersion && (
