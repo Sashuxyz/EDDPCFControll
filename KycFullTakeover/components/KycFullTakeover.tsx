@@ -186,7 +186,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('professionalExperience', true)}
                 value={edits.professionalExperience ?? payload.professionalExperience.syg_ProfessionalExperienceSummary ?? ''}
                 onChange={(next) => setEdits((p) => ({ ...p, professionalExperience: next }))}
-                onTakeover={() => takeoverNarrative('professionalExperience', 'Professional Experience Summary', 'syg_ProfessionalExperienceSummary')}
+                onTakeover={() => takeoverNarrative('professionalExperience', 'Professional Experience Summary', 'syg_professionalexperiencesummary')}
                 lastRunAt={statusBlob.sections.professionalExperience?.lastRunAt}
                 errorMsg={statusBlob.sections.professionalExperience?.errors?.[0]?.message}
               />
@@ -205,7 +205,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('financialSituationNarrative', true)}
                 value={edits.financialSituationNarrative ?? payload.financialSituationNarrative}
                 onChange={(next) => setEdits((p) => ({ ...p, financialSituationNarrative: next }))}
-                onTakeover={() => takeoverNarrative('financialSituationNarrative', 'Financial Situation Summary', 'syg_FinancialSituationSummary')}
+                onTakeover={() => takeoverNarrative('financialSituationNarrative', 'Financial Situation Summary', 'syg_financialsituationsummary')}
                 lastRunAt={statusBlob.sections.financialSituationNarrative?.lastRunAt}
                 errorMsg={statusBlob.sections.financialSituationNarrative?.errors?.[0]?.message}
               />
@@ -222,7 +222,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('digitalAssetHoldingsNarrative', true)}
                 value={edits.digitalAssetHoldingsNarrative ?? payload.digitalAssetHoldingsNarrative}
                 onChange={(next) => setEdits((p) => ({ ...p, digitalAssetHoldingsNarrative: next }))}
-                onTakeover={() => takeoverNarrative('digitalAssetHoldingsNarrative', 'Crypto Holdings Narrative', 'syg_CryptoHoldingsNarrative')}
+                onTakeover={() => takeoverNarrative('digitalAssetHoldingsNarrative', 'Crypto Holdings Narrative', 'syg_cryptoholdingsnarrative')}
                 lastRunAt={statusBlob.sections.digitalAssetHoldingsNarrative?.lastRunAt}
                 errorMsg={statusBlob.sections.digitalAssetHoldingsNarrative?.errors?.[0]?.message}
               />
@@ -239,7 +239,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('transactionalBehaviour', true)}
                 value={edits.transactionalBehaviour ?? payload.transactionalBehaviour}
                 onChange={(next) => setEdits((p) => ({ ...p, transactionalBehaviour: next }))}
-                onTakeover={() => takeoverNarrative('transactionalBehaviour', 'Narrative for Transactional Behaviour', 'syg_NarrativeforTransactionalBehaviour')}
+                onTakeover={() => takeoverNarrative('transactionalBehaviour', 'Narrative for Transactional Behaviour', 'syg_narrativefortransactionalbehaviour')}
                 lastRunAt={statusBlob.sections.transactionalBehaviour?.lastRunAt}
                 errorMsg={statusBlob.sections.transactionalBehaviour?.errors?.[0]?.message}
               />
@@ -258,7 +258,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('additionalComments', true)}
                 value={edits.additionalComments ?? payload.additionalComments}
                 onChange={(next) => setEdits((p) => ({ ...p, additionalComments: next }))}
-                onTakeover={() => takeoverNarrative('additionalComments', 'Additional Comments', 'syg_AdditionalComments_clientservices')}
+                onTakeover={() => takeoverNarrative('additionalComments', 'Additional Comments', 'syg_additionalcomments_clientservices')}
                 lastRunAt={statusBlob.sections.additionalComments?.lastRunAt}
                 errorMsg={statusBlob.sections.additionalComments?.errors?.[0]?.message}
               />
