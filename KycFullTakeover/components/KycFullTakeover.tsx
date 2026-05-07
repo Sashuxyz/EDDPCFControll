@@ -9,6 +9,10 @@ import { FindingsSection } from './sections/FindingsSection';
 import { ProposedEmailSection } from './sections/ProposedEmailSection';
 import { NarrativeSection } from './sections/NarrativeSection';
 import { PlaceholderSection } from './sections/PlaceholderSection';
+import { PersonalDetailsSection } from './sections/PersonalDetailsSection';
+import { TotalWealthIncomeSection } from './sections/TotalWealthIncomeSection';
+import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
+import { AssetAllocationSection } from './sections/AssetAllocationSection';
 import {
   KycPayload, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
 } from '../types';
@@ -28,8 +32,36 @@ export interface KycFullTakeoverProps {
 }
 
 // Per-section local edit state. Maps section id → current editable value.
-// Phase 1: only narrative sections + email need editable state in the UI.
-type EditState = Partial<Record<SectionId, string>>;
+// Narrative sections use string; field-set sections use typed sub-objects.
+// We keep a single object shape so setEdits can merge both cleanly.
+interface EditState {
+  // Narrative sections (string values)
+  professionalExperience?:        string;
+  financialSituationNarrative?:   string;
+  digitalAssetHoldingsNarrative?: string;
+  transactionalBehaviour?:        string;
+  additionalComments?:            string;
+  // Field-set sections (typed sub-objects)
+  personalDetails?: { syg_dateofbirth?: string | null; syg_uspersonstatus?: 1 | 2 | 3 | 4 | null };
+  totalWealthIncome?: {
+    syg_TotalWealth_currency?:           number | null;
+    syg_TotalWealth?:                    number | null;
+    syg_annualincome?:                   number | null;
+    syg_TimeframeforWealthAccumulation?: number | null;
+  };
+  pepSanctionsRisk?: Partial<{
+    syg_PEP:                                      boolean | null;
+    syg_pepstatus:                                number | null;
+    syg_pepdetails:                               string;
+    syg_pepderivationdetails:                     string;
+    syg_formerpepdetails:                         string;
+    syg_ReputationalRisk:                         number | null;
+    syg_mediascreeningandreputationalriskcomment: string;
+    syg_SanctionCheck:                            number | null;
+    syg_sanctioncheckcomment:                     string;
+  }>;
+  currentAssetAllocation?: { totalWealth?: number | null; vals?: number[] };
+}
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
   payload, statusBlob: initialStatusBlob, kycProfileId, kycProfileName, webAPI, onStatusChange,
@@ -54,7 +86,8 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     if (!payloadHasIt) return 'na';
     const persisted = statusBlob.sections[id];
     if (persisted?.state === 'done' || persisted?.state === 'partial-failed') return persisted.state;
-    if (edits[id] !== undefined && edits[id] !== originalNarrativeValue(payload, id)) return 'edited';
+    const narrativeEdit = (edits as Record<string, unknown>)[id];
+    if (narrativeEdit !== undefined && narrativeEdit !== originalNarrativeValue(payload, id)) return 'edited';
     return 'pending';
   };
 
@@ -111,7 +144,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     fieldLabel: string,
     dataverseFieldName: string,
   ) => {
-    const value = edits[id] ?? originalNarrativeValue(payload, id) ?? '';
+    const value = ((edits as Record<string, unknown>)[id] as string | undefined) ?? originalNarrativeValue(payload, id) ?? '';
     const current = statusBlob.sections[id];
     const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
 
@@ -139,6 +172,131 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
           payloadHash: hashSlice(value),
         };
     persistStatus(setSectionState(statusBlob, id, record));
+  };
+
+  // Multi-field PATCH for field-set sections. Logical names must be lowercase
+  // (Dataverse OData property paths are case-sensitive). Lookups are passed as
+  // `{key}@odata.bind` records pointing at the target entity-set.
+  const takeoverFieldSet = async (
+    id: SectionId,
+    sectionLabel: string,
+    fields: Record<string, unknown>,
+  ) => {
+    const current = statusBlob.sections[id];
+    const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
+
+    const ok = await showConfirmation({
+      type: 'fieldSet',
+      sectionLabel,
+      fieldCount: Object.keys(fields).length,
+      isReRun,
+    });
+    if (!ok) return;
+
+    const result = await patchKycProfile(webAPI, kycProfileId, fields);
+    const record: SectionStatusRecord = result.ok
+      ? {
+          state:       'done',
+          lastRunAt:   new Date().toISOString(),
+          result:      { patched: Object.keys(fields).length },
+          payloadHash: hashSlice(fields),
+        }
+      : {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { patched: 0, failed: Object.keys(fields).length },
+          errors:      [{ message: result.error ?? 'unknown' }],
+          payloadHash: hashSlice(fields),
+        };
+    persistStatus(setSectionState(statusBlob, id, record));
+  };
+
+  // === Patch-builder helpers ================================================
+
+  const buildPersonalDetailsPatch = (): Record<string, unknown> => {
+    if (!payload.personalDetails) return {};
+    const p = payload.personalDetails;
+    const e = edits.personalDetails ?? {};
+    const out: Record<string, unknown> = {};
+    if (p.syg_AccountHolderNationalityID?.id)    out['syg_accountholdernationalityid@odata.bind']    = `/syg_countries(${p.syg_AccountHolderNationalityID.id})`;
+    if (p.syg_Nationality2ID?.id)                out['syg_nationality2id@odata.bind']                 = `/syg_countries(${p.syg_Nationality2ID.id})`;
+    if (p.syg_accountholdernationality3id?.id)   out['syg_accountholdernationality3id@odata.bind']    = `/syg_countries(${p.syg_accountholdernationality3id.id})`;
+    if (p.syg_AccountHolderDomicileID?.id)       out['syg_accountholderdomicileid@odata.bind']        = `/syg_countries(${p.syg_AccountHolderDomicileID.id})`;
+    if (p.syg_AccountHolderCountryofBirthID?.id) out['syg_accountholdercountryofbirthid@odata.bind']  = `/syg_countries(${p.syg_AccountHolderCountryofBirthID.id})`;
+    const dob = e.syg_dateofbirth ?? p.syg_dateofbirth;
+    if (dob !== undefined && dob !== null) out['syg_dateofbirth'] = dob;
+    const us = e.syg_uspersonstatus ?? p.syg_uspersonstatus;
+    if (us !== undefined && us !== null) out['syg_uspersonstatus'] = us;
+    return out;
+  };
+
+  const buildTotalWealthIncomePatch = (): Record<string, unknown> => {
+    if (!payload.totalWealthIncome) return {};
+    const p = payload.totalWealthIncome;
+    const e = edits.totalWealthIncome ?? {};
+    const out: Record<string, unknown> = {};
+    const tw = e.syg_TotalWealth_currency ?? p.syg_TotalWealth_currency;
+    if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
+    const twb = e.syg_TotalWealth ?? p.syg_TotalWealth;
+    if (twb !== undefined && twb !== null) out['syg_totalwealth'] = twb;
+    const ai = e.syg_annualincome ?? p.syg_annualincome;
+    if (ai !== undefined && ai !== null) out['syg_annualincome'] = ai;
+    const tf = e.syg_TimeframeforWealthAccumulation ?? p.syg_TimeframeforWealthAccumulation;
+    if (tf !== undefined && tf !== null) out['syg_timeframeforwealthaccumulation'] = tf;
+    return out;
+  };
+
+  const buildPepSanctionsRiskPatch = (): Record<string, unknown> => {
+    if (!payload.pepSanctionsRisk) return {};
+    const p = payload.pepSanctionsRisk;
+    const e = edits.pepSanctionsRisk ?? {};
+    const out: Record<string, unknown> = {};
+    const map: Array<[keyof typeof p, string]> = [
+      ['syg_PEP',                                       'syg_pep'],
+      ['syg_pepstatus',                                 'syg_pepstatus'],
+      ['syg_pepdetails',                                'syg_pepdetails'],
+      ['syg_pepderivationdetails',                      'syg_pepderivationdetails'],
+      ['syg_formerpepdetails',                          'syg_formerpepdetails'],
+      ['syg_ReputationalRisk',                          'syg_reputationalrisk'],
+      ['syg_mediascreeningandreputationalriskcomment',  'syg_mediascreeningandreputationalriskcomment'],
+      ['syg_SanctionCheck',                             'syg_sanctioncheck'],
+      ['syg_sanctioncheckcomment',                      'syg_sanctioncheckcomment'],
+    ];
+    for (const [typedKey, dvKey] of map) {
+      const v = (e as Record<string, unknown>)[typedKey as string] ?? p[typedKey];
+      if (v !== undefined && v !== null && v !== '') out[dvKey] = v;
+    }
+    if (p.syg_peplevelid?.id) out['syg_peplevelid@odata.bind'] = `/syg_kycproperties(${p.syg_peplevelid.id})`;
+    return out;
+  };
+
+  const buildAssetAllocationPatch = (): Record<string, unknown> => {
+    if (!payload.currentAssetAllocation) return {};
+    const p = payload.currentAssetAllocation;
+    const e = edits.currentAssetAllocation ?? {};
+    const tw = e.totalWealth ?? p.syg_TotalWealth_currency;
+    // vals indexed per ASSET_CLASSES paramIndex: 0=cash, 1=digitalAssets,
+    // 2=equities, 3=fixedIncome, 4=commodities, 5=realEstate, 6=other
+    const vals = e.vals ?? [
+      p.syg_wealthdistribution_cash_dec         ?? 0,
+      p.syg_wealthdistribution_digitalassets_dec ?? 0,
+      p.syg_wealthdistribution_equities_dec     ?? 0,
+      p.syg_wealthdistribution_fixedincome_dec  ?? 0,
+      p.syg_wealthdistribution_commodities_dec  ?? 0,
+      p.syg_wealthdistribution_realestate_dec   ?? 0,
+      p.syg_wealthdistribution_other_dec        ?? 0,
+    ];
+    const out: Record<string, unknown> = {
+      'syg_wealthdistribution_cash_dec':           vals[0],
+      'syg_wealthdistribution_digitalassets_dec':  vals[1],
+      'syg_wealthdistribution_equities_dec':       vals[2],
+      'syg_wealthdistribution_fixedincome_dec':    vals[3],
+      'syg_wealthdistribution_commodities_dec':    vals[4],
+      'syg_wealthdistribution_realestate_dec':     vals[5],
+      'syg_wealthdistribution_other_dec':          vals[6],
+    };
+    if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
+    return out;
   };
 
   // === Layout =============================================================
@@ -177,7 +335,20 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
           )}
 
           {/* Client Background — Personal Details / BA / Countries / Related Parties = M3-M6 placeholders */}
-          <div id="section-personalDetails">       <PlaceholderSection title="Personal Details"        milestone="M3" /></div>
+          {payload.personalDetails && (
+            <div id="section-personalDetails">
+              <PersonalDetailsSection
+                payload={payload.personalDetails}
+                state={sectionState('personalDetails', true)}
+                edits={edits.personalDetails ?? {}}
+                onEditDate={(next) => setEdits((p) => ({ ...p, personalDetails: { ...(p.personalDetails ?? {}), syg_dateofbirth: next } }))}
+                onEditUSPerson={(next) => setEdits((p) => ({ ...p, personalDetails: { ...(p.personalDetails ?? {}), syg_uspersonstatus: next as 1 | 2 | 3 | 4 | null } }))}
+                onTakeover={() => takeoverFieldSet('personalDetails', 'Personal Details', buildPersonalDetailsPatch())}
+                lastRunAt={statusBlob.sections.personalDetails?.lastRunAt}
+                errorMsg={statusBlob.sections.personalDetails?.errors?.[0]?.message}
+              />
+            </div>
+          )}
           {payload.professionalExperience && (
             <div id="section-professionalExperience">
               <NarrativeSection
@@ -211,9 +382,37 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          <div id="section-totalWealthIncome">      <PlaceholderSection title="Total Wealth and Income" milestone="M3" /></div>
+          {payload.totalWealthIncome && (
+            <div id="section-totalWealthIncome">
+              <TotalWealthIncomeSection
+                payload={payload.totalWealthIncome}
+                state={sectionState('totalWealthIncome', true)}
+                edits={edits.totalWealthIncome ?? {}}
+                onEditMoney={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TotalWealth_currency: next } }))}
+                onEditWealthBand={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TotalWealth: next } }))}
+                onEditAnnualIncome={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_annualincome: next } }))}
+                onEditTimeframe={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TimeframeforWealthAccumulation: next } }))}
+                onTakeover={() => takeoverFieldSet('totalWealthIncome', 'Total Wealth and Income', buildTotalWealthIncomePatch())}
+                lastRunAt={statusBlob.sections.totalWealthIncome?.lastRunAt}
+                errorMsg={statusBlob.sections.totalWealthIncome?.errors?.[0]?.message}
+              />
+            </div>
+          )}
           <div id="section-sourceOfWealth">         <PlaceholderSection title="Source of Wealth"        milestone="M5" /></div>
-          <div id="section-currentAssetAllocation"> <PlaceholderSection title="Current Asset Allocation" milestone="M3" /></div>
+          {payload.currentAssetAllocation && (
+            <div id="section-currentAssetAllocation">
+              <AssetAllocationSection
+                payload={payload.currentAssetAllocation}
+                state={sectionState('currentAssetAllocation', true)}
+                edits={edits.currentAssetAllocation ?? {}}
+                onEditTotalWealth={(next) => setEdits((p) => ({ ...p, currentAssetAllocation: { ...(p.currentAssetAllocation ?? {}), totalWealth: next } }))}
+                onEditVals={(next) => setEdits((p) => ({ ...p, currentAssetAllocation: { ...(p.currentAssetAllocation ?? {}), vals: next } }))}
+                onTakeover={() => takeoverFieldSet('currentAssetAllocation', 'Current Asset Allocation', buildAssetAllocationPatch())}
+                lastRunAt={statusBlob.sections.currentAssetAllocation?.lastRunAt}
+                errorMsg={statusBlob.sections.currentAssetAllocation?.errors?.[0]?.message}
+              />
+            </div>
+          )}
           {typeof payload.digitalAssetHoldingsNarrative === 'string' && (
             <div id="section-digitalAssetHoldingsNarrative">
               <NarrativeSection
@@ -249,7 +448,19 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
           <div id="section-plannedDAFunds">   <PlaceholderSection title="Planned DA Funds"   milestone="M5" /></div>
 
           {/* Compliance & Other */}
-          <div id="section-pepSanctionsRisk"> <PlaceholderSection title="PEP, Adverse Media and Sanctions" milestone="M3" /></div>
+          {payload.pepSanctionsRisk && (
+            <div id="section-pepSanctionsRisk">
+              <PepSanctionsRiskSection
+                payload={payload.pepSanctionsRisk}
+                state={sectionState('pepSanctionsRisk', true)}
+                edits={edits.pepSanctionsRisk ?? {}}
+                onEdit={(key, value) => setEdits((p) => ({ ...p, pepSanctionsRisk: { ...(p.pepSanctionsRisk ?? {}), [key as string]: value } }))}
+                onTakeover={() => takeoverFieldSet('pepSanctionsRisk', 'PEP, Adverse Media and Sanctions', buildPepSanctionsRiskPatch())}
+                lastRunAt={statusBlob.sections.pepSanctionsRisk?.lastRunAt}
+                errorMsg={statusBlob.sections.pepSanctionsRisk?.errors?.[0]?.message}
+              />
+            </div>
+          )}
           {typeof payload.additionalComments === 'string' && (
             <div id="section-additionalComments">
               <NarrativeSection
