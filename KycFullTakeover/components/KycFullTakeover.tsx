@@ -34,6 +34,12 @@ export interface KycFullTakeoverProps {
 // Per-section local edit state. Maps section id → current editable value.
 // Narrative sections use string; field-set sections use typed sub-objects.
 // We keep a single object shape so setEdits can merge both cleanly.
+//
+// Casing note: keys inside the field-set sub-objects (e.g. syg_TotalWealth_currency,
+// syg_PEP, syg_ReputationalRisk) MIRROR THE PAYLOAD TYPE CASING from types.ts —
+// they are NOT the OData write-side casing. The lowercase Dataverse property
+// names live in the buildXPatch helpers below; that's where the boundary
+// between "internal payload-mirror state" and "outbound OData wire format" is.
 interface EditState {
   // Narrative sections (string values)
   professionalExperience?:        string;
@@ -267,6 +273,10 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       if (v !== undefined && v !== null && v !== '') out[dvKey] = v;
     }
     if (p.syg_peplevelid?.id) out['syg_peplevelid@odata.bind'] = `/syg_kycproperties(${p.syg_peplevelid.id})`;
+    // Note: type carries syg_pepstatusid (lookup variant of syg_pepstatus) but
+    // we intentionally only write the picklist syg_pepstatus in Phase 1. If the
+    // form needs the lookup column populated too, add a parallel
+    // `syg_pepstatusid@odata.bind` line here pointing at /syg_kycproperties(id).
     return out;
   };
 
