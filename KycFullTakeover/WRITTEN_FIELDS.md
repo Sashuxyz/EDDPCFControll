@@ -6,12 +6,14 @@ This document mirrors the spec's Section Catalog, scoped to fields **actually wr
 
 > **Casing rule:** All Dataverse logical names below are lowercase. The OData property path is case-sensitive; v0.1.0 mistakenly wrote CamelCase property names and the API rejected them with `Invalid property '...' was found in entity 'Microsoft.Dynamics.CRM.syg_kycprofile'`. v0.1.1 onwards uses lowercase exclusively.
 
-## Phase 1 (v0.2.0 — current)
+## Phase 1 (v0.3.0 — current)
 
 | Section | Entity | Fields written | Op |
 |---|---|---|---|
 | Findings | — read-only — | — | none |
 | Proposed Email | `email` (new record via openForm) | subject, description, regardingobjectid, to | form open |
+| Business Activities | N:N relationship | `syg_businessactivities_syg_KYCProfile_syg_KYCProfile` → target entity-set `syg_businessactivitieses` | $ref POST |
+| Countries of Activity | N:N relationship | `syg_new_country_syg_KYCProfile_syg_KYCProfile` → target entity-set `syg_new_countries` | $ref POST |
 | Personal Details | `syg_kycprofile` | `syg_accountholdernationalityid@odata.bind`, `syg_nationality2id@odata.bind`, `syg_accountholdernationality3id@odata.bind`, `syg_accountholderdomicileid@odata.bind`, `syg_accountholdercountryofbirthid@odata.bind`, `syg_dateofbirth`, `syg_uspersonstatus` | PATCH |
 | Professional Experience | `syg_kycprofile` | `syg_professionalexperiencesummary` | PATCH |
 | Financial Situation Narrative | `syg_kycprofile` | `syg_financialsituationsummary` | PATCH |
@@ -22,11 +24,10 @@ This document mirrors the spec's Section Catalog, scoped to fields **actually wr
 | PEP, Adverse Media and Sanctions | `syg_kycprofile` | `syg_pep`, `syg_pepstatus`, `syg_pepdetails`, `syg_pepderivationdetails`, `syg_formerpepdetails`, `syg_peplevelid@odata.bind`, `syg_reputationalrisk`, `syg_mediascreeningandreputationalriskcomment`, `syg_sanctioncheck`, `syg_sanctioncheckcomment` | PATCH |
 | Additional Comments | `syg_kycprofile` | `syg_additionalcomments_clientservices` | PATCH |
 
-## Phase 2 (planned — M4-M6)
+## Phase 2 (planned — M5-M6)
 
 | Milestone | Sections | Op |
 |---|---|---|
-| M4 | Business Activities, Countries of Activity | $ref POST (N:N association) |
 | M5 | Source of Wealth, Detailed DA Holdings, Planned Fiat Funds, Planned DA Funds | POST children to `syg_sourceofwealths` / `syg_digitalassetsholdings` / `syg_incomingfiatfundses` / `syg_digitalassetfundses` |
 | M6 | Related Parties | POST contact/account (when CreateNewPartyRef) + POST junction `syg_relatedclientpartieses` |
 
