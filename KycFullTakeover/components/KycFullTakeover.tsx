@@ -609,7 +609,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                     'Countries of Activity',
                     'Country',
                     'syg_new_country_syg_KYCProfile_syg_KYCProfile',
-                    'new_country',
+                    'new_countries',
                     coItems,
                   )}
                   onRemove={(idx) => setEdits((p) => ({
