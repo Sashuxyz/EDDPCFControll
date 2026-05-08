@@ -40,11 +40,11 @@
   "personalDetails": {
     "_note": "Phase 1 v0.4.2: Personal Details section is dropped from the UI. The agent may still ship this; the PCF parses but ignores it. Keeping in payload so re-enabling later is no-op.",
     "syg_AccountHolderNationalityID":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
-    "syg_Nationality2ID":               { "id": "00000000-0000-4000-8000-100000000002", "name": "Italy",       "etn": "syg_country" },
+    "syg_Nationality2ID":               { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
     "syg_accountholdernationality3id":  null,
     "syg_AccountHolderDomicileID":      { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
     "syg_dateofbirth":                  "1972-04-12",
-    "syg_AccountHolderCountryofBirthID":{ "id": "00000000-0000-4000-8000-100000000002", "name": "Italy",       "etn": "syg_country" },
+    "syg_AccountHolderCountryofBirthID":{ "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
     "syg_uspersonstatus":               1
   },
 
@@ -68,7 +68,7 @@
       "syg_name":                "Anna Rossi",
       "syg_relatedpartyid":      { "id": "00000000-0000-4000-8000-300000000001", "name": "Anna Rossi", "etn": "contact" },
       "syg_relatedpartytypeid":  { "id": "00000000-0000-4000-8000-400000000001", "name": "Spouse",     "etn": "syg_kycproperty" },
-      "syg_relatedpartynationality1id": { "id": "00000000-0000-4000-8000-100000000002", "name": "Italy", "etn": "syg_country" },
+      "syg_relatedpartynationality1id": { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "syg_country" },
       "syg_domicilecountryid":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
       "syg_pep":                 false,
       "syg_riskscore":           12
@@ -84,7 +84,7 @@
           "lastname":                        "Rossi",
           "new_typeofcontact":               9,
           "syg_dateofbirth":                 "2002-03-18",
-          "syg_accountholdernationalityid":  { "id": "00000000-0000-4000-8000-100000000002", "name": "Italy",       "etn": "syg_country" },
+          "syg_accountholdernationalityid":  { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
           "syg_accountholderdomicileid":     { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" }
         }
       },
@@ -108,12 +108,13 @@
     "narrative": "Three primary sources fully account for current net worth: (1) sale of family manufacturing business in 2018, (2) accumulated salary at Sygnum AG since 2019, (3) family inheritance received 2014. Each is documented; corroboration percentages range from 87% to 96%.",
     "items": [
       {
-        "_comment": "Year lookups + relationshiptocounterparty omitted — they need real GUIDs / verified optionset values before takeover. Add them back when ready.",
         "syg_name":                          "Sale of Rossi Industries S.r.l. (2018)",
         "syg_sourceofwealth":                3,
         "syg_description":                   "Sold 60% stake in family precision-engineering business to Swiss private-equity buyer.",
         "syg_companyname":                   "Rossi Industries S.r.l.",
         "syg_counterpartyname":              "Helvetia Capital Partners SA",
+        "syg_yearofwealthgenerationid":      { "id": "091925c8-5efb-ef11-9340-6045bd29ab58", "name": "2018", "etn": "syg_year" },
+        "syg_yearofwealthgenerationinitiatedid": { "id": "eb1825c8-5efb-ef11-9340-6045bd29ab58", "name": "2003", "etn": "syg_year" },
         "syg_initialinvestment":             1200000,
         "syg_wealthgenerated":               8500000,
         "syg_valueatvaluationdate":          8500000,
@@ -128,6 +129,7 @@
         "syg_sourceofwealth":                1,
         "syg_description":                   "Senior Partner role; cumulative net salary plus partner-distribution received 2019 onward.",
         "syg_companyname":                   "Sygnum AG",
+        "syg_yearofwealthgenerationid":      { "id": "0b1925c8-5efb-ef11-9340-6045bd29ab58", "name": "2019", "etn": "syg_year" },
         "syg_wealthgenerated":               2800000,
         "syg_corroboratedvalue":             2800000,
         "syg_corroboratedpercentage":        100,
@@ -139,6 +141,7 @@
         "syg_sourceofwealth":                7,
         "syg_description":                   "Received 1/3 share of paternal grandfather's estate.",
         "syg_counterpartyname":              "Estate of Giovanni Rossi (decd. 2014)",
+        "syg_yearofwealthgenerationid":      { "id": "011925c8-5efb-ef11-9340-6045bd29ab58", "name": "2014", "etn": "syg_year" },
         "syg_wealthgenerated":               1200000,
         "syg_corroboratedvalue":             1050000,
         "syg_corroboratedpercentage":        87,
@@ -169,7 +172,7 @@
       "syg_currentvaluechf":       1450000,
       "syg_valuechf":              1450000,
       "syg_dateofvaluation":       "2026-04-30",
-      "syg_acquiringyear":         { "id": "00000000-0000-4000-8000-500000002017", "name": "2017", "etn": "syg_year" },
+      "syg_acquiringyear":         { "id": "071925c8-5efb-ef11-9340-6045bd29ab58", "name": "2017", "etn": "syg_year" },
       "syg_acquiringplace":        "Bitstamp (early 2017–2018) plus OTC desk (2019–2020)",
       "syg_averageacquiringprice": 8200,
       "syg_corroboratedamount":    18.45,
@@ -185,7 +188,7 @@
       "syg_currentvaluechf":       425000,
       "syg_valuechf":              425000,
       "syg_dateofvaluation":       "2026-04-30",
-      "syg_acquiringyear":         { "id": "00000000-0000-4000-8000-500000002021", "name": "2021", "etn": "syg_year" },
+      "syg_acquiringyear":         { "id": "0f1925c8-5efb-ef11-9340-6045bd29ab58", "name": "2021", "etn": "syg_year" },
       "syg_currentcustody":        "Sygnum Bank custody — staked under Sygnum staking program",
       "syg_originoffunds":         "Acquired via Sygnum AG salary-sacrifice arrangement 2021–2023."
     }
