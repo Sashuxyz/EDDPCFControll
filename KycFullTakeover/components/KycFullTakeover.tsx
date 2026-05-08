@@ -439,7 +439,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     if (r.syg_counterpartyname !== undefined)           out['syg_counterpartyname']                         = r.syg_counterpartyname;
     if (r.syg_relationshiptocounterparty !== undefined) out['syg_relationshiptocounterparty']               = r.syg_relationshiptocounterparty;
     if (r.syg_businessactivityid?.id)                   out['syg_businessactivityid@odata.bind']            = `/syg_businessactivitieses(${r.syg_businessactivityid.id})`;
-    if (r.syg_countryid?.id)                            out['syg_countryid@odata.bind']                     = `/syg_countries(${r.syg_countryid.id})`;
+    if (r.syg_countryid?.id)                            out['syg_countryid@odata.bind']                     = `/new_countries(${r.syg_countryid.id})`;
     if (r.syg_yearofwealthgenerationid?.id)             out['syg_yearofwealthgenerationid@odata.bind']      = `/syg_years(${r.syg_yearofwealthgenerationid.id})`;
     if (r.syg_yearofwealthgenerationinitiatedid?.id)    out['syg_yearofwealthgenerationinitiatedid@odata.bind'] = `/syg_years(${r.syg_yearofwealthgenerationinitiatedid.id})`;
     if (r.syg_initialinvestment !== undefined)          out['syg_initialinvestment']                        = r.syg_initialinvestment;
@@ -480,7 +480,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     if (r.syg_name !== undefined)              out['syg_name']                          = r.syg_name;
     if (r.syg_amount !== undefined)            out['syg_amount']                        = r.syg_amount;
     if (r.syg_bank !== undefined)              out['syg_bank']                          = r.syg_bank;
-    if (r.syg_bankdomicileid?.id)              out['syg_bankdomicileid@odata.bind']     = `/syg_countries(${r.syg_bankdomicileid.id})`;
+    if (r.syg_bankdomicileid?.id)              out['syg_bankdomicileid@odata.bind']     = `/new_countries(${r.syg_bankdomicileid.id})`;
     if (r.syg_clientid?.id) {
       const set = r.syg_clientid.etn === 'account' ? 'accounts' : 'contacts';
       const key = r.syg_clientid.etn === 'account' ? 'syg_clientid_account@odata.bind' : 'syg_clientid_contact@odata.bind';
