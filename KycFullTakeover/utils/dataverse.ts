@@ -125,3 +125,76 @@ export async function associateRecords(
   result.ok = result.failed === 0;
   return result;
 }
+
+// ============================================================================
+// Itemized child-record creation
+// ============================================================================
+//
+// Creates one row per item in parallel. Each `row` is already a fully-formed
+// OData write payload — fields lowercase, lookups as `<key>@odata.bind` URLs,
+// parent bind included by the caller.
+
+export interface CreateChildrenResult {
+  ok:       boolean;
+  created:  number;
+  failed:   number;
+  errors:   Array<{ rowIndex: number; rowName?: string; message: string }>;
+}
+
+const INVALID_PROPERTY_PATTERNS = [
+  /invalid property/i,
+  /property ["']?[^"']+["']? does not exist/i,
+  /resource not found/i,
+];
+
+export function isInvalidPropertyError(message: string): boolean {
+  if (typeof message !== 'string' || message.length === 0) return false;
+  return INVALID_PROPERTY_PATTERNS.some((re) => re.test(message));
+}
+
+export async function createChildren(
+  entitySetName:   string,
+  rows:            Array<Record<string, unknown>>,
+  rowNames:        string[],
+): Promise<CreateChildrenResult> {
+  const result: CreateChildrenResult = { ok: true, created: 0, failed: 0, errors: [] };
+  if (rows.length === 0) return result;
+
+  const base = window.location.origin;
+
+  const settled = await Promise.all(rows.map(async (row) => {
+    try {
+      const resp = await fetch(`${base}/api/data/v9.2/${entitySetName}`, {
+        method:      'POST',
+        credentials: 'include',
+        headers:     {
+          'Content-Type':       'application/json',
+          'OData-Version':      '4.0',
+          'OData-MaxVersion':   '4.0',
+          'Accept':             'application/json',
+          'Prefer':             'return=representation',
+        },
+        body: JSON.stringify(row),
+      });
+
+      if (resp.ok) return { ok: true as const };
+
+      let errBody = '';
+      try { errBody = await resp.text(); } catch { /* ignore */ }
+      return { ok: false as const, message: `HTTP ${resp.status}: ${errBody.slice(0, 240)}` };
+    } catch (e) {
+      return { ok: false as const, message: (e as Error).message ?? String(e) };
+    }
+  }));
+
+  settled.forEach((r, idx) => {
+    if (r.ok) {
+      result.created += 1;
+    } else {
+      result.failed += 1;
+      result.errors.push({ rowIndex: idx, rowName: rowNames[idx], message: r.message });
+    }
+  });
+  result.ok = result.failed === 0;
+  return result;
+}
