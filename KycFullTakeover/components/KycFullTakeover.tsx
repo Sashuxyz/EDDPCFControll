@@ -12,7 +12,6 @@ import { PlaceholderSection } from './sections/PlaceholderSection';
 import { PersonalDetailsSection } from './sections/PersonalDetailsSection';
 import { TotalWealthIncomeSection } from './sections/TotalWealthIncomeSection';
 import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
-import { AssetAllocationSection } from './sections/AssetAllocationSection';
 import { AssociationChipsSection } from './sections/AssociationChipsSection';
 import { SourceOfWealthSection } from './sections/SourceOfWealthSection';
 import { DetailedDAHoldingsSection } from './sections/DetailedDAHoldingsSection';
@@ -55,11 +54,16 @@ interface EditState {
   additionalComments?:            string;
   // Field-set sections (typed sub-objects)
   personalDetails?: { syg_dateofbirth?: string | null; syg_uspersonstatus?: 1 | 2 | 3 | 4 | null };
+  // Merged "Income, total wealth and asset allocation" section. The CHF money
+  // field (formerly under totalWealthIncome.syg_TotalWealth_currency) moved to
+  // `totalWealth` here, owned by the embedded WealthAllocation. `vals` is the
+  // 7-element percentage array from ASSET_CLASSES.
   totalWealthIncome?: {
-    syg_TotalWealth_currency?:           number | null;
     syg_TotalWealth?:                    number | null;
     syg_annualincome?:                   number | null;
     syg_TimeframeforWealthAccumulation?: number | null;
+    totalWealth?:                        number | null;
+    vals?:                               number[];
   };
   pepSanctionsRisk?: Partial<{
     syg_PEP:                                      boolean | null;
@@ -72,7 +76,6 @@ interface EditState {
     syg_SanctionCheck:                            number | null;
     syg_sanctioncheckcomment:                     string;
   }>;
-  currentAssetAllocation?: { totalWealth?: number | null; vals?: number[] };
   // N:N section edits — the agent's resolved list, optionally trimmed by the
   // RM via the chip × buttons before takeover.
   businessActivities?:  LookupRef[];
@@ -136,9 +139,8 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       label: 'Financial Situation',
       entries: [
         { id: 'financialSituationNarrative'   as SectionId, label: 'Financial Situation Narrative', state: sectionState('financialSituationNarrative',   typeof payload.financialSituationNarrative === 'string') },
-        { id: 'totalWealthIncome'             as SectionId, label: 'Total Wealth and Income',       state: sectionState('totalWealthIncome',             !!payload.totalWealthIncome) },
+        { id: 'totalWealthIncome'             as SectionId, label: 'Income, total wealth and asset allocation', state: sectionState('totalWealthIncome', !!payload.totalWealthIncome || !!payload.currentAssetAllocation) },
         { id: 'sourceOfWealth'                as SectionId, label: 'Source of Wealth',              state: sectionState('sourceOfWealth',                !!payload.sourceOfWealth) },
-        { id: 'currentAssetAllocation'        as SectionId, label: 'Current Asset Allocation',     state: sectionState('currentAssetAllocation',        !!payload.currentAssetAllocation) },
         { id: 'digitalAssetHoldingsNarrative' as SectionId, label: 'Digital Asset Holdings Narrative', state: sectionState('digitalAssetHoldingsNarrative', typeof payload.digitalAssetHoldingsNarrative === 'string') },
         { id: 'detailedDAHoldings'            as SectionId, label: 'Detailed DA Holdings',          state: sectionState('detailedDAHoldings',            !!payload.detailedDAHoldings) },
       ],
@@ -375,19 +377,49 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     return out;
   };
 
+  // Combined "Income, total wealth and asset allocation" patch. Reads from
+  // both the totalWealthIncome and currentAssetAllocation payload slices and
+  // both lives under edits.totalWealthIncome (since the section is merged).
   const buildTotalWealthIncomePatch = (): Record<string, unknown> => {
-    if (!payload.totalWealthIncome) return {};
-    const p = payload.totalWealthIncome;
-    const e = edits.totalWealthIncome ?? {};
+    const p   = payload.totalWealthIncome;
+    const ap  = payload.currentAssetAllocation;
+    const e   = edits.totalWealthIncome ?? {};
     const out: Record<string, unknown> = {};
-    const tw = e.syg_TotalWealth_currency ?? p.syg_TotalWealth_currency;
-    if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
-    const twb = e.syg_TotalWealth ?? p.syg_TotalWealth;
-    if (twb !== undefined && twb !== null) out['syg_totalwealth'] = twb;
-    const ai = e.syg_annualincome ?? p.syg_annualincome;
-    if (ai !== undefined && ai !== null) out['syg_annualincome'] = ai;
-    const tf = e.syg_TimeframeforWealthAccumulation ?? p.syg_TimeframeforWealthAccumulation;
-    if (tf !== undefined && tf !== null) out['syg_timeframeforwealthaccumulation'] = tf;
+
+    // Banded fields from the income / total-wealth slice
+    if (p) {
+      const twb = e.syg_TotalWealth ?? p.syg_TotalWealth;
+      if (twb !== undefined && twb !== null) out['syg_totalwealth'] = twb;
+      const ai = e.syg_annualincome ?? p.syg_annualincome;
+      if (ai !== undefined && ai !== null) out['syg_annualincome'] = ai;
+      const tf = e.syg_TimeframeforWealthAccumulation ?? p.syg_TimeframeforWealthAccumulation;
+      if (tf !== undefined && tf !== null) out['syg_timeframeforwealthaccumulation'] = tf;
+    }
+
+    // Asset allocation: CHF money + 7 _dec percentages
+    // vals indexed per ASSET_CLASSES paramIndex: 0=cash, 1=digitalAssets,
+    // 2=equities, 3=fixedIncome, 4=commodities, 5=realEstate, 6=other.
+    if (ap) {
+      const tw = e.totalWealth ?? ap.syg_TotalWealth_currency;
+      if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
+      const vals = e.vals ?? [
+        ap.syg_wealthdistribution_cash_dec         ?? 0,
+        ap.syg_wealthdistribution_digitalassets_dec ?? 0,
+        ap.syg_wealthdistribution_equities_dec     ?? 0,
+        ap.syg_wealthdistribution_fixedincome_dec  ?? 0,
+        ap.syg_wealthdistribution_commodities_dec  ?? 0,
+        ap.syg_wealthdistribution_realestate_dec   ?? 0,
+        ap.syg_wealthdistribution_other_dec        ?? 0,
+      ];
+      out['syg_wealthdistribution_cash_dec']           = vals[0];
+      out['syg_wealthdistribution_digitalassets_dec']  = vals[1];
+      out['syg_wealthdistribution_equities_dec']       = vals[2];
+      out['syg_wealthdistribution_fixedincome_dec']    = vals[3];
+      out['syg_wealthdistribution_commodities_dec']    = vals[4];
+      out['syg_wealthdistribution_realestate_dec']     = vals[5];
+      out['syg_wealthdistribution_other_dec']          = vals[6];
+    }
+
     return out;
   };
 
@@ -416,35 +448,6 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     // we intentionally only write the picklist syg_pepstatus in Phase 1. If the
     // form needs the lookup column populated too, add a parallel
     // `syg_pepstatusid@odata.bind` line here pointing at /syg_kycproperties(id).
-    return out;
-  };
-
-  const buildAssetAllocationPatch = (): Record<string, unknown> => {
-    if (!payload.currentAssetAllocation) return {};
-    const p = payload.currentAssetAllocation;
-    const e = edits.currentAssetAllocation ?? {};
-    const tw = e.totalWealth ?? p.syg_TotalWealth_currency;
-    // vals indexed per ASSET_CLASSES paramIndex: 0=cash, 1=digitalAssets,
-    // 2=equities, 3=fixedIncome, 4=commodities, 5=realEstate, 6=other
-    const vals = e.vals ?? [
-      p.syg_wealthdistribution_cash_dec         ?? 0,
-      p.syg_wealthdistribution_digitalassets_dec ?? 0,
-      p.syg_wealthdistribution_equities_dec     ?? 0,
-      p.syg_wealthdistribution_fixedincome_dec  ?? 0,
-      p.syg_wealthdistribution_commodities_dec  ?? 0,
-      p.syg_wealthdistribution_realestate_dec   ?? 0,
-      p.syg_wealthdistribution_other_dec        ?? 0,
-    ];
-    const out: Record<string, unknown> = {
-      'syg_wealthdistribution_cash_dec':           vals[0],
-      'syg_wealthdistribution_digitalassets_dec':  vals[1],
-      'syg_wealthdistribution_equities_dec':       vals[2],
-      'syg_wealthdistribution_fixedincome_dec':    vals[3],
-      'syg_wealthdistribution_commodities_dec':    vals[4],
-      'syg_wealthdistribution_realestate_dec':     vals[5],
-      'syg_wealthdistribution_other_dec':          vals[6],
-    };
-    if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
     return out;
   };
 
@@ -673,17 +676,19 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          {payload.totalWealthIncome && (
+          {(payload.totalWealthIncome || payload.currentAssetAllocation) && (
             <div id="section-totalWealthIncome">
               <TotalWealthIncomeSection
-                payload={payload.totalWealthIncome}
+                payload={payload.totalWealthIncome ?? {}}
+                assetPayload={payload.currentAssetAllocation}
                 state={sectionState('totalWealthIncome', true)}
                 edits={edits.totalWealthIncome ?? {}}
-                onEditMoney={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TotalWealth_currency: next } }))}
                 onEditWealthBand={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TotalWealth: next } }))}
                 onEditAnnualIncome={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_annualincome: next } }))}
                 onEditTimeframe={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TimeframeforWealthAccumulation: next } }))}
-                onTakeover={() => takeoverFieldSet('totalWealthIncome', 'Total Wealth and Income', buildTotalWealthIncomePatch())}
+                onEditTotalWealth={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), totalWealth: next } }))}
+                onEditVals={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), vals: next } }))}
+                onTakeover={() => takeoverFieldSet('totalWealthIncome', 'Income, total wealth and asset allocation', buildTotalWealthIncomePatch())}
                 lastRunAt={statusBlob.sections.totalWealthIncome?.lastRunAt}
                 errorMsg={statusBlob.sections.totalWealthIncome?.errors?.[0]?.message}
               />
@@ -729,20 +734,6 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               </div>
             );
           })()}
-          {payload.currentAssetAllocation && (
-            <div id="section-currentAssetAllocation">
-              <AssetAllocationSection
-                payload={payload.currentAssetAllocation}
-                state={sectionState('currentAssetAllocation', true)}
-                edits={edits.currentAssetAllocation ?? {}}
-                onEditTotalWealth={(next) => setEdits((p) => ({ ...p, currentAssetAllocation: { ...(p.currentAssetAllocation ?? {}), totalWealth: next } }))}
-                onEditVals={(next) => setEdits((p) => ({ ...p, currentAssetAllocation: { ...(p.currentAssetAllocation ?? {}), vals: next } }))}
-                onTakeover={() => takeoverFieldSet('currentAssetAllocation', 'Current Asset Allocation', buildAssetAllocationPatch())}
-                lastRunAt={statusBlob.sections.currentAssetAllocation?.lastRunAt}
-                errorMsg={statusBlob.sections.currentAssetAllocation?.errors?.[0]?.message}
-              />
-            </div>
-          )}
           {typeof payload.digitalAssetHoldingsNarrative === 'string' && (
             <div id="section-digitalAssetHoldingsNarrative">
               <NarrativeSection
