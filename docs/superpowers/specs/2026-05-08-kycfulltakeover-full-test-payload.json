@@ -32,7 +32,7 @@
   "proposedClientEmail": {
     "subject": "Additional documentation request — KYC review",
     "to": [
-      { "id": "00000000-0000-4000-8000-000000000001", "name": "Marco Rossi", "etn": "lead" }
+      { "id": "e103ec26-1f49-f111-bec7-7ced8d444879", "name": "Marco Rossi", "etn": "lead" }
     ],
     "body": "Dear Mr. Rossi,\n\nAs part of our ongoing KYC review we'd like to clarify two points:\n\n  1. The timing of the 2014 family inheritance relative to the 2017 sale of Rossi Industries S.r.l. — please share the will or notarial deed.\n\n  2. Supporting documentation for the planned BTC inbound transfer of 5 BTC from your self-custody wallet (recent custody chain or hardware-wallet attestation is sufficient).\n\nKind regards,\nSygnum Compliance"
   },
@@ -66,7 +66,7 @@
     {
       "_comment": "Existing related party — agent shipped GUID via R-A. Renders in M6 UI when shipped.",
       "syg_name":                "Anna Rossi",
-      "syg_relatedpartyid":      { "id": "00000000-0000-4000-8000-300000000001", "name": "Anna Rossi", "etn": "contact" },
+      "syg_relatedpartyid":      { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Anna Rossi", "etn": "contact" },
       "syg_relatedpartytypeid":  { "id": "00000000-0000-4000-8000-400000000001", "name": "Spouse",     "etn": "syg_kycproperty" },
       "syg_relatedpartynationality1id": { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "syg_country" },
       "syg_domicilecountryid":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
@@ -167,7 +167,7 @@
   "detailedDAHoldings": [
     {
       "syg_name":                  "BTC self-custody (cold storage)",
-      "syg_digitalassetid":        { "id": "00000000-0000-4000-8000-600000000001", "name": "Bitcoin (BTC)",  "etn": "syg_digitalassetcurrency" },
+      "syg_digitalassetid":        { "id": "8682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Bitcoin (BTC)",  "etn": "syg_digitalassetcurrency" },
       "syg_amount":                18.45,
       "syg_currentvaluechf":       1450000,
       "syg_valuechf":              1450000,
@@ -183,7 +183,7 @@
     },
     {
       "syg_name":                  "ETH staking — Sygnum custody",
-      "syg_digitalassetid":        { "id": "00000000-0000-4000-8000-600000000002", "name": "Ethereum (ETH)", "etn": "syg_digitalassetcurrency" },
+      "syg_digitalassetid":        { "id": "e682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Ethereum (ETH)", "etn": "syg_digitalassetcurrency" },
       "syg_amount":                425,
       "syg_currentvaluechf":       425000,
       "syg_valuechf":              425000,
@@ -202,7 +202,7 @@
       "syg_amount":            2500000,
       "syg_bank":              "UBS Switzerland AG",
       "syg_bankdomicileid":    { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
-      "syg_clientid":          { "id": "00000000-0000-4000-8000-000000000001", "name": "Marco Rossi", "etn": "contact" },
+      "syg_clientid":          { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
       "syg_proofofownership":  true,
       "syg_transfertimeframe": 1
     },
@@ -211,7 +211,7 @@
       "syg_amount":            500000,
       "syg_bank":              "UBS Switzerland AG",
       "syg_bankdomicileid":    { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
-      "syg_clientid":          { "id": "00000000-0000-4000-8000-000000000001", "name": "Marco Rossi", "etn": "contact" },
+      "syg_clientid":          { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
       "syg_proofofownership":  true,
       "syg_transfertimeframe": 3
     }
@@ -220,8 +220,8 @@
   "plannedDAFunds": [
     {
       "syg_name":                            "BTC inbound — self-custody to Sygnum",
-      "syg_customerid":                      { "id": "00000000-0000-4000-8000-000000000001", "name": "Marco Rossi", "etn": "contact" },
-      "syg_firstdigitalassettransfertype":   { "id": "00000000-0000-4000-8000-600000000001", "name": "Bitcoin (BTC)", "etn": "syg_digitalassetcurrency" },
+      "syg_customerid":                      { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
+      "syg_firstdigitalassettransfertype":   { "id": "8682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Bitcoin (BTC)", "etn": "syg_digitalassetcurrency" },
       "syg_firstdigitalassettransferamount": 5,
       "syg_firsttransferamount":             395000,
       "syg_currentvaluechf":                 395000,
