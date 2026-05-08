@@ -15,7 +15,7 @@ import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
 import { AssetAllocationSection } from './sections/AssetAllocationSection';
 import { AssociationChipsSection } from './sections/AssociationChipsSection';
 import {
-  KycPayload, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
+  KycPayload, LookupRef, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
 } from '../types';
 import { colors, spacing } from '../styles/tokens';
 import { showConfirmation } from '../utils/confirmationDialog';
@@ -68,6 +68,10 @@ interface EditState {
     syg_sanctioncheckcomment:                     string;
   }>;
   currentAssetAllocation?: { totalWealth?: number | null; vals?: number[] };
+  // N:N section edits — the agent's resolved list, optionally trimmed by the
+  // RM via the chip × buttons before takeover.
+  businessActivities?:  LookupRef[];
+  countriesOfActivity?: LookupRef[];
 }
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
@@ -249,6 +253,10 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       items.map((i) => i.id),
     );
 
+    // Translate error messages from GUIDs to lookup names (spec: GUIDs never
+    // surface in the UI). The associateRecords helper only knows ids — we map
+    // back via the items list we just sent.
+    const idToName = new Map(items.map((i) => [i.id, i.name]));
     const record: SectionStatusRecord = result.failed === 0
       ? {
           state:       'done',
@@ -260,7 +268,9 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
           state:       'partial-failed',
           lastRunAt:   new Date().toISOString(),
           result:      { associated: result.associated + result.duplicates, failed: result.failed },
-          errors:      result.errors.map((e) => ({ message: `${e.targetId}: ${e.message}` })),
+          errors:      result.errors.map((e) => ({
+            message: `${idToName.get(e.targetId) ?? '(unknown record)'}: ${shortenErrorMessage(e.message)}`,
+          })),
           payloadHash: hashSlice(items),
         };
     persistStatus(setSectionState(statusBlob, id, record));
@@ -422,44 +432,62 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          {payload.businessActivities && (
-            <div id="section-businessActivities">
-              <AssociationChipsSection
-                title="Business Activities"
-                items={payload.businessActivities}
-                state={sectionState('businessActivities', true)}
-                onTakeover={() => takeoverNN(
-                  'businessActivities',
-                  'Business Activities',
-                  'Business Activity',
-                  'syg_businessactivities_syg_KYCProfile_syg_KYCProfile',
-                  'syg_businessactivitieses',
-                  payload.businessActivities ?? [],
-                )}
-                lastRunAt={statusBlob.sections.businessActivities?.lastRunAt}
-                errorMsg={statusBlob.sections.businessActivities?.errors?.[0]?.message}
-              />
-            </div>
-          )}
-          {payload.countriesOfActivity && (
-            <div id="section-countriesOfActivity">
-              <AssociationChipsSection
-                title="Countries of Activity"
-                items={payload.countriesOfActivity}
-                state={sectionState('countriesOfActivity', true)}
-                onTakeover={() => takeoverNN(
-                  'countriesOfActivity',
-                  'Countries of Activity',
-                  'Country',
-                  'syg_new_country_syg_KYCProfile_syg_KYCProfile',
-                  'syg_new_countries',
-                  payload.countriesOfActivity ?? [],
-                )}
-                lastRunAt={statusBlob.sections.countriesOfActivity?.lastRunAt}
-                errorMsg={statusBlob.sections.countriesOfActivity?.errors?.[0]?.message}
-              />
-            </div>
-          )}
+          {payload.businessActivities && (() => {
+            const baItems = edits.businessActivities ?? payload.businessActivities;
+            return (
+              <div id="section-businessActivities">
+                <AssociationChipsSection
+                  title="Business Activities"
+                  items={baItems}
+                  state={edits.businessActivities !== undefined && statusBlob.sections.businessActivities?.state !== 'done'
+                    ? 'edited'
+                    : sectionState('businessActivities', true)}
+                  onTakeover={() => takeoverNN(
+                    'businessActivities',
+                    'Business Activities',
+                    'Business Activity',
+                    'syg_businessactivities_syg_KYCProfile_syg_KYCProfile',
+                    'syg_businessactivitieses',
+                    baItems,
+                  )}
+                  onRemove={(idx) => setEdits((p) => ({
+                    ...p,
+                    businessActivities: baItems.filter((_, i) => i !== idx),
+                  }))}
+                  lastRunAt={statusBlob.sections.businessActivities?.lastRunAt}
+                  errorMsg={statusBlob.sections.businessActivities?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
+          {payload.countriesOfActivity && (() => {
+            const coItems = edits.countriesOfActivity ?? payload.countriesOfActivity;
+            return (
+              <div id="section-countriesOfActivity">
+                <AssociationChipsSection
+                  title="Countries of Activity"
+                  items={coItems}
+                  state={edits.countriesOfActivity !== undefined && statusBlob.sections.countriesOfActivity?.state !== 'done'
+                    ? 'edited'
+                    : sectionState('countriesOfActivity', true)}
+                  onTakeover={() => takeoverNN(
+                    'countriesOfActivity',
+                    'Countries of Activity',
+                    'Country',
+                    'syg_new_country_syg_KYCProfile_syg_KYCProfile',
+                    'new_country',
+                    coItems,
+                  )}
+                  onRemove={(idx) => setEdits((p) => ({
+                    ...p,
+                    countriesOfActivity: coItems.filter((_, i) => i !== idx),
+                  }))}
+                  lastRunAt={statusBlob.sections.countriesOfActivity?.lastRunAt}
+                  errorMsg={statusBlob.sections.countriesOfActivity?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
           <div id="section-relatedParties">        <PlaceholderSection title="Related Parties"         milestone="M6" /></div>
 
           {/* Financial Situation */}
@@ -597,4 +625,15 @@ function mostRecentLastRun(blob: TakeoverStatusBlob): string | undefined {
     if (typeof ts === 'string' && (!latest || ts > latest)) latest = ts;
   }
   return latest;
+}
+
+// Trims raw OData error bodies into something readable on a section header.
+// Strips the JSON wrapper / stack-trace and caps length so the "Last run"
+// line stays single-line at typical viewport widths.
+function shortenErrorMessage(raw: string): string {
+  if (typeof raw !== 'string' || raw.length === 0) return 'unknown';
+  // Try to extract the OData "message" field
+  const m = raw.match(/"message"\s*:\s*"([^"]+)"/);
+  const msg = m ? m[1] : raw;
+  return msg.length > 140 ? msg.slice(0, 137) + '…' : msg;
 }

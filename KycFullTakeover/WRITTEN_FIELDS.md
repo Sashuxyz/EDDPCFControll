@@ -13,7 +13,7 @@ This document mirrors the spec's Section Catalog, scoped to fields **actually wr
 | Findings | — read-only — | — | none |
 | Proposed Email | `email` (new record via openForm) | subject, description, regardingobjectid, to | form open |
 | Business Activities | N:N relationship | `syg_businessactivities_syg_KYCProfile_syg_KYCProfile` → target entity-set `syg_businessactivitieses` | $ref POST |
-| Countries of Activity | N:N relationship | `syg_new_country_syg_KYCProfile_syg_KYCProfile` → target entity-set `syg_new_countries` | $ref POST |
+| Countries of Activity | N:N relationship | `syg_new_country_syg_KYCProfile_syg_KYCProfile` → target entity-set `new_country` | $ref POST |
 | Personal Details | `syg_kycprofile` | `syg_accountholdernationalityid@odata.bind`, `syg_nationality2id@odata.bind`, `syg_accountholdernationality3id@odata.bind`, `syg_accountholderdomicileid@odata.bind`, `syg_accountholdercountryofbirthid@odata.bind`, `syg_dateofbirth`, `syg_uspersonstatus` | PATCH |
 | Professional Experience | `syg_kycprofile` | `syg_professionalexperiencesummary` | PATCH |
 | Financial Situation Narrative | `syg_kycprofile` | `syg_financialsituationsummary` | PATCH |

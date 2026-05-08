@@ -18,45 +18,66 @@ interface AssociationChipsSectionProps {
   items:         LookupRef[];
   state:         SectionState;
   onTakeover:    () => void;
+  // Optional remove handler. When supplied AND the section state allows
+  // editing, each chip renders an X button that calls onRemove(idx).
+  // Hidden once state is 'done' — at that point removing a chip wouldn't
+  // un-associate the underlying record, so the affordance would be misleading.
+  onRemove?:     (idx: number) => void;
   lastRunAt?:    string;
   errorMsg?:     string;
 }
 
 export const AssociationChipsSection: React.FC<AssociationChipsSectionProps> = ({
-  title, emptyText = 'Agent did not extract any associations.', items, state, onTakeover, lastRunAt, errorMsg,
-}) => (
-  <SectionFrame
-    title={title}
-    state={state}
-    count={items.length}
-    lastRunAt={lastRunAt}
-    errorMsg={errorMsg}
-    onTakeover={onTakeover}
-  >
-    {items.length === 0 ? (
-      <div style={{
-        padding:    spacing.md,
-        color:      colors.textMuted,
-        fontFamily: typography.fontFamily,
-        fontSize:   typography.fontSizeBody,
-        fontStyle:  'italic',
-      }}>{emptyText}</div>
-    ) : (
-      <div style={{
-        display:   'flex',
-        flexWrap:  'wrap',
-        gap:       spacing.sm,
-      }}>
-        {items.map((it, idx) => (
-          <span key={`${it.id}-${idx}`} style={chipStyle}>{it.name}</span>
-        ))}
-      </div>
-    )}
-  </SectionFrame>
-);
+  title, emptyText = 'Agent did not extract any associations.', items, state, onTakeover, onRemove, lastRunAt, errorMsg,
+}) => {
+  const canEdit = onRemove !== undefined && state !== 'done' && state !== 'read-only' && state !== 'na';
+  return (
+    <SectionFrame
+      title={title}
+      state={state}
+      count={items.length}
+      lastRunAt={lastRunAt}
+      errorMsg={errorMsg}
+      onTakeover={onTakeover}
+    >
+      {items.length === 0 ? (
+        <div style={{
+          padding:    spacing.md,
+          color:      colors.textMuted,
+          fontFamily: typography.fontFamily,
+          fontSize:   typography.fontSizeBody,
+          fontStyle:  'italic',
+        }}>{emptyText}</div>
+      ) : (
+        <div style={{
+          display:   'flex',
+          flexWrap:  'wrap',
+          gap:       spacing.sm,
+        }}>
+          {items.map((it, idx) => (
+            <span key={`${it.id}-${idx}`} style={chipStyle}>
+              <span>{it.name}</span>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => onRemove?.(idx)}
+                  aria-label={`Remove ${it.name}`}
+                  title={`Remove ${it.name}`}
+                  style={removeButtonStyle}
+                >×</button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+    </SectionFrame>
+  );
+};
 
 const chipStyle: React.CSSProperties = {
-  display:        'inline-block',
+  display:        'inline-flex',
+  alignItems:     'center',
+  gap:            6,
   padding:        '4px 10px',
   background:     colors.brandLight,
   color:          colors.brand,
@@ -65,4 +86,21 @@ const chipStyle: React.CSSProperties = {
   fontSize:       typography.fontSizeSmall,
   fontFamily:     typography.fontFamily,
   whiteSpace:     'nowrap',
+};
+
+const removeButtonStyle: React.CSSProperties = {
+  display:        'inline-flex',
+  alignItems:     'center',
+  justifyContent: 'center',
+  width:          16,
+  height:         16,
+  border:         'none',
+  borderRadius:   '50%',
+  background:     'transparent',
+  color:          colors.brand,
+  cursor:         'pointer',
+  fontSize:       14,
+  lineHeight:     1,
+  padding:        0,
+  fontFamily:     typography.fontFamily,
 };
