@@ -129,10 +129,32 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
   // Force the form to save dirty bound-output fields. Called after every
   // takeover so per-section status persists. Deferred via setTimeout so the
   // framework has time to apply the new bound-field values before save runs.
+  //
+  // Skipped when the form is showing an unsaved (new) record — Xrm.Page.data.save()
+  // on a never-persisted record trips an internal `_contextToken` access that
+  // throws TypeError. The narrative/row writes already went via direct WebAPI,
+  // so the data is safe; only the takeoverStatus blob will need a manual save
+  // when the RM next clicks the form's Save button.
   private triggerFormSave(): void {
     const xrm = (window as unknown as {
-      Xrm?: { Page?: { data?: { save?: () => Promise<unknown> } } };
+      Xrm?: {
+        Page?: {
+          data?: {
+            save?: () => Promise<unknown>;
+            entity?: { getId?: () => string | null };
+          };
+        };
+      };
     }).Xrm;
+
+    const rawId = xrm?.Page?.data?.entity?.getId?.();
+    const cleanId = typeof rawId === 'string' ? rawId.replace(/[{}]/g, '') : '';
+    if (!cleanId) {
+      // eslint-disable-next-line no-console
+      console.info('[KycFullTakeover] auto-save skipped — record has no GUID yet (Unsaved). Click Save on the form to persist takeover status.');
+      return;
+    }
+
     const saveFn = xrm?.Page?.data?.save;
     if (typeof saveFn !== 'function') {
       // eslint-disable-next-line no-console
