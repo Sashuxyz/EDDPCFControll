@@ -14,13 +14,18 @@ import { TotalWealthIncomeSection } from './sections/TotalWealthIncomeSection';
 import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
 import { AssetAllocationSection } from './sections/AssetAllocationSection';
 import { AssociationChipsSection } from './sections/AssociationChipsSection';
+import { SourceOfWealthSection } from './sections/SourceOfWealthSection';
+import { DetailedDAHoldingsSection } from './sections/DetailedDAHoldingsSection';
+import { PlannedFiatFundsSection } from './sections/PlannedFiatFundsSection';
+import { PlannedDAFundsSection } from './sections/PlannedDAFundsSection';
 import {
   KycPayload, LookupRef, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
+  SourceOfWealthRow, DigitalAssetHoldingRow, IncomingFiatFundRow, DigitalAssetFundRow,
 } from '../types';
 import { colors, spacing } from '../styles/tokens';
 import { showConfirmation } from '../utils/confirmationDialog';
 import { hashSlice, setSectionState } from '../utils/sectionStatus';
-import { patchKycProfile, associateRecords } from '../utils/dataverse';
+import { patchKycProfile, associateRecords, createChildren } from '../utils/dataverse';
 import { openProposedEmail } from '../utils/emailActivity';
 
 export interface KycFullTakeoverProps {
@@ -72,6 +77,12 @@ interface EditState {
   // RM via the chip × buttons before takeover.
   businessActivities?:  LookupRef[];
   countriesOfActivity?: LookupRef[];
+  // Itemized section edits — agent rows trimmed by the RM via card × buttons.
+  // Source of Wealth additionally tracks the narrative textarea.
+  sourceOfWealth?:      { narrative?: string; items?: SourceOfWealthRow[] };
+  detailedDAHoldings?:  DigitalAssetHoldingRow[];
+  plannedFiatFunds?:    IncomingFiatFundRow[];
+  plannedDAFunds?:      DigitalAssetFundRow[];
 }
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
@@ -276,6 +287,75 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     persistStatus(setSectionState(statusBlob, id, record));
   };
 
+  // Itemized child-record creation. Each row is converted to its OData write
+  // payload by the caller-supplied `rowToFields`. Optional `parentPatch` runs
+  // before the row creates (Source of Wealth section uses this for the
+  // narrative). Re-running creates duplicate child records — the confirmation
+  // dialog's re-run modifier already warns about this.
+  const takeoverItemized = async <T,>(
+    id:                 SectionId,
+    sectionLabel:       string,
+    entityLabel:        string,
+    entitySetName:      string,
+    parentBindKey:      string,
+    rows:               T[],
+    rowToFields:        (row: T) => Record<string, unknown>,
+    rowToName:          (row: T) => string,
+    parentPatch?:       Record<string, unknown>,
+  ) => {
+    const current = statusBlob.sections[id];
+    const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
+
+    const ok = await showConfirmation({
+      type: 'itemized',
+      sectionLabel,
+      entityLabel,
+      itemCount: rows.length,
+      isReRun,
+    });
+    if (!ok) return;
+
+    if (parentPatch && Object.keys(parentPatch).length > 0) {
+      const parentResult = await patchKycProfile(webAPI, kycProfileId, parentPatch);
+      if (!parentResult.ok) {
+        persistStatus(setSectionState(statusBlob, id, {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { patched: 0, created: 0, failed: 1 },
+          errors:      [{ message: `parent patch failed: ${parentResult.error ?? 'unknown'}` }],
+          payloadHash: hashSlice({ parentPatch, rows }),
+        }));
+        return;
+      }
+    }
+
+    const fields = rows.map((r) => ({
+      [parentBindKey]: `/syg_kycprofiles(${kycProfileId})`,
+      ...rowToFields(r),
+    }));
+    const names = rows.map((r) => rowToName(r));
+    const result = await createChildren(entitySetName, fields, names);
+
+    const record: SectionStatusRecord = result.failed === 0
+      ? {
+          state:       'done',
+          lastRunAt:   new Date().toISOString(),
+          result:      { created: result.created, patched: parentPatch ? 1 : 0 },
+          payloadHash: hashSlice({ parentPatch, rows }),
+        }
+      : {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { created: result.created, failed: result.failed, patched: parentPatch ? 1 : 0 },
+          errors:      result.errors.map((e) => ({
+            rowIndex: e.rowIndex,
+            message:  `${e.rowName ?? '(unnamed row)'}: ${shortenErrorMessage(e.message)}`,
+          })),
+          payloadHash: hashSlice({ parentPatch, rows }),
+        };
+    persistStatus(setSectionState(statusBlob, id, record));
+  };
+
   // === Patch-builder helpers ================================================
 
   const buildPersonalDetailsPatch = (): Record<string, unknown> => {
@@ -365,6 +445,94 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       'syg_wealthdistribution_other_dec':          vals[6],
     };
     if (tw !== undefined && tw !== null) out['syg_totalwealth_currency'] = tw;
+    return out;
+  };
+
+  // === Itemized row builders =================================================
+
+  const buildSourceOfWealthRow = (r: SourceOfWealthRow): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    if (r.syg_name !== undefined)                       out['syg_name']                                     = r.syg_name;
+    if (r.syg_sourceofwealth !== undefined)             out['syg_sourceofwealth']                           = r.syg_sourceofwealth;
+    if (r.syg_description !== undefined)                out['syg_description']                              = r.syg_description;
+    if (r.syg_companyname !== undefined)                out['syg_companyname']                              = r.syg_companyname;
+    if (r.syg_counterpartyname !== undefined)           out['syg_counterpartyname']                         = r.syg_counterpartyname;
+    if (r.syg_relationshiptocounterparty !== undefined) out['syg_relationshiptocounterparty']               = r.syg_relationshiptocounterparty;
+    if (r.syg_businessactivityid?.id)                   out['syg_businessactivityid@odata.bind']            = `/syg_businessactivitieses(${r.syg_businessactivityid.id})`;
+    if (r.syg_countryid?.id)                            out['syg_countryid@odata.bind']                     = `/syg_countries(${r.syg_countryid.id})`;
+    if (r.syg_yearofwealthgenerationid?.id)             out['syg_yearofwealthgenerationid@odata.bind']      = `/syg_years(${r.syg_yearofwealthgenerationid.id})`;
+    if (r.syg_yearofwealthgenerationinitiatedid?.id)    out['syg_yearofwealthgenerationinitiatedid@odata.bind'] = `/syg_years(${r.syg_yearofwealthgenerationinitiatedid.id})`;
+    if (r.syg_initialinvestment !== undefined)          out['syg_initialinvestment']                        = r.syg_initialinvestment;
+    if (r.syg_valueatvaluationdate !== undefined)       out['syg_valueatvaluationdate']                     = r.syg_valueatvaluationdate;
+    if (r.syg_valuationdate)                            out['syg_valuationdate']                            = r.syg_valuationdate;
+    if (r.syg_wealthgenerated !== undefined)            out['syg_wealthgenerated']                          = r.syg_wealthgenerated;
+    if (r.syg_corroboratedvalue !== undefined)          out['syg_corroboratedvalue']                        = r.syg_corroboratedvalue;
+    if (r.syg_corroboratedpercentage !== undefined)     out['syg_corroboratedpercentage']                   = r.syg_corroboratedpercentage;
+    if (r.syg_rationale !== undefined)                  out['syg_rationale']                                = r.syg_rationale;
+    if (r.syg_supportinginformation !== undefined)      out['syg_supportinginformation']                    = r.syg_supportinginformation;
+    if (r.syg_additionaldetails !== undefined)          out['syg_additionaldetails']                        = r.syg_additionaldetails;
+    return out;
+  };
+
+  const buildDigitalAssetHoldingRow = (r: DigitalAssetHoldingRow): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    if (r.syg_name !== undefined)                  out['syg_name']                            = r.syg_name;
+    if (r.syg_digitalassetid?.id)                  out['syg_digitalassetid@odata.bind']       = `/syg_digitalassetcurrencies(${r.syg_digitalassetid.id})`;
+    if (r.syg_amount !== undefined)                out['syg_amount']                          = r.syg_amount;
+    if (r.syg_currentvaluechf !== undefined)       out['syg_currentvaluechf']                 = r.syg_currentvaluechf;
+    if (r.syg_valuechf !== undefined)              out['syg_valuechf']                        = r.syg_valuechf;
+    if (r.syg_dateofvaluation)                     out['syg_dateofvaluation']                 = r.syg_dateofvaluation;
+    if (r.syg_acquiringyear?.id)                   out['syg_acquiringyear@odata.bind']        = `/syg_years(${r.syg_acquiringyear.id})`;
+    if (r.syg_acquiringplace !== undefined)        out['syg_acquiringplace']                  = r.syg_acquiringplace;
+    if (r.syg_averageacquiringprice !== undefined) out['syg_averageacquiringprice']           = r.syg_averageacquiringprice;
+    if (r.syg_corroboratedamount !== undefined)    out['syg_corroboratedamount']              = r.syg_corroboratedamount;
+    if (r.syg_corroboratedamountchf !== undefined) out['syg_corroboratedamountchf']           = r.syg_corroboratedamountchf;
+    if (r.syg_corroboratedvalue !== undefined)     out['syg_corroboratedvalue']               = r.syg_corroboratedvalue;
+    if (r.syg_currentcustody !== undefined)        out['syg_currentcustody']                  = r.syg_currentcustody;
+    if (r.syg_description !== undefined)           out['syg_description']                     = r.syg_description;
+    if (r.syg_originoffunds !== undefined)         out['syg_originoffunds']                   = r.syg_originoffunds;
+    if (r.syg_supportingdocuments !== undefined)   out['syg_supportingdocuments']             = r.syg_supportingdocuments;
+    return out;
+  };
+
+  const buildIncomingFiatFundRow = (r: IncomingFiatFundRow): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    if (r.syg_name !== undefined)              out['syg_name']                          = r.syg_name;
+    if (r.syg_amount !== undefined)            out['syg_amount']                        = r.syg_amount;
+    if (r.syg_bank !== undefined)              out['syg_bank']                          = r.syg_bank;
+    if (r.syg_bankdomicileid?.id)              out['syg_bankdomicileid@odata.bind']     = `/syg_countries(${r.syg_bankdomicileid.id})`;
+    if (r.syg_clientid?.id) {
+      const set = r.syg_clientid.etn === 'account' ? 'accounts' : 'contacts';
+      const key = r.syg_clientid.etn === 'account' ? 'syg_clientid_account@odata.bind' : 'syg_clientid_contact@odata.bind';
+      out[key] = `/${set}(${r.syg_clientid.id})`;
+    }
+    if (r.syg_proofofownership !== undefined)  out['syg_proofofownership']              = r.syg_proofofownership;
+    if (r.syg_transfertimeframe !== undefined) out['syg_transfertimeframe']             = r.syg_transfertimeframe;
+    return out;
+  };
+
+  const buildDigitalAssetFundRow = (r: DigitalAssetFundRow): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    if (r.syg_name !== undefined)                            out['syg_name']                                  = r.syg_name;
+    if (r.syg_customerid?.id) {
+      const set = r.syg_customerid.etn === 'account' ? 'accounts' : 'contacts';
+      const key = r.syg_customerid.etn === 'account' ? 'syg_customerid_account@odata.bind' : 'syg_customerid_contact@odata.bind';
+      out[key] = `/${set}(${r.syg_customerid.id})`;
+    }
+    if (r.syg_firstdigitalassettransfertype?.id)             out['syg_firstdigitalassettransfertype@odata.bind'] = `/syg_digitalassetcurrencies(${r.syg_firstdigitalassettransfertype.id})`;
+    if (r.syg_firstdigitalassettransferamount !== undefined) out['syg_firstdigitalassettransferamount']      = r.syg_firstdigitalassettransferamount;
+    if (r.syg_firsttransferamount !== undefined)             out['syg_firsttransferamount']                  = r.syg_firsttransferamount;
+    if (r.syg_currentvaluechf !== undefined)                 out['syg_currentvaluechf']                      = r.syg_currentvaluechf;
+    if (r.syg_valuechf !== undefined)                        out['syg_valuechf']                             = r.syg_valuechf;
+    if (r.syg_dateofvaluation)                               out['syg_dateofvaluation']                      = r.syg_dateofvaluation;
+    if (r.syg_proofofownership !== undefined)                out['syg_proofofownership']                     = r.syg_proofofownership;
+    if (r.syg_senderwallet !== undefined)                    out['syg_senderwallet']                         = r.syg_senderwallet;
+    if (r.syg_senderwallet_optionset !== undefined)          out['syg_senderwallet_optionset']               = r.syg_senderwallet_optionset;
+    if (r.syg_source !== undefined)                          out['syg_source']                               = r.syg_source;
+    if (r.syg_transfertimeframe !== undefined)               out['syg_transfertimeframe']                    = r.syg_transfertimeframe;
+    if (r.syg_remarks !== undefined)                         out['syg_remarks']                              = r.syg_remarks;
+    if (r.syg_comment !== undefined)                         out['syg_comment']                              = r.syg_comment;
+    if (r.syg_additionalexpectedfunding !== undefined)       out['syg_additionalexpectedfunding']            = r.syg_additionalexpectedfunding;
     return out;
   };
 
@@ -521,7 +689,46 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          <div id="section-sourceOfWealth">         <PlaceholderSection title="Source of Wealth"        milestone="M5" /></div>
+          {payload.sourceOfWealth && (() => {
+            const itemsEdit = edits.sourceOfWealth?.items;
+            const items = itemsEdit ?? payload.sourceOfWealth.items;
+            return (
+              <div id="section-sourceOfWealth">
+                <SourceOfWealthSection
+                  payload={payload.sourceOfWealth}
+                  state={(edits.sourceOfWealth !== undefined && statusBlob.sections.sourceOfWealth?.state !== 'done')
+                    ? 'edited'
+                    : sectionState('sourceOfWealth', true)}
+                  narrativeEdit={edits.sourceOfWealth?.narrative}
+                  itemsEdit={itemsEdit}
+                  onNarrativeChange={(next) => setEdits((p) => ({
+                    ...p,
+                    sourceOfWealth: { ...(p.sourceOfWealth ?? {}), narrative: next },
+                  }))}
+                  onRemoveRow={(idx) => setEdits((p) => ({
+                    ...p,
+                    sourceOfWealth: { ...(p.sourceOfWealth ?? {}), items: items.filter((_, i) => i !== idx) },
+                  }))}
+                  onTakeover={() => takeoverItemized<SourceOfWealthRow>(
+                    'sourceOfWealth',
+                    'Source of Wealth',
+                    'Source of Wealth',
+                    'syg_sourceofwealths',
+                    'syg_kycprofileid@odata.bind',
+                    items,
+                    buildSourceOfWealthRow,
+                    (r) => r.syg_name ?? '(untitled)',
+                    (() => {
+                      const narrative = edits.sourceOfWealth?.narrative ?? payload.sourceOfWealth?.narrative;
+                      return narrative !== undefined ? { syg_sourceofwealthdetails: narrative } : undefined;
+                    })(),
+                  )}
+                  lastRunAt={statusBlob.sections.sourceOfWealth?.lastRunAt}
+                  errorMsg={statusBlob.sections.sourceOfWealth?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
           {payload.currentAssetAllocation && (
             <div id="section-currentAssetAllocation">
               <AssetAllocationSection
@@ -550,7 +757,36 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          <div id="section-detailedDAHoldings">    <PlaceholderSection title="Detailed DA Holdings" milestone="M5" /></div>
+          {payload.detailedDAHoldings && (() => {
+            const items = edits.detailedDAHoldings ?? payload.detailedDAHoldings;
+            return (
+              <div id="section-detailedDAHoldings">
+                <DetailedDAHoldingsSection
+                  payload={payload.detailedDAHoldings}
+                  state={(edits.detailedDAHoldings !== undefined && statusBlob.sections.detailedDAHoldings?.state !== 'done')
+                    ? 'edited'
+                    : sectionState('detailedDAHoldings', true)}
+                  itemsEdit={edits.detailedDAHoldings}
+                  onRemoveRow={(idx) => setEdits((p) => ({
+                    ...p,
+                    detailedDAHoldings: items.filter((_, i) => i !== idx),
+                  }))}
+                  onTakeover={() => takeoverItemized<DigitalAssetHoldingRow>(
+                    'detailedDAHoldings',
+                    'Detailed DA Holdings',
+                    'DA Holding',
+                    'syg_digitalassetsholdings',
+                    'syg_KYCProfileID@odata.bind',
+                    items,
+                    buildDigitalAssetHoldingRow,
+                    (r) => r.syg_name ?? '(untitled)',
+                  )}
+                  lastRunAt={statusBlob.sections.detailedDAHoldings?.lastRunAt}
+                  errorMsg={statusBlob.sections.detailedDAHoldings?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
 
           {/* Expected Activity */}
           {typeof payload.transactionalBehaviour === 'string' && (
@@ -567,8 +803,66 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               />
             </div>
           )}
-          <div id="section-plannedFiatFunds"> <PlaceholderSection title="Planned Fiat Funds" milestone="M5" /></div>
-          <div id="section-plannedDAFunds">   <PlaceholderSection title="Planned DA Funds"   milestone="M5" /></div>
+          {payload.plannedFiatFunds && (() => {
+            const items = edits.plannedFiatFunds ?? payload.plannedFiatFunds;
+            return (
+              <div id="section-plannedFiatFunds">
+                <PlannedFiatFundsSection
+                  payload={payload.plannedFiatFunds}
+                  state={(edits.plannedFiatFunds !== undefined && statusBlob.sections.plannedFiatFunds?.state !== 'done')
+                    ? 'edited'
+                    : sectionState('plannedFiatFunds', true)}
+                  itemsEdit={edits.plannedFiatFunds}
+                  onRemoveRow={(idx) => setEdits((p) => ({
+                    ...p,
+                    plannedFiatFunds: items.filter((_, i) => i !== idx),
+                  }))}
+                  onTakeover={() => takeoverItemized<IncomingFiatFundRow>(
+                    'plannedFiatFunds',
+                    'Planned Fiat Funds',
+                    'Fiat Fund',
+                    'syg_incomingfiatfundses',
+                    'syg_kycprofileid@odata.bind',
+                    items,
+                    buildIncomingFiatFundRow,
+                    (r) => r.syg_name ?? '(untitled)',
+                  )}
+                  lastRunAt={statusBlob.sections.plannedFiatFunds?.lastRunAt}
+                  errorMsg={statusBlob.sections.plannedFiatFunds?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
+          {payload.plannedDAFunds && (() => {
+            const items = edits.plannedDAFunds ?? payload.plannedDAFunds;
+            return (
+              <div id="section-plannedDAFunds">
+                <PlannedDAFundsSection
+                  payload={payload.plannedDAFunds}
+                  state={(edits.plannedDAFunds !== undefined && statusBlob.sections.plannedDAFunds?.state !== 'done')
+                    ? 'edited'
+                    : sectionState('plannedDAFunds', true)}
+                  itemsEdit={edits.plannedDAFunds}
+                  onRemoveRow={(idx) => setEdits((p) => ({
+                    ...p,
+                    plannedDAFunds: items.filter((_, i) => i !== idx),
+                  }))}
+                  onTakeover={() => takeoverItemized<DigitalAssetFundRow>(
+                    'plannedDAFunds',
+                    'Planned DA Funds',
+                    'DA Fund',
+                    'syg_digitalassetfundses',
+                    'syg_kycprofileid@odata.bind',
+                    items,
+                    buildDigitalAssetFundRow,
+                    (r) => r.syg_name ?? '(untitled)',
+                  )}
+                  lastRunAt={statusBlob.sections.plannedDAFunds?.lastRunAt}
+                  errorMsg={statusBlob.sections.plannedDAFunds?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
 
           {/* Compliance & Other */}
           {payload.pepSanctionsRisk && (
