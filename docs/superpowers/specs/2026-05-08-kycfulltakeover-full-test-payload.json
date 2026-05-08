@@ -1,5 +1,5 @@
 {
-  "_comment_top": "Full v0.4.x test payload — every section, including the still-placeholder Related Parties (M6) and the read-only Proposed Email. All GUIDs use the format 00000000-0000-4000-8000-XXXXXXXXXXXX (12-hex counter). They're syntactically valid (PCF accepts them) but won't resolve in Dataverse — find-and-replace each one with a real GUID from your environment. Suggested DevTools snippet at the end of this file.",
+  "_comment_top": "Full v0.4.x test payload — every section, including the still-placeholder Related Parties (M6) and the read-only Proposed Email. All GUIDs are now real (verified from dev-system exports of countries, years, business activities, digital asset currencies, KYC properties + the supplied lead/contact). Drop into syg_aianalytics_audit on a test KYC profile and click Take over on each section.",
 
   "_replace_these_guids": [
     "Country GUIDs (lookups in Personal Details + Source of Wealth + Detailed DA + Fiat Funds)",
@@ -67,7 +67,7 @@
       "_comment": "Existing related party — agent shipped GUID via R-A. Renders in M6 UI when shipped.",
       "syg_name":                "Anna Rossi",
       "syg_relatedpartyid":      { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Anna Rossi", "etn": "contact" },
-      "syg_relatedpartytypeid":  { "id": "00000000-0000-4000-8000-400000000001", "name": "Spouse",     "etn": "syg_kycproperty" },
+      "syg_relatedpartytypeid":  { "id": "0192c173-1408-f111-8406-7ced8d443a3d", "name": "Close Family Member", "etn": "syg_kycproperty" },
       "syg_relatedpartynationality1id": { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "syg_country" },
       "syg_domicilecountryid":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
       "syg_pep":                 false,
@@ -88,7 +88,7 @@
           "syg_accountholderdomicileid":     { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" }
         }
       },
-      "syg_relatedpartytypeid":  { "id": "00000000-0000-4000-8000-400000000002", "name": "Beneficiary", "etn": "syg_kycproperty" },
+      "syg_relatedpartytypeid":  { "id": "9e3b77c1-2b1d-f111-8341-7ced8d42e0e3", "name": "Trust/Foundation - Beneficiary (Fixed)", "etn": "syg_kycproperty" },
       "syg_pep":                 false,
       "syg_riskscore":           8
     }
