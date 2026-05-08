@@ -9,7 +9,6 @@ import { FindingsSection } from './sections/FindingsSection';
 import { ProposedEmailSection } from './sections/ProposedEmailSection';
 import { NarrativeSection } from './sections/NarrativeSection';
 import { PlaceholderSection } from './sections/PlaceholderSection';
-import { PersonalDetailsSection } from './sections/PersonalDetailsSection';
 import { TotalWealthIncomeSection } from './sections/TotalWealthIncomeSection';
 import { PepSanctionsRiskSection } from './sections/PepSanctionsRiskSection';
 import { AssociationChipsSection } from './sections/AssociationChipsSection';
@@ -52,15 +51,12 @@ interface EditState {
   digitalAssetHoldingsNarrative?: string;
   transactionalBehaviour?:        string;
   additionalComments?:            string;
-  // Field-set sections (typed sub-objects)
-  personalDetails?: { syg_dateofbirth?: string | null; syg_uspersonstatus?: 1 | 2 | 3 | 4 | null };
-  // Merged "Income, total wealth and asset allocation" section. The CHF money
-  // field (formerly under totalWealthIncome.syg_TotalWealth_currency) moved to
-  // `totalWealth` here, owned by the embedded WealthAllocation. `vals` is the
-  // 7-element percentage array from ASSET_CLASSES.
+  // Merged "Income, total wealth and asset allocation" section. Banded total
+  // wealth + annual income were dropped in 0.4.2 — only timeframe + asset
+  // allocation remain. `totalWealth` is the CHF money owned by the embedded
+  // WealthAllocation; `vals` is the 7-element percentage array from
+  // ASSET_CLASSES.
   totalWealthIncome?: {
-    syg_TotalWealth?:                    number | null;
-    syg_annualincome?:                   number | null;
     syg_TimeframeforWealthAccumulation?: number | null;
     totalWealth?:                        number | null;
     vals?:                               number[];
@@ -128,7 +124,6 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     {
       label: 'Client Background',
       entries: [
-        { id: 'personalDetails'        as SectionId, label: 'Personal Details',        state: sectionState('personalDetails',        !!payload.personalDetails) },
         { id: 'professionalExperience' as SectionId, label: 'Professional Experience', state: sectionState('professionalExperience', !!payload.professionalExperience) },
         { id: 'businessActivities'     as SectionId, label: 'Business Activities',     state: sectionState('businessActivities',     !!payload.businessActivities) },
         { id: 'countriesOfActivity'    as SectionId, label: 'Countries of Activity',   state: sectionState('countriesOfActivity',    !!payload.countriesOfActivity) },
@@ -360,23 +355,6 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
 
   // === Patch-builder helpers ================================================
 
-  const buildPersonalDetailsPatch = (): Record<string, unknown> => {
-    if (!payload.personalDetails) return {};
-    const p = payload.personalDetails;
-    const e = edits.personalDetails ?? {};
-    const out: Record<string, unknown> = {};
-    if (p.syg_AccountHolderNationalityID?.id)    out['syg_accountholdernationalityid@odata.bind']    = `/syg_countries(${p.syg_AccountHolderNationalityID.id})`;
-    if (p.syg_Nationality2ID?.id)                out['syg_nationality2id@odata.bind']                 = `/syg_countries(${p.syg_Nationality2ID.id})`;
-    if (p.syg_accountholdernationality3id?.id)   out['syg_accountholdernationality3id@odata.bind']    = `/syg_countries(${p.syg_accountholdernationality3id.id})`;
-    if (p.syg_AccountHolderDomicileID?.id)       out['syg_accountholderdomicileid@odata.bind']        = `/syg_countries(${p.syg_AccountHolderDomicileID.id})`;
-    if (p.syg_AccountHolderCountryofBirthID?.id) out['syg_accountholdercountryofbirthid@odata.bind']  = `/syg_countries(${p.syg_AccountHolderCountryofBirthID.id})`;
-    const dob = e.syg_dateofbirth ?? p.syg_dateofbirth;
-    if (dob !== undefined && dob !== null) out['syg_dateofbirth'] = dob;
-    const us = e.syg_uspersonstatus ?? p.syg_uspersonstatus;
-    if (us !== undefined && us !== null) out['syg_uspersonstatus'] = us;
-    return out;
-  };
-
   // Combined "Income, total wealth and asset allocation" patch. Reads from
   // both the totalWealthIncome and currentAssetAllocation payload slices and
   // both lives under edits.totalWealthIncome (since the section is merged).
@@ -386,12 +364,11 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     const e   = edits.totalWealthIncome ?? {};
     const out: Record<string, unknown> = {};
 
-    // Banded fields from the income / total-wealth slice
+    // Timeframe field from the income / total-wealth slice. Banded total
+    // wealth + annual income are intentionally NOT written in 0.4.2 — those
+    // two fields were dropped from the UI; if the agent ships them they're
+    // ignored here.
     if (p) {
-      const twb = e.syg_TotalWealth ?? p.syg_TotalWealth;
-      if (twb !== undefined && twb !== null) out['syg_totalwealth'] = twb;
-      const ai = e.syg_annualincome ?? p.syg_annualincome;
-      if (ai !== undefined && ai !== null) out['syg_annualincome'] = ai;
       const tf = e.syg_TimeframeforWealthAccumulation ?? p.syg_TimeframeforWealthAccumulation;
       if (tf !== undefined && tf !== null) out['syg_timeframeforwealthaccumulation'] = tf;
     }
@@ -574,21 +551,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
             </div>
           )}
 
-          {/* Client Background — Personal Details / BA / Countries / Related Parties = M3-M6 placeholders */}
-          {payload.personalDetails && (
-            <div id="section-personalDetails">
-              <PersonalDetailsSection
-                payload={payload.personalDetails}
-                state={sectionState('personalDetails', true)}
-                edits={edits.personalDetails ?? {}}
-                onEditDate={(next) => setEdits((p) => ({ ...p, personalDetails: { ...(p.personalDetails ?? {}), syg_dateofbirth: next } }))}
-                onEditUSPerson={(next) => setEdits((p) => ({ ...p, personalDetails: { ...(p.personalDetails ?? {}), syg_uspersonstatus: next as 1 | 2 | 3 | 4 | null } }))}
-                onTakeover={() => takeoverFieldSet('personalDetails', 'Personal Details', buildPersonalDetailsPatch())}
-                lastRunAt={statusBlob.sections.personalDetails?.lastRunAt}
-                errorMsg={statusBlob.sections.personalDetails?.errors?.[0]?.message}
-              />
-            </div>
-          )}
+          {/* Client Background */}
           {payload.professionalExperience && (
             <div id="section-professionalExperience">
               <NarrativeSection
@@ -683,8 +646,6 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 assetPayload={payload.currentAssetAllocation}
                 state={sectionState('totalWealthIncome', true)}
                 edits={edits.totalWealthIncome ?? {}}
-                onEditWealthBand={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TotalWealth: next } }))}
-                onEditAnnualIncome={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_annualincome: next } }))}
                 onEditTimeframe={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), syg_TimeframeforWealthAccumulation: next } }))}
                 onEditTotalWealth={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), totalWealth: next } }))}
                 onEditVals={(next) => setEdits((p) => ({ ...p, totalWealthIncome: { ...(p.totalWealthIncome ?? {}), vals: next } }))}

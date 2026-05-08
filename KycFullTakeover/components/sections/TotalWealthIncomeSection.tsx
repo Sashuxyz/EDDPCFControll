@@ -7,7 +7,6 @@
 
 import * as React from 'react';
 import { SectionFrame } from '../SectionFrame';
-import { OptionSetSelect } from '../common/OptionSetSelect';
 import { WealthAllocation } from '../wealth-allocation/WealthAllocation';
 import { AllocationState } from '../wealth-allocation/types';
 import {
@@ -15,7 +14,6 @@ import {
   AssetAllocationSection as AssetAllocationPayload,
   SectionState,
 } from '../../types';
-import { TOTAL_WEALTH_BAND, ANNUAL_INCOME } from '../../utils/optionSets';
 import { colors, typography, spacing, inputStyle } from '../../styles/tokens';
 
 interface TotalWealthIncomeSectionProps {
@@ -24,16 +22,11 @@ interface TotalWealthIncomeSectionProps {
   assetPayload?: AssetAllocationPayload;
   state:      SectionState;
   edits: {
-    // Income / total-wealth-band / timeframe (formerly the whole section)
-    syg_TotalWealth?:                    number | null;
-    syg_annualincome?:                   number | null;
     syg_TimeframeforWealthAccumulation?: number | null;
-    // Asset allocation (now part of this section)
+    // Asset allocation
     totalWealth?: number | null;       // syg_TotalWealth_currency
     vals?:        number[];            // 7 _dec percentages
   };
-  onEditWealthBand:    (next: number | null) => void;
-  onEditAnnualIncome:  (next: number | null) => void;
   onEditTimeframe:     (next: number | null) => void;
   onEditTotalWealth:   (next: number) => void;
   onEditVals:          (next: number[]) => void;
@@ -44,7 +37,7 @@ interface TotalWealthIncomeSectionProps {
 
 export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> = ({
   payload, assetPayload, state, edits,
-  onEditWealthBand, onEditAnnualIncome, onEditTimeframe, onEditTotalWealth, onEditVals,
+  onEditTimeframe, onEditTotalWealth, onEditVals,
   onTakeover, lastRunAt, errorMsg,
 }) => {
   const fieldCount = countFields(payload, assetPayload, edits);
@@ -66,24 +59,6 @@ export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> =
       onTakeover={onTakeover}
     >
       <div style={gridStyle}>
-        <Field label="Total wealth band">
-          <OptionSetSelect
-            map={TOTAL_WEALTH_BAND}
-            value={edits.syg_TotalWealth ?? payload.syg_TotalWealth}
-            onChange={onEditWealthBand}
-            ariaLabel="Total wealth band"
-            noneLabel="(not specified)"
-          />
-        </Field>
-        <Field label="Annual income">
-          <OptionSetSelect
-            map={ANNUAL_INCOME}
-            value={edits.syg_annualincome ?? payload.syg_annualincome}
-            onChange={onEditAnnualIncome}
-            ariaLabel="Annual income"
-            noneLabel="(not specified)"
-          />
-        </Field>
         <Field label="Timeframe for wealth accumulation (years)">
           <input
             type="number"
@@ -167,12 +142,8 @@ function countFields(
   edits: TotalWealthIncomeSectionProps['edits'],
 ): number {
   let n = 0;
-  // Banded fields (CHF money is now under asset allocation)
-  for (const key of ['syg_TotalWealth', 'syg_annualincome', 'syg_TimeframeforWealthAccumulation'] as const) {
-    const v = (edits[key] ?? (payload as Record<string, unknown>)[key]);
-    if (v !== undefined && v !== null) n++;
-  }
-  // Asset allocation fields
+  const tf = edits.syg_TimeframeforWealthAccumulation ?? payload.syg_TimeframeforWealthAccumulation;
+  if (tf !== undefined && tf !== null) n++;
   const tw = edits.totalWealth ?? assetPayload?.syg_TotalWealth_currency;
   if (tw !== undefined && tw !== null) n++;
   const a = edits.vals ?? payloadToVals(assetPayload);
