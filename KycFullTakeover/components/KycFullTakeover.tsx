@@ -16,14 +16,17 @@ import { SourceOfWealthSection } from './sections/SourceOfWealthSection';
 import { DetailedDAHoldingsSection } from './sections/DetailedDAHoldingsSection';
 import { PlannedFiatFundsSection } from './sections/PlannedFiatFundsSection';
 import { PlannedDAFundsSection } from './sections/PlannedDAFundsSection';
+import { RelatedPartiesSection } from './sections/RelatedPartiesSection';
 import {
   KycPayload, LookupRef, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
   SourceOfWealthRow, DigitalAssetHoldingRow, IncomingFiatFundRow, DigitalAssetFundRow,
+  RelatedPartyRow,
 } from '../types';
 import { colors, spacing } from '../styles/tokens';
 import { showConfirmation } from '../utils/confirmationDialog';
 import { hashSlice, setSectionState } from '../utils/sectionStatus';
 import { patchKycProfile, associateRecords, createChildren } from '../utils/dataverse';
+import { createRelatedParty, countNewParties, describeParty } from '../utils/createRelatedParty';
 import { openProposedEmail } from '../utils/emailActivity';
 
 export interface KycFullTakeoverProps {
@@ -82,6 +85,10 @@ interface EditState {
   detailedDAHoldings?:  DigitalAssetHoldingRow[];
   plannedFiatFunds?:    IncomingFiatFundRow[];
   plannedDAFunds?:      DigitalAssetFundRow[];
+  // Related Parties — same edit shape as the other itemized sections; M6
+  // adds two-stage writes for any row where syg_relatedpartyid is a
+  // CreateNewPartyRef.
+  relatedParties?:      RelatedPartyRow[];
 }
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
@@ -349,6 +356,68 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
             message:  `${e.rowName ?? '(unnamed row)'}: ${shortenErrorMessage(e.message)}`,
           })),
           payloadHash: hashSlice({ parentPatch, rows }),
+        };
+    persistStatus(setSectionState(statusBlob, id, record));
+  };
+
+  // === Related Parties takeover (two-stage write per row) ====================
+  // Each row may reference an existing party (just creates the junction) or a
+  // brand-new contact/account (POST contact/account first, then POST junction).
+  // The confirmation dialog enumerates all new contacts/accounts up front so
+  // the RM has a single audit gate for record creation.
+  const takeoverRelatedParties = async (rows: RelatedPartyRow[]): Promise<void> => {
+    const id: SectionId = 'relatedParties';
+    const current = statusBlob.sections[id];
+    const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
+
+    const counts = countNewParties(rows);
+    const newRecordNames = rows
+      .filter((r) => 'createNew' in r.syg_relatedpartyid)
+      .map((r) => `${describeParty(r.syg_relatedpartyid).name} (${r.syg_relatedpartyid.etn})`);
+
+    const ok = await showConfirmation({
+      type:             'itemizedWithCreates',
+      sectionLabel:     'Related Parties',
+      newContactCount:  counts.newContacts,
+      newAccountCount:  counts.newAccounts,
+      existingCount:    counts.existing,
+      newRecordNames,
+      isReRun,
+    });
+    if (!ok) return;
+
+    let created = 0;
+    let failed  = 0;
+    const errors: Array<{ rowIndex: number; message: string }> = [];
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const r = rows[i];
+      const result = await createRelatedParty(kycProfileId, r);
+      if (result.ok) {
+        created += 1;
+      } else {
+        failed += 1;
+        const partyName = describeParty(r.syg_relatedpartyid).name;
+        errors.push({
+          rowIndex: i,
+          message:  `${partyName}: ${shortenErrorMessage(result.error ?? 'unknown error')}`,
+        });
+      }
+    }
+
+    const record: SectionStatusRecord = failed === 0
+      ? {
+          state:       'done',
+          lastRunAt:   new Date().toISOString(),
+          result:      { created, patched: 0 },
+          payloadHash: hashSlice({ rows }),
+        }
+      : {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { created, failed, patched: 0 },
+          errors,
+          payloadHash: hashSlice({ rows }),
         };
     persistStatus(setSectionState(statusBlob, id, record));
   };
@@ -626,7 +695,32 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
               </div>
             );
           })()}
-          <div id="section-relatedParties">        <PlaceholderSection title="Related Parties"         milestone="M6" /></div>
+          {payload.relatedParties && (() => {
+            const rpItems = edits.relatedParties ?? payload.relatedParties;
+            return (
+              <div id="section-relatedParties">
+                <RelatedPartiesSection
+                  payload={payload.relatedParties}
+                  state={(edits.relatedParties !== undefined && statusBlob.sections.relatedParties?.state !== 'done')
+                    ? 'edited'
+                    : sectionState('relatedParties', true)}
+                  itemsEdit={edits.relatedParties}
+                  onRemoveRow={(idx) => setEdits((p) => ({
+                    ...p,
+                    relatedParties: rpItems.filter((_, i) => i !== idx),
+                  }))}
+                  onUpdateRow={(idx, field, value) => setEdits((p) => {
+                    const list = (p.relatedParties ?? payload.relatedParties!).slice();
+                    list[idx] = { ...list[idx], [field]: value };
+                    return { ...p, relatedParties: list };
+                  })}
+                  onTakeover={() => takeoverRelatedParties(rpItems)}
+                  lastRunAt={statusBlob.sections.relatedParties?.lastRunAt}
+                  errorMsg={statusBlob.sections.relatedParties?.errors?.[0]?.message}
+                />
+              </div>
+            );
+          })()}
 
           {/* Financial Situation */}
           {typeof payload.financialSituationNarrative === 'string' && (
