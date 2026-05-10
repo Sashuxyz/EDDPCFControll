@@ -7,6 +7,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { IInputs, IOutputs } from './generated/ManifestTypes';
 import { KycFullTakeover as KycFullTakeoverComponent } from './components/KycFullTakeover';
 import { EmptyStatePane } from './components/EmptyStatePane';
+import { EmptyShell } from './components/EmptyShell';
 import { parsePayload } from './utils/payloadParser';
 import { parseStatusBlob, serialiseStatusBlob } from './utils/sectionStatus';
 import { TakeoverStatusBlob } from './types';
@@ -72,23 +73,9 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
   // === render =============================================================
 
   private render(): void {
-    const auditRaw = this.context.parameters.aiAnalyticsAudit?.raw ?? null;
-    const result = parsePayload(auditRaw);
-    if (!result.ok) {
-      this.root.render(
-        React.createElement(EmptyStatePane, {
-          message: 'No AI analytics payload available for this KYC profile, or the payload format is unsupported.',
-          detail:  result.error,
-        })
-      );
-      return;
-    }
-
-    const statusRaw  = this.context.parameters.takeoverStatus?.raw ?? '';
-    const statusBlob = parseStatusBlob(statusRaw);
-
     const profile = this.resolveProfile();
     if (!profile) {
+      // No profile context — can't render even the header (needs profile id + webAPI).
       this.root.render(
         React.createElement(EmptyStatePane, {
           message: 'Could not resolve the KYC profile context. The control must be placed on a syg_kycprofile form.',
@@ -96,6 +83,26 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
       );
       return;
     }
+
+    const auditRaw = this.context.parameters.aiAnalyticsAudit?.raw ?? null;
+    const result = parsePayload(auditRaw);
+    if (!result.ok) {
+      // Payload missing or unparseable — render the header (so the RM can trigger
+      // a fresh run from this state) plus a friendly empty-state panel below.
+      this.root.render(
+        React.createElement(EmptyShell, {
+          kycProfileId:   profile.id,
+          kycProfileName: profile.name,
+          webAPI:         this.context.webAPI,
+          isEmpty:        result.error === 'empty payload',
+          detail:         result.error === 'empty payload' ? undefined : result.error,
+        })
+      );
+      return;
+    }
+
+    const statusRaw  = this.context.parameters.takeoverStatus?.raw ?? '';
+    const statusBlob = parseStatusBlob(statusRaw);
 
     this.root.render(
       React.createElement(KycFullTakeoverComponent, {
