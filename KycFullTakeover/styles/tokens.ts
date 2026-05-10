@@ -56,6 +56,41 @@ export const layout = {
   sectionMaxWidth: 720,
 };
 
+export const agentBar = {
+  // Background gradient (coral-forward Aurora variant v2b)
+  bgGradient:        'linear-gradient(135deg, #7a1631 0%, #b22746 50%, #951e3a 100%)',
+  borderBottom:      'rgba(255,255,255,0.16)',
+  fontFamily:        "'Inter','Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif",
+
+  // Aurora blob colours
+  blobCoral:         '#F04E68',
+  blobPink:          '#FFB1C0',
+  blobAmber:         '#FFC477',
+
+  // Button — idle CTA
+  padBgIdle:         'rgba(255,255,255,0.18)',
+  padBorderIdle:     'rgba(255,255,255,0.40)',
+  padBgIdleHover:    'rgba(255,255,255,0.26)',
+
+  // Button — launch-pad mode (run in progress)
+  padBgRunning:      'rgba(255,255,255,0.10)',
+  padBorderRunning:  'rgba(255,255,255,0.40)',
+
+  // Button — success flash
+  padBgSuccess:      'rgba(46,160,67,0.85)',
+
+  // Button — error
+  padBorderError:    '#ff6b6b',
+
+  // Banners
+  errorBg:           '#fdecea',
+  errorFg:           '#7a1f17',
+  errorBorder:       '#f5c2bd',
+  warningBg:         '#fff4ce',
+  warningFg:         '#835B00',
+  warningBorder:     '#f0d27a',
+};
+
 // D365 input style (grey bg, blue underline on focus). See spec hard
 // constraints — this is the canonical Sygnum input look.
 export const inputStyle = (focused: boolean): CSSProperties => ({
