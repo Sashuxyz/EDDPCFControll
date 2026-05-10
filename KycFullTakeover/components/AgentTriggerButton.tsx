@@ -97,7 +97,7 @@ export const AgentTriggerButton: React.FC<AgentTriggerButtonProps> = ({ kycProfi
   const handleClick = async (): Promise<void> => {
     if (state.kind === 'triggering' || state.kind === 'running') return;
     setState({ kind: 'triggering' });
-    const result = await triggerAgentRun(kycProfileId);
+    const result = await triggerAgentRun(webAPI, kycProfileId);
     if (!result.ok) {
       setState({ kind: 'error', message: `Could not queue agent run: ${result.error ?? 'unknown error'}` });
       return;

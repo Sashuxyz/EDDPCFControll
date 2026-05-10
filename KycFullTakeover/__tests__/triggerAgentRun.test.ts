@@ -2,66 +2,79 @@ import { triggerAgentRun } from '../utils/triggerAgentRun';
 
 const PROFILE_ID = 'a1b2c3d4-1234-1234-1234-1234567890ab';
 
+function makeWebAPI(behavior: 'ok' | 'badProp' | 'badPropThenOk' | 'genericError'): ComponentFramework.WebApi {
+  let i = 0;
+  return {
+    createRecord: jest.fn(async (_entity: string, data: Record<string, string>) => {
+      i += 1;
+      if (behavior === 'ok') return { id: 'newid-1', entityType: 'syg_agentrunlog' };
+      if (behavior === 'badProp') throw new Error('An undeclared property "syg_kycprofileid" was found');
+      if (behavior === 'genericError') throw new Error('500 server error');
+      if (behavior === 'badPropThenOk') {
+        if (i === 1) throw new Error('property "syg_kycprofileid" does not exist on type');
+        // second attempt — verify it used PascalCase
+        if (data['syg_KycProfileId@odata.bind']) return { id: 'newid-2', entityType: 'syg_agentrunlog' };
+        throw new Error('unexpected bind key');
+      }
+      throw new Error('unreachable');
+    }),
+  } as unknown as ComponentFramework.WebApi;
+}
+
 describe('triggerAgentRun', () => {
-  const originalFetch = global.fetch;
-  beforeAll(() => {
-    // testEnvironment is 'node' so window doesn't exist; stub it.
-    (global as { window?: unknown }).window = { location: { origin: 'https://crm.example.com' } };
+  beforeEach(() => {
+    jest.spyOn(console, 'info').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
   afterEach(() => {
-    (global as { fetch?: typeof fetch }).fetch = originalFetch;
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 
-  test('rejects invalid GUID without calling fetch', async () => {
-    const fetchMock = jest.fn();
-    (global as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
-    const result = await triggerAgentRun('not-a-guid');
+  test('rejects invalid GUID without calling createRecord', async () => {
+    const webAPI = makeWebAPI('ok');
+    const result = await triggerAgentRun(webAPI, 'not-a-guid');
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/invalid.*guid/i);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(webAPI.createRecord).not.toHaveBeenCalled();
   });
 
-  test('on 201 returns ok:true', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true, status: 201, text: async () => '',
-    });
-    (global as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
-    const result = await triggerAgentRun(PROFILE_ID);
+  test('on success returns ok:true with recordId', async () => {
+    const webAPI = makeWebAPI('ok');
+    const result = await triggerAgentRun(webAPI, PROFILE_ID);
     expect(result.ok).toBe(true);
+    expect(result.recordId).toBe('newid-1');
   });
 
-  test('posts the correct body shape', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: true, status: 201, text: async () => '',
-    });
-    (global as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
-    await triggerAgentRun(PROFILE_ID);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe('https://crm.example.com/api/data/v9.2/syg_agentrunlogs');
-    expect(init.method).toBe('POST');
-    const body = JSON.parse(init.body);
-    expect(body['syg_KycProfileId@odata.bind'])
-      .toBe(`/syg_kycprofiles(${PROFILE_ID})`);
+  test('first call uses lowercase binding key', async () => {
+    const webAPI = makeWebAPI('ok');
+    await triggerAgentRun(webAPI, PROFILE_ID);
+    const [entity, data] = (webAPI.createRecord as jest.Mock).mock.calls[0];
+    expect(entity).toBe('syg_agentrunlog');
+    expect(data['syg_kycprofileid@odata.bind']).toBe(`/syg_kycprofiles(${PROFILE_ID})`);
   });
 
-  test('on 4xx returns ok:false with HTTP-shaped error', async () => {
-    const fetchMock = jest.fn().mockResolvedValue({
-      ok: false, status: 400, text: async () => 'Bad request: missing field',
-    });
-    (global as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
-    const result = await triggerAgentRun(PROFILE_ID);
+  test('on bad-property error retries with PascalCase binding key', async () => {
+    const webAPI = makeWebAPI('badPropThenOk');
+    const result = await triggerAgentRun(webAPI, PROFILE_ID);
+    expect(result.ok).toBe(true);
+    expect(webAPI.createRecord).toHaveBeenCalledTimes(2);
+    const [, secondData] = (webAPI.createRecord as jest.Mock).mock.calls[1];
+    expect(secondData['syg_KycProfileId@odata.bind']).toBe(`/syg_kycprofiles(${PROFILE_ID})`);
+  });
+
+  test('on persistent bad-property error returns the failure', async () => {
+    const webAPI = makeWebAPI('badProp');
+    const result = await triggerAgentRun(webAPI, PROFILE_ID);
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/HTTP 400/);
-    expect(result.error).toMatch(/Bad request/);
+    expect(result.error).toMatch(/property/i);
   });
 
-  test('on fetch throw returns ok:false with thrown message', async () => {
-    const fetchMock = jest.fn().mockRejectedValue(new Error('Network unreachable'));
-    (global as { fetch: typeof fetch }).fetch = fetchMock as unknown as typeof fetch;
-    const result = await triggerAgentRun(PROFILE_ID);
+  test('on non-property error does not retry', async () => {
+    const webAPI = makeWebAPI('genericError');
+    const result = await triggerAgentRun(webAPI, PROFILE_ID);
     expect(result.ok).toBe(false);
-    expect(result.error).toBe('Network unreachable');
+    expect(webAPI.createRecord).toHaveBeenCalledTimes(1);
   });
 });
