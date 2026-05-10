@@ -18,10 +18,10 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
   private context!: ComponentFramework.Context<IInputs>;
   private notifyOutputChanged!: () => void;
 
-  // Mutable state mirrored to bound output fields on next updateView.
+  // Mutable state mirrored to the bound takeoverStatus output on the next
+  // updateView. takeoverLastRunAt/takeoverLastError were dropped in 0.6.1 —
+  // both timestamps and errors live inside the JSON status blob already.
   private pendingStatus:  TakeoverStatusBlob | null = null;
-  private pendingLastRun: string | null = null;
-  private pendingError:   string | null = null;
   private pendingOutput  = false;
 
   public init(
@@ -54,14 +54,6 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
     if (this.pendingStatus !== null) {
       outputs.takeoverStatus = serialiseStatusBlob(this.pendingStatus);
       this.pendingStatus = null;
-    }
-    if (this.pendingLastRun !== null) {
-      outputs.takeoverLastRunAt = new Date(this.pendingLastRun);
-      this.pendingLastRun = null;
-    }
-    if (this.pendingError !== null) {
-      outputs.takeoverLastError = this.pendingError;
-      this.pendingError = null;
     }
     return outputs;
   }
@@ -117,10 +109,8 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
           // don't re-render here — that would echo-loop with the bound-field
           // updateView callback. The pendingOutput flag in updateView() also
           // breaks the echo cycle.
-          this.pendingStatus  = next;
-          this.pendingLastRun = new Date().toISOString();
-          this.pendingError   = null;
-          this.pendingOutput  = true;
+          this.pendingStatus = next;
+          this.pendingOutput = true;
           this.notifyOutputChanged();
           // Auto-save the form so the takeoverStatus/takeoverLastRunAt outputs
           // reach the database. notifyOutputChanged only marks the bound fields
