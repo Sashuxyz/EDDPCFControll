@@ -679,6 +679,11 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                     ...p,
                     sourceOfWealth: { ...(p.sourceOfWealth ?? {}), items: items.filter((_, i) => i !== idx) },
                   }))}
+                  onUpdateRow={(idx, field, value) => setEdits((p) => {
+                    const list = (p.sourceOfWealth?.items ?? payload.sourceOfWealth!.items).slice();
+                    list[idx] = { ...list[idx], [field]: value };
+                    return { ...p, sourceOfWealth: { ...(p.sourceOfWealth ?? {}), items: list } };
+                  })}
                   onTakeover={() => takeoverItemized<SourceOfWealthRow>(
                     'sourceOfWealth',
                     'Source of Wealth',
@@ -727,6 +732,11 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                     ...p,
                     detailedDAHoldings: items.filter((_, i) => i !== idx),
                   }))}
+                  onUpdateRow={(idx, field, value) => setEdits((p) => {
+                    const list = (p.detailedDAHoldings ?? payload.detailedDAHoldings!).slice();
+                    list[idx] = { ...list[idx], [field]: value };
+                    return { ...p, detailedDAHoldings: list };
+                  })}
                   onTakeover={() => takeoverItemized<DigitalAssetHoldingRow>(
                     'detailedDAHoldings',
                     'Detailed DA Holdings',
@@ -773,6 +783,11 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                     ...p,
                     plannedFiatFunds: items.filter((_, i) => i !== idx),
                   }))}
+                  onUpdateRow={(idx, field, value) => setEdits((p) => {
+                    const list = (p.plannedFiatFunds ?? payload.plannedFiatFunds!).slice();
+                    list[idx] = { ...list[idx], [field]: value };
+                    return { ...p, plannedFiatFunds: list };
+                  })}
                   onTakeover={() => takeoverItemized<IncomingFiatFundRow>(
                     'plannedFiatFunds',
                     'Planned Fiat Funds',
@@ -803,6 +818,11 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                     ...p,
                     plannedDAFunds: items.filter((_, i) => i !== idx),
                   }))}
+                  onUpdateRow={(idx, field, value) => setEdits((p) => {
+                    const list = (p.plannedDAFunds ?? payload.plannedDAFunds!).slice();
+                    list[idx] = { ...list[idx], [field]: value };
+                    return { ...p, plannedDAFunds: list };
+                  })}
                   onTakeover={() => takeoverItemized<DigitalAssetFundRow>(
                     'plannedDAFunds',
                     'Planned DA Funds',

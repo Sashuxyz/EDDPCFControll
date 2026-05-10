@@ -9,24 +9,26 @@ import { ItemizedCardDetail } from '../common/ItemizedCard';
 import { LookupReadonly } from '../common/LookupReadonly';
 import { AutoTextarea } from '../common/AutoTextarea';
 import { SourceOfWealthRow, SourceOfWealthSection as SoWPayload, SectionState } from '../../types';
-import { SOURCE_OF_WEALTH, RELATIONSHIP_TO_COUNTERPARTY, getOptionLabel } from '../../utils/optionSets';
-import { formatSwissNumber, formatSwissDate } from '../../utils/formatters';
+import { SOURCE_OF_WEALTH, RELATIONSHIP_TO_COUNTERPARTY } from '../../utils/optionSets';
+import { formatSwissNumber } from '../../utils/formatters';
 import { colors, typography, spacing } from '../../styles/tokens';
 
 interface SourceOfWealthSectionProps {
-  payload:        SoWPayload;
-  state:          SectionState;
-  narrativeEdit:  string | undefined;
-  itemsEdit:      SourceOfWealthRow[] | undefined;
+  payload:           SoWPayload;
+  state:             SectionState;
+  narrativeEdit:     string | undefined;
+  itemsEdit:         SourceOfWealthRow[] | undefined;
   onNarrativeChange: (next: string) => void;
-  onRemoveRow:    (idx: number) => void;
-  onTakeover:     () => void;
-  lastRunAt?:     string;
-  errorMsg?:      string;
+  onRemoveRow:       (idx: number) => void;
+  onUpdateRow:       (idx: number, field: keyof SourceOfWealthRow, value: unknown) => void;
+  onTakeover:        () => void;
+  lastRunAt?:        string;
+  errorMsg?:         string;
 }
 
 export const SourceOfWealthSection: React.FC<SourceOfWealthSectionProps> = ({
-  payload, state, narrativeEdit, itemsEdit, onNarrativeChange, onRemoveRow, onTakeover, lastRunAt, errorMsg,
+  payload, state, narrativeEdit, itemsEdit, onNarrativeChange, onRemoveRow, onUpdateRow,
+  onTakeover, lastRunAt, errorMsg,
 }) => {
   const items = itemsEdit ?? payload.items;
   const narrativeValue = narrativeEdit ?? payload.narrative ?? '';
@@ -34,7 +36,7 @@ export const SourceOfWealthSection: React.FC<SourceOfWealthSectionProps> = ({
     <ItemizedSection<SourceOfWealthRow>
       title="Source of Wealth"
       items={items}
-      rowConfig={rowToCardConfig}
+      rowConfig={(row, idx) => rowToCardConfig(row, idx, onUpdateRow)}
       state={state}
       onTakeover={onTakeover}
       onRemove={onRemoveRow}
@@ -60,32 +62,41 @@ export const SourceOfWealthSection: React.FC<SourceOfWealthSectionProps> = ({
   );
 };
 
-function rowToCardConfig(row: SourceOfWealthRow) {
+function rowToCardConfig(
+  row: SourceOfWealthRow,
+  idx: number,
+  onUpdate: (idx: number, field: keyof SourceOfWealthRow, value: unknown) => void,
+) {
   const amountSummary = row.syg_wealthgenerated
     ? `CHF ${formatSwissNumber(row.syg_wealthgenerated)}`
     : (row.syg_initialinvestment ? `CHF ${formatSwissNumber(row.syg_initialinvestment)}` : '');
-  const categoryLabel = row.syg_sourceofwealth !== undefined ? getOptionLabel(SOURCE_OF_WEALTH, row.syg_sourceofwealth) : '';
+  const categoryLabel = row.syg_sourceofwealth !== undefined
+    ? (SOURCE_OF_WEALTH[row.syg_sourceofwealth] ?? '')
+    : '';
   const subtitle = [categoryLabel, amountSummary].filter(Boolean).join(' • ');
 
+  const u = <K extends keyof SourceOfWealthRow>(field: K) =>
+    (value: SourceOfWealthRow[K] | undefined) => onUpdate(idx, field, value);
+
   const details: ItemizedCardDetail[] = [
-    { label: 'Category',                 value: categoryLabel },
-    { label: 'Description',              value: row.syg_description, wide: true },
-    { label: 'Company',                  value: row.syg_companyname },
-    { label: 'Counterparty',             value: row.syg_counterpartyname },
-    { label: 'Relationship',             value: row.syg_relationshiptocounterparty !== undefined ? getOptionLabel(RELATIONSHIP_TO_COUNTERPARTY, row.syg_relationshiptocounterparty) : '' },
-    { label: 'Business activity',        value: <LookupReadonly value={row.syg_businessactivityid} /> },
-    { label: 'Country',                  value: <LookupReadonly value={row.syg_countryid} /> },
-    { label: 'Year of generation',       value: <LookupReadonly value={row.syg_yearofwealthgenerationid} /> },
-    { label: 'Year initiated',           value: <LookupReadonly value={row.syg_yearofwealthgenerationinitiatedid} /> },
-    { label: 'Initial investment (CHF)', value: row.syg_initialinvestment !== undefined ? formatSwissNumber(row.syg_initialinvestment) : '' },
-    { label: 'Wealth generated (CHF)',   value: row.syg_wealthgenerated !== undefined ? formatSwissNumber(row.syg_wealthgenerated) : '' },
-    { label: 'Value at valuation date',  value: row.syg_valueatvaluationdate !== undefined ? formatSwissNumber(row.syg_valueatvaluationdate) : '' },
-    { label: 'Valuation date',           value: row.syg_valuationdate ? formatSwissDate(row.syg_valuationdate) : '' },
-    { label: 'Corroborated value',       value: row.syg_corroboratedvalue !== undefined ? formatSwissNumber(row.syg_corroboratedvalue) : '' },
-    { label: 'Corroborated %',           value: row.syg_corroboratedpercentage !== undefined ? `${row.syg_corroboratedpercentage}%` : '' },
-    { label: 'Rationale',                value: row.syg_rationale, wide: true },
-    { label: 'Supporting information',   value: row.syg_supportinginformation, wide: true },
-    { label: 'Additional details',       value: row.syg_additionaldetails, wide: true },
+    { kind: 'picklist', label: 'Category',                 value: row.syg_sourceofwealth, map: SOURCE_OF_WEALTH, onChange: u('syg_sourceofwealth') },
+    { kind: 'longtext', label: 'Description',              value: row.syg_description, onChange: u('syg_description'), wide: true },
+    { kind: 'text',     label: 'Company',                  value: row.syg_companyname, onChange: u('syg_companyname') },
+    { kind: 'text',     label: 'Counterparty',             value: row.syg_counterpartyname, onChange: u('syg_counterpartyname') },
+    { kind: 'picklist', label: 'Relationship',             value: row.syg_relationshiptocounterparty, map: RELATIONSHIP_TO_COUNTERPARTY, onChange: u('syg_relationshiptocounterparty') },
+    { kind: 'display',  label: 'Business activity',        value: <LookupReadonly value={row.syg_businessactivityid} /> },
+    { kind: 'display',  label: 'Country',                  value: <LookupReadonly value={row.syg_countryid} /> },
+    { kind: 'display',  label: 'Year of generation',       value: <LookupReadonly value={row.syg_yearofwealthgenerationid} /> },
+    { kind: 'display',  label: 'Year initiated',           value: <LookupReadonly value={row.syg_yearofwealthgenerationinitiatedid} /> },
+    { kind: 'money',    label: 'Initial investment (CHF)', value: row.syg_initialinvestment, onChange: u('syg_initialinvestment') },
+    { kind: 'money',    label: 'Wealth generated (CHF)',   value: row.syg_wealthgenerated, onChange: u('syg_wealthgenerated') },
+    { kind: 'money',    label: 'Value at valuation date',  value: row.syg_valueatvaluationdate, onChange: u('syg_valueatvaluationdate') },
+    { kind: 'date',     label: 'Valuation date',           value: row.syg_valuationdate, onChange: u('syg_valuationdate') },
+    { kind: 'money',    label: 'Corroborated value',       value: row.syg_corroboratedvalue, onChange: u('syg_corroboratedvalue') },
+    { kind: 'number',   label: 'Corroborated %',           value: row.syg_corroboratedpercentage, onChange: u('syg_corroboratedpercentage') },
+    { kind: 'longtext', label: 'Rationale',                value: row.syg_rationale, onChange: u('syg_rationale'), wide: true },
+    { kind: 'longtext', label: 'Supporting information',   value: row.syg_supportinginformation, onChange: u('syg_supportinginformation'), wide: true },
+    { kind: 'longtext', label: 'Additional details',       value: row.syg_additionaldetails, onChange: u('syg_additionaldetails'), wide: true },
   ];
 
   return {
