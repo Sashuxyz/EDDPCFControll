@@ -523,6 +523,8 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
         profileName={kycProfileName}
         schemaVersion={payload.schemaVersion}
         lastRunAt={mostRecentLastRun(statusBlob)}
+        kycProfileId={kycProfileId}
+        webAPI={webAPI}
       />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <TocSidebar
