@@ -84,7 +84,9 @@ function buildJunctionBody(
   partyEtn: 'contact' | 'account',
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
-  if (row.syg_name)                                     out['syg_Name']                                                    = row.syg_name;
+  // Scalar properties use the LOGICAL name (lowercase). Only @odata.bind keys
+  // use the navigation-property (PhysicalName/PascalCase) form.
+  if (row.syg_name)                                     out['syg_name']                                                    = row.syg_name;
   out['syg_kycprofileid@odata.bind']                                                                                         = `/syg_kycprofiles(${kycProfileId})`;
   out[partyBindKey(partyEtn)]                                                                                                = `/${partyEtn === 'account' ? ENTITYSET_ACCOUNTS : ENTITYSET_CONTACTS}(${partyId})`;
   if (row.syg_relatedpartytypeid?.id)                   out['syg_relatedpartytypeid@odata.bind']                           = `/syg_kycproperties(${row.syg_relatedpartytypeid.id})`;
@@ -95,7 +97,7 @@ function buildJunctionBody(
   if (row.syg_domicilecountryid?.id)                    out['syg_domicilecountryid@odata.bind']                            = `/new_countries(${row.syg_domicilecountryid.id})`;
   if (row.syg_mainbusinessactivityid?.id)               out['syg_mainbusinessactivityid@odata.bind']                       = `/syg_businessactivitieses(${row.syg_mainbusinessactivityid.id})`;
   if (row.syg_maincountryofbusinessactivityid?.id)      out['syg_maincountryofbusinessactivityid@odata.bind']              = `/new_countries(${row.syg_maincountryofbusinessactivityid.id})`;
-  if (row.syg_relatedcountries)                         out['syg_RelatedCountries']                                        = row.syg_relatedcountries;
+  if (row.syg_relatedcountries)                         out['syg_relatedcountries']                                        = row.syg_relatedcountries;
   if (row.syg_pep !== undefined)                        out['syg_pep']                                                     = row.syg_pep;
   if (row.syg_pepstatusid?.id)                          out['syg_pepstatusid@odata.bind']                                  = `/syg_kycproperties(${row.syg_pepstatusid.id})`;
   if (row.syg_peplevelid?.id)                           out['syg_peplevelid@odata.bind']                                   = `/syg_kycproperties(${row.syg_peplevelid.id})`;
