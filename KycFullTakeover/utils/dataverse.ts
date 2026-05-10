@@ -162,7 +162,7 @@ export async function createChildren(
 
   const base = window.location.origin;
 
-  const settled = await Promise.all(rows.map(async (row) => {
+  const settled = await Promise.all(rows.map(async (row, idx) => {
     try {
       const resp = await fetch(`${base}/api/data/v9.2/${entitySetName}`, {
         method:      'POST',
@@ -181,8 +181,33 @@ export async function createChildren(
 
       let errBody = '';
       try { errBody = await resp.text(); } catch { /* ignore */ }
-      return { ok: false as const, message: `HTTP ${resp.status}: ${errBody.slice(0, 240)}` };
+
+      // Try to extract the inner Dataverse message — it contains the
+      // specific property/attribute name that's wrong.
+      let extracted = '';
+      try {
+        const parsed = JSON.parse(errBody) as { error?: { message?: string } };
+        if (parsed?.error?.message) extracted = parsed.error.message;
+      } catch { /* not JSON, keep raw body */ }
+
+      // Full diagnostic dump to the console for debugging payload/property
+      // mismatches. Includes the row payload so the dev can correlate.
+      // eslint-disable-next-line no-console
+      console.error('[KycFullTakeover] createChildren FAILED', {
+        entitySetName,
+        rowIndex:  idx,
+        rowName:   rowNames[idx],
+        status:    resp.status,
+        message:   extracted || errBody,
+        body:      row,
+        rawError:  errBody,
+      });
+
+      const display = extracted || errBody;
+      return { ok: false as const, message: `HTTP ${resp.status}: ${display.slice(0, 1500)}` };
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[KycFullTakeover] createChildren THREW', { entitySetName, rowIndex: idx, rowName: rowNames[idx], error: e });
       return { ok: false as const, message: (e as Error).message ?? String(e) };
     }
   }));
