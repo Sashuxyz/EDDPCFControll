@@ -438,10 +438,12 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     if (r.syg_companyname !== undefined)                out['syg_companyname']                              = r.syg_companyname;
     if (r.syg_counterpartyname !== undefined)           out['syg_counterpartyname']                         = r.syg_counterpartyname;
     if (r.syg_relationshiptocounterparty !== undefined) out['syg_relationshiptocounterparty']               = r.syg_relationshiptocounterparty;
-    if (r.syg_businessactivityid?.id)                   out['syg_businessactivityid@odata.bind']            = `/syg_businessactivitieses(${r.syg_businessactivityid.id})`;
-    if (r.syg_countryid?.id)                            out['syg_countryid@odata.bind']                     = `/new_countries(${r.syg_countryid.id})`;
-    if (r.syg_yearofwealthgenerationid?.id)             out['syg_yearofwealthgenerationid@odata.bind']      = `/syg_years(${r.syg_yearofwealthgenerationid.id})`;
-    if (r.syg_yearofwealthgenerationinitiatedid?.id)    out['syg_yearofwealthgenerationinitiatedid@odata.bind'] = `/syg_years(${r.syg_yearofwealthgenerationinitiatedid.id})`;
+    // NOTE: @odata.bind keys MUST use the navigation property name (PhysicalName
+    // from the schema), NOT the lowercase logical name. See SygnumKYC dump.
+    if (r.syg_businessactivityid?.id)                   out['syg_businessactivityID@odata.bind']                  = `/syg_businessactivitieses(${r.syg_businessactivityid.id})`;
+    if (r.syg_countryid?.id)                            out['syg_countryID@odata.bind']                           = `/new_countries(${r.syg_countryid.id})`;
+    if (r.syg_yearofwealthgenerationid?.id)             out['syg_yearofwealthgenerationID@odata.bind']            = `/syg_years(${r.syg_yearofwealthgenerationid.id})`;
+    if (r.syg_yearofwealthgenerationinitiatedid?.id)    out['syg_YearofwealthgenerationinitiatedID@odata.bind']   = `/syg_years(${r.syg_yearofwealthgenerationinitiatedid.id})`;
     if (r.syg_initialinvestment !== undefined)          out['syg_initialinvestment']                        = r.syg_initialinvestment;
     if (r.syg_valueatvaluationdate !== undefined)       out['syg_valueatvaluationdate']                     = r.syg_valueatvaluationdate;
     if (r.syg_valuationdate)                            out['syg_valuationdate']                            = r.syg_valuationdate;
@@ -457,12 +459,12 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
   const buildDigitalAssetHoldingRow = (r: DigitalAssetHoldingRow): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
     if (r.syg_name !== undefined)                  out['syg_name']                            = r.syg_name;
-    if (r.syg_digitalassetid?.id)                  out['syg_digitalassetid@odata.bind']       = `/syg_digitalassetcurrencies(${r.syg_digitalassetid.id})`;
+    if (r.syg_digitalassetid?.id)                  out['syg_DigitalAssetID@odata.bind']       = `/syg_digitalassetcurrencies(${r.syg_digitalassetid.id})`;
     if (r.syg_amount !== undefined)                out['syg_amount']                          = r.syg_amount;
     if (r.syg_currentvaluechf !== undefined)       out['syg_currentvaluechf']                 = r.syg_currentvaluechf;
     if (r.syg_valuechf !== undefined)              out['syg_valuechf']                        = r.syg_valuechf;
     if (r.syg_dateofvaluation)                     out['syg_dateofvaluation']                 = r.syg_dateofvaluation;
-    if (r.syg_acquiringyear?.id)                   out['syg_acquiringyear@odata.bind']        = `/syg_years(${r.syg_acquiringyear.id})`;
+    if (r.syg_acquiringyear?.id)                   out['syg_Acquiringyear@odata.bind']        = `/syg_years(${r.syg_acquiringyear.id})`;
     if (r.syg_acquiringplace !== undefined)        out['syg_acquiringplace']                  = r.syg_acquiringplace;
     if (r.syg_averageacquiringprice !== undefined) out['syg_averageacquiringprice']           = r.syg_averageacquiringprice;
     if (r.syg_corroboratedamount !== undefined)    out['syg_corroboratedamount']              = r.syg_corroboratedamount;
@@ -499,7 +501,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       const key = r.syg_customerid.etn === 'account' ? 'syg_customerid_account@odata.bind' : 'syg_customerid_contact@odata.bind';
       out[key] = `/${set}(${r.syg_customerid.id})`;
     }
-    if (r.syg_firstdigitalassettransfertype?.id)             out['syg_firstdigitalassettransfertype@odata.bind'] = `/syg_digitalassetcurrencies(${r.syg_firstdigitalassettransfertype.id})`;
+    if (r.syg_firstdigitalassettransfertype?.id)             out['syg_FirstDigitalAssetTransferType@odata.bind'] = `/syg_digitalassetcurrencies(${r.syg_firstdigitalassettransfertype.id})`;
     if (r.syg_firstdigitalassettransferamount !== undefined) out['syg_firstdigitalassettransferamount']      = r.syg_firstdigitalassettransferamount;
     if (r.syg_firsttransferamount !== undefined)             out['syg_firsttransferamount']                  = r.syg_firsttransferamount;
     if (r.syg_currentvaluechf !== undefined)                 out['syg_currentvaluechf']                      = r.syg_currentvaluechf;
