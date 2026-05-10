@@ -3,7 +3,7 @@
 // State machine:
 //   idle        — show CTA, allow click
 //   triggering  — POST in flight (sub-second)
-//   running     — POST done, polling status; launch-pad mode
+//   running     — POST done, polling status; workspace card with drone+docs
 //   success     — green flash for 3s, then back to idle
 //   error       — red border + banner, click to retry
 //   timeout     — orange warning banner, click to retry
@@ -12,6 +12,11 @@
 // On mount: one init poll to detect a run already in progress (e.g. user
 // reloaded the form mid-run). If the latest row is non-terminal, jump
 // straight to `running` and continue polling.
+//
+// When running, button + drone+docs are wrapped in a glass "workspace
+// card" so they read as one active unit instead of two floating islands.
+// Reports its flying state to the parent (HeaderStrip) so the bar can
+// adjust its height.
 
 import * as React from 'react';
 import { agentBar } from '../styles/tokens';
@@ -21,8 +26,10 @@ import { STATUS_SUCCESS, STATUS_FAILURE, SUCCESS_FLASH_DURATION_MS } from '../co
 import { AgentDrone } from './AgentDrone';
 
 interface AgentTriggerButtonProps {
-  kycProfileId: string;
-  webAPI:       ComponentFramework.WebApi;
+  kycProfileId:    string;
+  webAPI:          ComponentFramework.WebApi;
+  /** Called whenever the visible "flying" state changes so the parent can react (e.g. resize the bar). */
+  onFlyingChange?: (flying: boolean) => void;
 }
 
 type ButtonState =
@@ -41,9 +48,37 @@ const SUN_ICON = (
   </svg>
 );
 
-export const AgentTriggerButton: React.FC<AgentTriggerButtonProps> = ({ kycProfileId, webAPI }) => {
+const SPINNER_KEYFRAMES = `
+@keyframes kft-spinner-rot { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .kft-spinner { animation: none !important; } }
+`;
+
+const Spinner: React.FC = () => (
+  <span style={{ position: 'relative', display: 'inline-block', width: 14, height: 14 }} aria-hidden="true">
+    <style>{SPINNER_KEYFRAMES}</style>
+    <span
+      className="kft-spinner"
+      style={{
+        position: 'absolute', inset: 0,
+        borderRadius: '50%',
+        border: '2px solid rgba(255,255,255,0.3)',
+        borderTopColor: '#fff',
+        animation: 'kft-spinner-rot 1s linear infinite',
+      }}
+    />
+  </span>
+);
+
+export const AgentTriggerButton: React.FC<AgentTriggerButtonProps> = ({ kycProfileId, webAPI, onFlyingChange }) => {
   const [state, setState] = React.useState<ButtonState>({ kind: 'idle' });
   const pollRef = React.useRef<PollHandle | null>(null);
+
+  const isFlying = state.kind === 'running' || state.kind === 'triggering';
+
+  // Notify parent on flying-state changes (height-adjustable bar).
+  React.useEffect(() => {
+    onFlyingChange?.(isFlying);
+  }, [isFlying, onFlyingChange]);
 
   const startPoll = React.useCallback((): void => {
     pollRef.current?.cancel();
@@ -107,85 +142,110 @@ export const AgentTriggerButton: React.FC<AgentTriggerButtonProps> = ({ kycProfi
   };
 
   const dismissBanner = (): void => setState({ kind: 'idle' });
-  const isFlying = state.kind === 'running' || state.kind === 'triggering';
 
+  // === Workspace card (running / triggering) ============================
+  if (isFlying) {
+    return (
+      <>
+        <div
+          style={{
+            position:        'relative',
+            zIndex:          1,
+            display:         'flex',
+            alignItems:      'center',
+            gap:             14,
+            height:          48,
+            padding:         '6px 14px 6px 8px',
+            background:      'rgba(255,255,255,0.07)',
+            border:          '1px solid rgba(255,255,255,0.16)',
+            borderRadius:    10,
+            backdropFilter:  'blur(12px)',
+          }}
+        >
+          {renderRunningButton()}
+          <AgentDrone mode="flying" />
+        </div>
+        {renderBanner(state, dismissBanner)}
+      </>
+    );
+  }
+
+  // === Idle / success / error states ====================================
   return (
     <>
-      {renderButton(state, handleClick)}
-      <AgentDrone mode={isFlying ? 'flying' : 'idle'} />
+      {state.kind === 'success' ? renderSuccessButton() : renderIdleButton(state, handleClick)}
       {renderBanner(state, dismissBanner)}
     </>
   );
 };
 
-function renderButton(state: ButtonState, onClick: () => void): React.ReactElement {
-  const baseStyle: React.CSSProperties = {
-    height: '32px',
-    minWidth: '200px',
-    padding: '6px 14px',
-    borderRadius: 8,
-    fontSize: 13,
-    fontWeight: 600,
-    fontFamily: agentBar.fontFamily,
-    color: '#fff',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    cursor: 'pointer',
-    backdropFilter: 'blur(10px)',
-    boxShadow: '0 4px 14px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.18)',
-    position: 'relative',
-    zIndex: 1,
-    transition: 'background 200ms, border 200ms',
-  };
+const baseButtonStyle: React.CSSProperties = {
+  height: '32px',
+  minWidth: '170px',
+  padding: '6px 14px',
+  borderRadius: 8,
+  fontSize: 13,
+  fontWeight: 600,
+  fontFamily: agentBar.fontFamily,
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  cursor: 'pointer',
+  backdropFilter: 'blur(10px)',
+  boxShadow: '0 4px 14px rgba(0,0,0,0.20), inset 0 1px 0 rgba(255,255,255,0.18)',
+  position: 'relative',
+  zIndex: 1,
+  transition: 'background 200ms, border 200ms',
+  flexShrink: 0,
+};
 
-  if (state.kind === 'running' || state.kind === 'triggering') {
-    return (
-      <button
-        type="button"
-        disabled
-        aria-label="Agent run in progress"
-        title="Agent run in progress. The form will refresh when complete."
-        style={{
-          ...baseStyle,
-          background: agentBar.padBgRunning,
-          border: `1px dashed ${agentBar.padBorderRunning}`,
-          cursor: 'default',
-          color: 'rgba(255,255,255,0.85)',
-          fontSize: 12,
-        }}
-      >
-        <span aria-hidden="true" style={{
-          width: 36, height: 4, borderRadius: 2,
-          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)',
-        }}/>
-        <span>launch pad · agent reading</span>
-      </button>
-    );
-  }
+function renderRunningButton(): React.ReactElement {
+  return (
+    <button
+      type="button"
+      disabled
+      aria-label="Agent run in progress"
+      title="Agent run in progress. The form will refresh when complete."
+      style={{
+        ...baseButtonStyle,
+        background: agentBar.padBgRunning,
+        border: `1px dashed ${agentBar.padBorderRunning}`,
+        cursor: 'default',
+        color: 'rgba(255,255,255,0.92)',
+        fontSize: 12,
+        minWidth: 160,
+      }}
+    >
+      <Spinner />
+      <span>Reading documents…</span>
+    </button>
+  );
+}
 
-  if (state.kind === 'success') {
-    return (
-      <button
-        type="button"
-        disabled
-        aria-label="Agent run completed"
-        style={{
-          ...baseStyle,
-          background: agentBar.padBgSuccess,
-          border: `1px solid ${agentBar.padBorderIdle}`,
-          cursor: 'default',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"
-             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
-        <span>Run complete</span>
-      </button>
-    );
-  }
+function renderSuccessButton(): React.ReactElement {
+  return (
+    <button
+      type="button"
+      disabled
+      aria-label="Agent run completed"
+      style={{
+        ...baseButtonStyle,
+        background: agentBar.padBgSuccess,
+        border: `1px solid ${agentBar.padBorderIdle}`,
+        cursor: 'default',
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"
+           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+      <span>Run complete</span>
+    </button>
+  );
+}
 
+function renderIdleButton(state: ButtonState, onClick: () => void): React.ReactElement {
   const isError = state.kind === 'error' || state.kind === 'timeout' || state.kind === 'conn-lost';
   return (
     <button
@@ -193,7 +253,7 @@ function renderButton(state: ButtonState, onClick: () => void): React.ReactEleme
       onClick={onClick}
       aria-label="Trigger KYC agent run"
       style={{
-        ...baseStyle,
+        ...baseButtonStyle,
         background: agentBar.padBgIdle,
         border: `1px solid ${isError ? agentBar.padBorderError : agentBar.padBorderIdle}`,
       }}

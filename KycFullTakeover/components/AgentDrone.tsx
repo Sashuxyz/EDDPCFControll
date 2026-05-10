@@ -1,12 +1,11 @@
 // Presentational drone-bot animation for the Trigger Agent Run flow.
-// Renders nothing when idle. When flying, renders an SVG drone that
-// patrols three "documents" in the spacer area between the launch pad
-// and the schema pill, dwelling over each one and emitting a scan beam.
+// Renders nothing when idle. When flying, renders a self-contained
+// relative-positioned workspace zone (230×36) holding three documents,
+// three scan beams, and a drone that patrols between the docs.
 //
-// Position constants assume the HeaderStrip uses min-width:1000px so
-// the spacer always has enough room. In a real D365 form bar (typically
-// 1100-1400px wide), the docs sit between left:510 and left:712, well
-// clear of the title (left:62-260) and launch pad (left:270-470).
+// The parent (workspace card inside AgentTriggerButton) is responsible
+// for laying this out — AgentDrone uses its own local coordinate system
+// so it can be embedded anywhere.
 
 import * as React from 'react';
 
@@ -45,12 +44,22 @@ const KEYFRAMES = `
 }
 `;
 
+// Local layout — all positions relative to the AgentDrone container.
+const ZONE_W       = 230;
+const ZONE_H       = 36;
+const DOC_LEFT_1   = 0;
+const DOC_LEFT_2   = 90;
+const DOC_LEFT_3   = 180;
+const DOC_TOP      = 5;
+const DRONE_LEFT   = -5;     // centres 32-wide drone over 22-wide doc
+const DRONE_TOP    = -10;    // hovers above docs (visual "drone overhead")
+
 const Document: React.FC<{ leftPx: number; lineWidths: [number, number, number, number]; highlightAnim: string }> =
   ({ leftPx, lineWidths, highlightAnim }) => (
     <div
       className="kft-doc"
       style={{
-        position: 'absolute', left: `${leftPx}px`, top: '19px', zIndex: 1,
+        position: 'absolute', left: `${leftPx}px`, top: `${DOC_TOP}px`, zIndex: 1,
         animation: `${highlightAnim} 10s linear infinite`,
       }}
       aria-hidden="true"
@@ -71,7 +80,7 @@ const Beam: React.FC<{ leftPx: number; gradId: string; beamAnim: string }> =
     <svg
       className="kft-beam"
       style={{
-        position: 'absolute', left: `${leftPx}px`, top: '1px', opacity: 0,
+        position: 'absolute', left: `${leftPx}px`, top: '-13px', opacity: 0,
         animation: `${beamAnim} 10s linear infinite`,
         pointerEvents: 'none', zIndex: 2,
       }}
@@ -91,25 +100,32 @@ const Beam: React.FC<{ leftPx: number; gradId: string; beamAnim: string }> =
 export const AgentDrone: React.FC<AgentDroneProps> = ({ mode }) => {
   if (mode === 'idle') return null;
   return (
-    <>
+    <div
+      style={{
+        position: 'relative',
+        width:  ZONE_W,
+        height: ZONE_H,
+        flexShrink: 0,
+      }}
+      aria-hidden="true"
+    >
       <style>{KEYFRAMES}</style>
 
-      <Document leftPx={510} lineWidths={[11, 11, 8,  11]} highlightAnim="kft-doc-1" />
-      <Document leftPx={600} lineWidths={[11, 9,  11, 6 ]} highlightAnim="kft-doc-2" />
-      <Document leftPx={690} lineWidths={[9,  11, 11, 9 ]} highlightAnim="kft-doc-3" />
+      <Document leftPx={DOC_LEFT_1} lineWidths={[11, 11, 8,  11]} highlightAnim="kft-doc-1" />
+      <Document leftPx={DOC_LEFT_2} lineWidths={[11, 9,  11, 6 ]} highlightAnim="kft-doc-2" />
+      <Document leftPx={DOC_LEFT_3} lineWidths={[9,  11, 11, 9 ]} highlightAnim="kft-doc-3" />
 
-      <Beam leftPx={514} gradId="kftBeam1" beamAnim="kft-beam-1" />
-      <Beam leftPx={604} gradId="kftBeam2" beamAnim="kft-beam-2" />
-      <Beam leftPx={694} gradId="kftBeam3" beamAnim="kft-beam-3" />
+      <Beam leftPx={DOC_LEFT_1 + 4} gradId="kftBeam1" beamAnim="kft-beam-1" />
+      <Beam leftPx={DOC_LEFT_2 + 4} gradId="kftBeam2" beamAnim="kft-beam-2" />
+      <Beam leftPx={DOC_LEFT_3 + 4} gradId="kftBeam3" beamAnim="kft-beam-3" />
 
       <div
         className="kft-drone-flight"
         style={{
-          position: 'absolute', left: '505px', top: '0px', zIndex: 3,
+          position: 'absolute', left: `${DRONE_LEFT}px`, top: `${DRONE_TOP}px`, zIndex: 3,
           animation: 'kft-flight-docs 10s cubic-bezier(0.45,0,0.55,1) infinite',
           pointerEvents: 'none',
         }}
-        aria-hidden="true"
       >
         <div
           className="kft-drone-hover"
@@ -131,6 +147,6 @@ export const AgentDrone: React.FC<AgentDroneProps> = ({ mode }) => {
           </svg>
         </div>
       </div>
-    </>
+    </div>
   );
 };

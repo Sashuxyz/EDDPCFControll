@@ -1,6 +1,7 @@
 // Top bar — coral-forward Aurora command surface.
-// Hosts the pulse dot, title, Trigger Agent Run slot, schema pill, last-run meta.
-// AgentTriggerButton is responsible for its own state machine + drone overlay.
+// Hosts the pulse dot, title, Trigger Agent Run slot, and right-side meta cluster.
+// AgentTriggerButton owns its own state machine + drone overlay; it reports
+// its flying state via onFlyingChange so the bar can grow when active.
 
 import * as React from 'react';
 import { agentBar } from '../styles/tokens';
@@ -25,77 +26,101 @@ const KEYFRAMES = `
 }
 `;
 
+const BAR_HEIGHT_IDLE    = 56;   // compact when no run in progress
+const BAR_HEIGHT_RUNNING = 80;   // expanded to fit the workspace card
+
 export const HeaderStrip: React.FC<HeaderStripProps> = ({
   schemaVersion, lastRunAt, kycProfileId, webAPI,
-}) => (
-  <div
-    style={{
-      position:     'relative',
-      overflow:     'hidden',
-      padding:      '18px 24px',
-      display:      'flex',
-      alignItems:   'center',
-      gap:          18,
-      background:   agentBar.bgGradient,
-      borderBottom: `1px solid ${agentBar.borderBottom}`,
-      color:        '#fff',
-      fontFamily:   agentBar.fontFamily,
-      minHeight:    64,
-      minWidth:     1000,
-    }}
-  >
-    <style>{KEYFRAMES}</style>
+}) => {
+  const [flying, setFlying] = React.useState(false);
+  const minHeight = flying ? BAR_HEIGHT_RUNNING : BAR_HEIGHT_IDLE;
 
-    {/* Aurora blob layer */}
-    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} aria-hidden="true">
-      <div className="kft-aurora-blob" style={blobStyle(300, agentBar.blobCoral, 0.55, 'kft-aurora1', '12s', '5%',  undefined)} />
-      <div className="kft-aurora-blob" style={blobStyle(260, agentBar.blobPink,  0.40, 'kft-aurora2', '14s', '35%', undefined)} />
-      <div className="kft-aurora-blob" style={blobStyle(240, agentBar.blobAmber, 0.30, 'kft-aurora3', '16s', undefined, '0%')}  />
-    </div>
-
-    {/* Pulse dot */}
-    <span
-      className="kft-pulse-dot"
+  return (
+    <div
       style={{
-        width: 10, height: 10, borderRadius: '50%', background: '#fff',
-        position: 'relative', zIndex: 1,
-        animation: 'kft-pulse-dot 2s infinite',
+        position:     'relative',
+        overflow:     'hidden',
+        padding:      flying ? '16px 24px' : '12px 24px',
+        display:      'flex',
+        alignItems:   'center',
+        gap:          18,
+        background:   agentBar.bgGradient,
+        borderBottom: `1px solid ${agentBar.borderBottom}`,
+        color:        '#fff',
+        fontFamily:   agentBar.fontFamily,
+        minHeight,
+        minWidth:     1000,
+        transition:   'min-height 250ms ease, padding 250ms ease',
       }}
-      aria-hidden="true"
-    />
+    >
+      <style>{KEYFRAMES}</style>
 
-    {/* Title */}
-    <h2 style={{
-      margin: 0, fontSize: 18, fontWeight: 600,
-      letterSpacing: '-0.005em', position: 'relative', zIndex: 1,
-    }}>
-      KYC Agent Output
-    </h2>
+      {/* Aurora blob layer */}
+      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} aria-hidden="true">
+        <div className="kft-aurora-blob" style={blobStyle(300, agentBar.blobCoral, 0.55, 'kft-aurora1', '12s', '5%',  undefined)} />
+        <div className="kft-aurora-blob" style={blobStyle(260, agentBar.blobPink,  0.40, 'kft-aurora2', '14s', '35%', undefined)} />
+        <div className="kft-aurora-blob" style={blobStyle(240, agentBar.blobAmber, 0.30, 'kft-aurora3', '16s', undefined, '0%')}  />
+      </div>
 
-    {/* Trigger button slot (owns the drone) */}
-    <AgentTriggerButton kycProfileId={kycProfileId} webAPI={webAPI} />
-
-    <span style={{ flex: 1, minWidth: 260 }} />
-
-    {schemaVersion && (
+      {/* Pulse dot */}
       <span
-        aria-hidden="true"
+        className="kft-pulse-dot"
         style={{
-          fontSize: 11, padding: '3px 9px', borderRadius: 999,
-          background: 'rgba(255,255,255,0.18)',
-          border: '1px solid rgba(255,255,255,0.30)',
-          fontWeight: 500, position: 'relative', zIndex: 1,
+          width: 10, height: 10, borderRadius: '50%', background: '#fff',
+          position: 'relative', zIndex: 1,
+          animation: 'kft-pulse-dot 2s infinite',
+          flexShrink: 0,
         }}
-      >schema {schemaVersion}</span>
-    )}
+        aria-hidden="true"
+      />
 
-    {lastRunAt && (
-      <span style={{ fontSize: 12, opacity: 0.92, position: 'relative', zIndex: 1 }}>
-        last run · {formatSwissDate(lastRunAt)}
-      </span>
-    )}
-  </div>
-);
+      {/* Title */}
+      <h2 style={{
+        margin: 0, fontSize: 18, fontWeight: 600,
+        letterSpacing: '-0.005em', position: 'relative', zIndex: 1,
+        flexShrink: 0,
+      }}>
+        KYC Agent Output
+      </h2>
+
+      {/* Trigger button slot (owns the workspace card + drone when flying) */}
+      <AgentTriggerButton
+        kycProfileId={kycProfileId}
+        webAPI={webAPI}
+        onFlyingChange={setFlying}
+      />
+
+      <span style={{ flex: 1, minWidth: 60 }} />
+
+      {/* Right meta cluster — stacked: schema chip on top, last run below */}
+      {(schemaVersion || lastRunAt) && (
+        <div
+          style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
+            gap: 4, position: 'relative', zIndex: 1, flexShrink: 0,
+          }}
+        >
+          {schemaVersion && (
+            <span
+              aria-hidden="true"
+              style={{
+                fontSize: 11, padding: '2px 9px', borderRadius: 999,
+                background: 'rgba(255,255,255,0.18)',
+                border: '1px solid rgba(255,255,255,0.30)',
+                fontWeight: 500,
+              }}
+            >schema {schemaVersion}</span>
+          )}
+          {lastRunAt && (
+            <span style={{ fontSize: 11, opacity: 0.78 }}>
+              last run · {formatSwissDate(lastRunAt)}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 function blobStyle(
   size: number, color: string, opacity: number,
