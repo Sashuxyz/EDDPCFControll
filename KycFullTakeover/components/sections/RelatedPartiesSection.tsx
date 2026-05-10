@@ -17,7 +17,6 @@
 import * as React from 'react';
 import { ItemizedSection } from './ItemizedSection';
 import { ItemizedCardDetail } from '../common/ItemizedCard';
-import { LookupReadonly } from '../common/LookupReadonly';
 import { RelatedPartyRow, SectionState, PartyRef, CreateNewPartyRef, ExistingPartyRef, LookupRef } from '../../types';
 import { colors, typography } from '../../styles/tokens';
 
@@ -110,21 +109,21 @@ function rowToCardConfig(
 
   const details: ItemizedCardDetail[] = [
     { kind: 'display',  label: 'Related party',                  value: <PartyDisplay party={row.syg_relatedpartyid} /> },
-    { kind: 'display',  label: 'Type',                           value: <LookupReadonly value={row.syg_relatedpartytypeid} /> },
+    { kind: 'lookup',   label: 'Type',                           value: row.syg_relatedpartytypeid, entityTypes: ['syg_kycproperty'], onChange: u('syg_relatedpartytypeid') },
     { kind: 'text',     label: 'Display name',                   value: row.syg_name, onChange: u('syg_name') },
-    { kind: 'display',  label: 'Nationality 1',                  value: <LookupReadonly value={row.syg_relatedpartynationality1id} /> },
-    { kind: 'display',  label: 'Nationality 2',                  value: <LookupReadonly value={row.syg_relatedpartynationality2id} /> },
-    { kind: 'display',  label: 'Nationality 3',                  value: <LookupReadonly value={row.syg_relatedpartynationality3id} /> },
-    { kind: 'display',  label: 'Domicile country',               value: <LookupReadonly value={row.syg_domicilecountryid} /> },
-    { kind: 'display',  label: 'Main business activity',         value: <LookupReadonly value={row.syg_mainbusinessactivityid} /> },
-    { kind: 'display',  label: 'Country of business activity',   value: <LookupReadonly value={row.syg_maincountryofbusinessactivityid} /> },
+    { kind: 'lookup',   label: 'Nationality 1',                  value: row.syg_relatedpartynationality1id, entityTypes: ['new_country'], onChange: u('syg_relatedpartynationality1id') },
+    { kind: 'lookup',   label: 'Nationality 2',                  value: row.syg_relatedpartynationality2id, entityTypes: ['new_country'], onChange: u('syg_relatedpartynationality2id') },
+    { kind: 'lookup',   label: 'Nationality 3',                  value: row.syg_relatedpartynationality3id, entityTypes: ['new_country'], onChange: u('syg_relatedpartynationality3id') },
+    { kind: 'lookup',   label: 'Domicile country',               value: row.syg_domicilecountryid, entityTypes: ['new_country'], onChange: u('syg_domicilecountryid') },
+    { kind: 'lookup',   label: 'Main business activity',         value: row.syg_mainbusinessactivityid, entityTypes: ['syg_businessactivities'], onChange: u('syg_mainbusinessactivityid') },
+    { kind: 'lookup',   label: 'Country of business activity',   value: row.syg_maincountryofbusinessactivityid, entityTypes: ['new_country'], onChange: u('syg_maincountryofbusinessactivityid') },
     { kind: 'text',     label: 'Related countries',              value: row.syg_relatedcountries, onChange: u('syg_relatedcountries'), wide: true },
     { kind: 'picklist', label: 'PEP',
       value: row.syg_pep === true ? 1 : (row.syg_pep === false ? 0 : undefined),
       map:   YES_NO,
       onChange: (v) => onUpdate(idx, 'syg_pep', v === undefined ? undefined : v === 1) },
-    { kind: 'display',  label: 'PEP status',                     value: <LookupReadonly value={row.syg_pepstatusid} /> },
-    { kind: 'display',  label: 'PEP level',                      value: <LookupReadonly value={row.syg_peplevelid} /> },
+    { kind: 'lookup',   label: 'PEP status',                     value: row.syg_pepstatusid, entityTypes: ['syg_kycproperty'], onChange: u('syg_pepstatusid') },
+    { kind: 'lookup',   label: 'PEP level',                      value: row.syg_peplevelid, entityTypes: ['syg_kycproperty'], onChange: u('syg_peplevelid') },
     { kind: 'number',   label: 'Risk score',                     value: row.syg_riskscore, onChange: u('syg_riskscore') },
   ];
 

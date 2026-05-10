@@ -17,6 +17,7 @@ import { DetailedDAHoldingsSection } from './sections/DetailedDAHoldingsSection'
 import { PlannedFiatFundsSection } from './sections/PlannedFiatFundsSection';
 import { PlannedDAFundsSection } from './sections/PlannedDAFundsSection';
 import { RelatedPartiesSection } from './sections/RelatedPartiesSection';
+import { LookupObjectsContext, LookupObjectsFn } from './common/LookupContext';
 import {
   KycPayload, LookupRef, SectionId, SectionState, TakeoverStatusBlob, SectionStatusRecord,
   SourceOfWealthRow, DigitalAssetHoldingRow, IncomingFiatFundRow, DigitalAssetFundRow,
@@ -35,6 +36,9 @@ export interface KycFullTakeoverProps {
   kycProfileId:      string;
   kycProfileName:    string;
   webAPI:            ComponentFramework.WebApi;
+  /** Optional — when provided, lookup fields in itemized cards become editable
+   *  (clicking opens the native D365 picker via context.utils.lookupObjects). */
+  lookupObjects?:    LookupObjectsFn;
   onStatusChange:    (next: TakeoverStatusBlob) => void;   // index.ts persists
 }
 
@@ -92,7 +96,7 @@ interface EditState {
 }
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
-  payload, statusBlob: initialStatusBlob, kycProfileId, kycProfileName, webAPI, onStatusChange,
+  payload, statusBlob: initialStatusBlob, kycProfileId, kycProfileName, webAPI, lookupObjects, onStatusChange,
 }) => {
   // Local copy of the status blob — updated synchronously on each takeover so
   // the UI reflects the new state immediately. onStatusChange persists out to
@@ -589,6 +593,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
 
   // === Layout =============================================================
   return (
+    <LookupObjectsContext.Provider value={lookupObjects ?? null}>
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: colors.cardBg }}>
       <HeaderStrip
         profileName={kycProfileName}
@@ -966,6 +971,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
         </main>
       </div>
     </div>
+    </LookupObjectsContext.Provider>
   );
 };
 

@@ -5,8 +5,7 @@
 import * as React from 'react';
 import { ItemizedSection } from './ItemizedSection';
 import { ItemizedCardDetail } from '../common/ItemizedCard';
-import { LookupReadonly } from '../common/LookupReadonly';
-import { DigitalAssetFundRow, SectionState } from '../../types';
+import { DigitalAssetFundRow, LookupRef, SectionState } from '../../types';
 import { TRANSFER_TIMEFRAME } from '../../utils/optionSets';
 import { formatSwissNumber } from '../../utils/formatters';
 
@@ -53,8 +52,9 @@ function rowToCardConfig(
     (value: DigitalAssetFundRow[K] | undefined) => onUpdate(idx, field, value);
 
   const details: ItemizedCardDetail[] = [
-    { kind: 'display',  label: 'Customer',                    value: <LookupReadonly value={row.syg_customerid} /> },
-    { kind: 'display',  label: 'First transfer asset',        value: <LookupReadonly value={row.syg_firstdigitalassettransfertype} /> },
+    { kind: 'lookup',   label: 'Customer',                    value: row.syg_customerid, entityTypes: ['account', 'contact'],
+      onChange: (next: LookupRef | undefined) => onUpdate(idx, 'syg_customerid', next) },
+    { kind: 'lookup',   label: 'First transfer asset',        value: row.syg_firstdigitalassettransfertype, entityTypes: ['syg_digitalassetcurrency'], onChange: u('syg_firstdigitalassettransfertype') },
     { kind: 'number',   label: 'First DA transfer amount',    value: row.syg_firstdigitalassettransferamount, onChange: u('syg_firstdigitalassettransferamount') },
     { kind: 'money',    label: 'First transfer (CHF)',        value: row.syg_firsttransferamount, onChange: u('syg_firsttransferamount') },
     { kind: 'money',    label: 'Current value (CHF)',         value: row.syg_currentvaluechf, onChange: u('syg_currentvaluechf') },

@@ -22,6 +22,8 @@ import { DateInput } from './DateInput';
 import { AutoTextarea } from './AutoTextarea';
 import { OptionSetSelect } from './OptionSetSelect';
 import { OptionSetMap } from '../../utils/optionSets';
+import { LookupEdit } from './LookupEdit';
+import { LookupRef } from '../../types';
 
 interface BaseDetail {
   label: string;
@@ -35,7 +37,8 @@ export type ItemizedCardDetail =
   | (BaseDetail & { kind: 'money';    value: number | undefined; onChange: (next: number | undefined) => void })
   | (BaseDetail & { kind: 'date';     value: string | undefined; onChange: (next: string | undefined) => void })
   | (BaseDetail & { kind: 'longtext'; value: string | undefined; onChange: (next: string) => void; minRows?: number })
-  | (BaseDetail & { kind: 'picklist'; value: number | undefined; map: OptionSetMap; onChange: (next: number | undefined) => void });
+  | (BaseDetail & { kind: 'picklist'; value: number | undefined; map: OptionSetMap; onChange: (next: number | undefined) => void })
+  | (BaseDetail & { kind: 'lookup';   value: LookupRef | null | undefined; entityTypes: string[]; onChange: (next: LookupRef | undefined) => void; emptyText?: string });
 
 interface ItemizedCardProps {
   title:        string;
@@ -176,6 +179,18 @@ const renderDetailValue = (d: ItemizedCardDetail): React.ReactNode => {
           value={dt.value ?? null}
           map={dt.map}
           onChange={(v) => dt.onChange(v ?? undefined)}
+          ariaLabel={dt.label}
+        />
+      );
+    }
+    case 'lookup': {
+      const dt = d as Extract<ItemizedCardDetail, { kind: 'lookup' }>;
+      return (
+        <LookupEdit
+          value={dt.value}
+          entityTypes={dt.entityTypes}
+          onChange={dt.onChange}
+          emptyText={dt.emptyText}
           ariaLabel={dt.label}
         />
       );

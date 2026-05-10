@@ -96,6 +96,16 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
     const statusRaw  = this.context.parameters.takeoverStatus?.raw ?? '';
     const statusBlob = parseStatusBlob(statusRaw);
 
+    // Bind the host's lookup-picker function so editable lookup fields inside
+    // the takeover tree can open the native D365 picker. Older PCF hosts
+    // without context.utils.lookupObjects fall back to read-only mode.
+    const utils = (this.context as ComponentFramework.Context<IInputs> & {
+      utils?: { lookupObjects?: (opts: ComponentFramework.UtilityApi.LookupOptions) => Promise<ComponentFramework.LookupValue[]> };
+    }).utils;
+    const lookupObjects = (utils && typeof utils.lookupObjects === 'function')
+      ? utils.lookupObjects.bind(utils)
+      : undefined;
+
     this.root.render(
       React.createElement(KycFullTakeoverComponent, {
         payload:        result.payload,
@@ -103,6 +113,7 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
         kycProfileId:   profile.id,
         kycProfileName: profile.name,
         webAPI:         this.context.webAPI,
+        lookupObjects,
         onStatusChange: (next: TakeoverStatusBlob) => {
           // Persist out to the bound takeoverStatus field. The KycFullTakeover
           // React component holds the live blob in its own useState, so we

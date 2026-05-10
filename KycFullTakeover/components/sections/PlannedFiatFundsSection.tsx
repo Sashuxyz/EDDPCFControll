@@ -5,8 +5,7 @@
 import * as React from 'react';
 import { ItemizedSection } from './ItemizedSection';
 import { ItemizedCardDetail } from '../common/ItemizedCard';
-import { LookupReadonly } from '../common/LookupReadonly';
-import { IncomingFiatFundRow, SectionState } from '../../types';
+import { IncomingFiatFundRow, LookupRef, SectionState } from '../../types';
 import { TRANSFER_TIMEFRAME } from '../../utils/optionSets';
 import { formatSwissNumber } from '../../utils/formatters';
 
@@ -55,8 +54,9 @@ function rowToCardConfig(
   const details: ItemizedCardDetail[] = [
     { kind: 'money',    label: 'Amount (CHF)',         value: row.syg_amount, onChange: u('syg_amount') },
     { kind: 'text',     label: 'Bank',                 value: row.syg_bank, onChange: u('syg_bank') },
-    { kind: 'display',  label: 'Bank domicile',        value: <LookupReadonly value={row.syg_bankdomicileid} /> },
-    { kind: 'display',  label: 'Client',               value: <LookupReadonly value={row.syg_clientid} /> },
+    { kind: 'lookup',   label: 'Bank domicile',        value: row.syg_bankdomicileid, entityTypes: ['new_country'], onChange: u('syg_bankdomicileid') },
+    { kind: 'lookup',   label: 'Client',               value: row.syg_clientid, entityTypes: ['account', 'contact'],
+      onChange: (next: LookupRef | undefined) => onUpdate(idx, 'syg_clientid', next) },
     { kind: 'picklist', label: 'Proof of ownership',
       value: row.syg_proofofownership === true ? 1 : (row.syg_proofofownership === false ? 0 : undefined),
       map: YES_NO,

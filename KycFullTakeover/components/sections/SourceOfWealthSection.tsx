@@ -6,7 +6,6 @@
 import * as React from 'react';
 import { ItemizedSection } from './ItemizedSection';
 import { ItemizedCardDetail } from '../common/ItemizedCard';
-import { LookupReadonly } from '../common/LookupReadonly';
 import { AutoTextarea } from '../common/AutoTextarea';
 import { SourceOfWealthRow, SourceOfWealthSection as SoWPayload, SectionState } from '../../types';
 import { SOURCE_OF_WEALTH, RELATIONSHIP_TO_COUNTERPARTY } from '../../utils/optionSets';
@@ -84,10 +83,10 @@ function rowToCardConfig(
     { kind: 'text',     label: 'Company',                  value: row.syg_companyname, onChange: u('syg_companyname') },
     { kind: 'text',     label: 'Counterparty',             value: row.syg_counterpartyname, onChange: u('syg_counterpartyname') },
     { kind: 'picklist', label: 'Relationship',             value: row.syg_relationshiptocounterparty, map: RELATIONSHIP_TO_COUNTERPARTY, onChange: u('syg_relationshiptocounterparty') },
-    { kind: 'display',  label: 'Business activity',        value: <LookupReadonly value={row.syg_businessactivityid} /> },
-    { kind: 'display',  label: 'Country',                  value: <LookupReadonly value={row.syg_countryid} /> },
-    { kind: 'display',  label: 'Year of generation',       value: <LookupReadonly value={row.syg_yearofwealthgenerationid} /> },
-    { kind: 'display',  label: 'Year initiated',           value: <LookupReadonly value={row.syg_yearofwealthgenerationinitiatedid} /> },
+    { kind: 'lookup',   label: 'Business activity',        value: row.syg_businessactivityid, entityTypes: ['syg_businessactivities'], onChange: u('syg_businessactivityid') },
+    { kind: 'lookup',   label: 'Country',                  value: row.syg_countryid, entityTypes: ['new_country'], onChange: u('syg_countryid') },
+    { kind: 'lookup',   label: 'Year of generation',       value: row.syg_yearofwealthgenerationid, entityTypes: ['syg_year'], onChange: u('syg_yearofwealthgenerationid') },
+    { kind: 'lookup',   label: 'Year initiated',           value: row.syg_yearofwealthgenerationinitiatedid, entityTypes: ['syg_year'], onChange: u('syg_yearofwealthgenerationinitiatedid') },
     { kind: 'money',    label: 'Initial investment (CHF)', value: row.syg_initialinvestment, onChange: u('syg_initialinvestment') },
     { kind: 'money',    label: 'Wealth generated (CHF)',   value: row.syg_wealthgenerated, onChange: u('syg_wealthgenerated') },
     { kind: 'money',    label: 'Value at valuation date',  value: row.syg_valueatvaluationdate, onChange: u('syg_valueatvaluationdate') },
