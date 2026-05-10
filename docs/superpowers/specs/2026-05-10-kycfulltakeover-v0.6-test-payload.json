@@ -1,0 +1,307 @@
+{
+  "_comment_top": "Full v0.6.x test payload — exercises every section the PCF ships, including M6 Related Parties (2-stage write) and the editable itemized rows landed in 0.5.7. All GUIDs are real (verified from dev-system exports of countries, years, business activities, digital asset currencies, KYC properties + the supplied lead/contact). Drop into syg_aianalytics_audit on a test KYC profile and click Take over on each section.",
+
+  "_what_to_expect": {
+    "Findings + Proposed Email": "Read-only. Email opens an Activity form prefilled with the recipient + body.",
+    "Personal Details": "Section is hidden in the PCF since 0.4.2 — agent can ship it; PCF ignores.",
+    "Professional Experience": "Single textarea PATCHes syg_professionalexperiencesummary on the parent profile.",
+    "Business Activities": "N:N section. RM trims via × chips. Take over creates the associations.",
+    "Countries of Activity": "N:N section, same pattern.",
+    "Related Parties": "M6 itemized — 1 existing party + 2 NEW (1 contact, 1 account). Take over creates the contact + account first (with new_typeofcontact = 9), then writes the syg_relatedclientparties junction row each. Confirmation dialog will enumerate the new records by name.",
+    "Financial Situation Narrative": "Single textarea PATCH.",
+    "Income / Total Wealth / Asset Allocation": "Merged section — only timeframe + asset allocation render. CHF money field via WealthAllocationControl.",
+    "Source of Wealth": "Narrative + 3 itemized rows. ONE Take over does both writes.",
+    "Digital Asset Holdings Narrative": "Single textarea PATCH.",
+    "Detailed DA Holdings": "2 itemized rows. Editable amount/value/date fields, lookups stay read-only (Asset, Acquiring year).",
+    "Transactional Behaviour": "Single textarea PATCH.",
+    "Planned Fiat Funds": "2 itemized rows. Polymorphic Customer lookup (contact).",
+    "Planned DA Funds": "1 itemized row. Polymorphic Customer lookup + DA token lookup.",
+    "PEP / Sanctions / Risk": "Field-set patch with picklists.",
+    "Additional Comments": "Single textarea PATCH."
+  },
+
+  "schemaVersion": "1.0",
+
+  "findings": [
+    {
+      "severity": "warning",
+      "category": "Source of Wealth",
+      "title": "Inheritance dated before documented family liquidity event",
+      "detail": "Client states inheritance from grandfather in 2014 (CHF 1.2M). Public records show grandfather's holding company was sold in 2017 — three years AFTER the claimed inheritance. Source documentation should clarify the timing.",
+      "regulatoryReference": "FINMA AMLA Art. 6"
+    },
+    {
+      "severity": "info",
+      "category": "PEP Screening",
+      "title": "Distant relative flagged as foreign domestic PEP",
+      "detail": "Second cousin holds a regional political position in Lombardy. Below FINMA-defined PEP proximity threshold; no client-side mitigation required.",
+      "regulatoryReference": "FINMA AMLO-FINMA Art. 2(a)"
+    },
+    {
+      "severity": "info",
+      "category": "Related Parties",
+      "title": "New related-party records will be created at takeover",
+      "detail": "2 of 3 related parties have no Dataverse counterpart yet (1 contact, 1 account). The takeover will create them with new_typeofcontact = 9 before linking.",
+      "regulatoryReference": "—"
+    }
+  ],
+
+  "proposedClientEmail": {
+    "subject": "Additional documentation request — KYC review",
+    "to": [
+      { "id": "e103ec26-1f49-f111-bec7-7ced8d444879", "name": "Marco Rossi", "etn": "lead" }
+    ],
+    "body": "Dear Mr. Rossi,\n\nAs part of our ongoing KYC review we'd like to clarify three points:\n\n  1. The timing of the 2014 family inheritance relative to the 2017 sale of Rossi Industries S.r.l. — please share the will or notarial deed.\n\n  2. Supporting documentation for the planned BTC inbound transfer of 5 BTC from your self-custody wallet (recent custody chain or hardware-wallet attestation is sufficient).\n\n  3. Confirmation of the recently-incorporated Rossi Family Holding S.A. (Luxembourg) and the role of your daughter Sofia as a beneficiary trustee.\n\nKind regards,\nSygnum Compliance"
+  },
+
+  "personalDetails": {
+    "_note": "Hidden in PCF since 0.4.2; agent may still ship.",
+    "syg_AccountHolderNationalityID":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
+    "syg_Nationality2ID":               { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
+    "syg_AccountHolderDomicileID":      { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
+    "syg_dateofbirth":                  "1972-04-12",
+    "syg_AccountHolderCountryofBirthID":{ "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
+    "syg_uspersonstatus":               1
+  },
+
+  "professionalExperience": {
+    "syg_ProfessionalExperienceSummary": "Mr. Rossi has 22+ years of leadership experience in industrial manufacturing and asset management. CEO of Rossi Industries S.r.l. (2003–2018), the family-owned precision-engineering business, which he led through a 2018 majority sale to a Swiss private-equity buyer. Since 2019, Senior Partner at Sygnum AG advising HNW clients on digital asset allocation strategies. In 2025 incorporated Rossi Family Holding S.A. (Luxembourg) as a wealth-management vehicle for his children's inheritance trust. Holds an MBA from IMD Lausanne (2002) and engineering degree from Politecnico di Milano (1996)."
+  },
+
+  "businessActivities": [
+    { "id": "769269c1-0ee3-ef11-9341-002248cacede", "name": "Banking & finance & stock trading" },
+    { "id": "be9269c1-0ee3-ef11-9341-002248cacede", "name": "Trading" }
+  ],
+
+  "countriesOfActivity": [
+    { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland" },
+    { "id": "d17d2d55-d539-ef11-a317-002248ca35c3", "name": "Portugal" },
+    { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy" }
+  ],
+
+  "relatedParties": [
+    {
+      "_comment": "EXISTING contact — agent shipped GUID. Stage 1 skipped, only junction created.",
+      "syg_name":                "Anna Rossi (spouse)",
+      "syg_relatedpartyid":      { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Anna Rossi", "etn": "contact" },
+      "syg_relatedpartytypeid":  { "id": "0192c173-1408-f111-8406-7ced8d443a3d", "name": "Close Family Member", "etn": "syg_kycproperty" },
+      "syg_relatedpartynationality1id": { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "syg_country" },
+      "syg_domicilecountryid":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
+      "syg_pep":                 false,
+      "syg_riskscore":           12
+    },
+    {
+      "_comment": "NEW contact — Sofia Rossi, daughter. PCF Stage 1 POSTs /contacts with new_typeofcontact = 9, captures GUID, then Stage 2 POSTs the junction.",
+      "syg_name":                "Sofia Rossi (daughter)",
+      "syg_relatedpartyid": {
+        "etn":   "contact",
+        "name":  "Sofia Rossi",
+        "createNew": {
+          "firstname":                       "Sofia",
+          "lastname":                        "Rossi",
+          "new_typeofcontact":               9,
+          "syg_dateofbirth":                 "2002-03-18",
+          "syg_accountholdernationalityid":  { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy",       "etn": "syg_country" },
+          "syg_accountholderdomicileid":     { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
+          "emailaddress1":                   "sofia.rossi@example.lu"
+        }
+      },
+      "syg_relatedpartytypeid":  { "id": "9e3b77c1-2b1d-f111-8341-7ced8d42e0e3", "name": "Trust/Foundation - Beneficiary (Fixed)", "etn": "syg_kycproperty" },
+      "syg_relatedpartynationality1id": { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "syg_country" },
+      "syg_domicilecountryid":   { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "syg_country" },
+      "syg_pep":                 false,
+      "syg_riskscore":           8
+    },
+    {
+      "_comment": "NEW account — Rossi Family Holding S.A. (Luxembourg). Stage 1 POSTs /accounts with name + new_typeofcontact = 9 + business activity + country, captures GUID, then Stage 2 POSTs the junction.",
+      "syg_name":                "Rossi Family Holding S.A. (LU vehicle)",
+      "syg_relatedpartyid": {
+        "etn":   "account",
+        "name":  "Rossi Family Holding S.A.",
+        "createNew": {
+          "new_typeofcontact":               9,
+          "syg_domicilecountryid":           { "id": "9b7d2d55-d539-ef11-a317-002248ca35c3", "name": "Luxembourg", "etn": "new_country" },
+          "syg_mainbusinessactivityid":      { "id": "769269c1-0ee3-ef11-9341-002248cacede", "name": "Banking & finance & stock trading", "etn": "syg_businessactivities" },
+          "emailaddress1":                   "info@rossifamilyholding.lu"
+        }
+      },
+      "syg_relatedpartytypeid":  { "id": "0192c173-1408-f111-8406-7ced8d443a3d", "name": "Close Family Member", "etn": "syg_kycproperty" },
+      "syg_domicilecountryid":   { "id": "9b7d2d55-d539-ef11-a317-002248ca35c3", "name": "Luxembourg", "etn": "new_country" },
+      "syg_mainbusinessactivityid": { "id": "769269c1-0ee3-ef11-9341-002248cacede", "name": "Banking & finance & stock trading", "etn": "syg_businessactivities" },
+      "syg_maincountryofbusinessactivityid": { "id": "9b7d2d55-d539-ef11-a317-002248ca35c3", "name": "Luxembourg", "etn": "new_country" },
+      "syg_pep":                 false,
+      "syg_riskscore":           18
+    }
+  ],
+
+  "financialSituationNarrative": "Net worth of CHF 12.5M is supported primarily by the 2018 sale of Rossi Industries S.r.l. (CHF 8.5M proceeds), accumulated salary as Senior Partner at Sygnum AG (CHF 2.8M cumulative 2019–2025), and a 2014 family inheritance (CHF 1.2M). Asset base is well-diversified across cash, equities, fixed income, real estate, and a 15% allocation to digital assets including a long-held BTC position acquired 2017–2020. In 2025 a Luxembourg holding company was incorporated to hold a portion of these assets within an inter-generational trust structure for the children.",
+
+  "totalWealthIncome": {
+    "syg_TotalWealth_currency":           12500000,
+    "syg_TotalWealth":                    6,
+    "syg_annualincome":                   5,
+    "syg_TimeframeforWealthAccumulation": 22
+  },
+
+  "sourceOfWealth": {
+    "narrative": "Three primary sources fully account for current net worth: (1) sale of family manufacturing business in 2018, (2) accumulated salary at Sygnum AG since 2019, (3) family inheritance received 2014. Each is documented; corroboration percentages range from 87% to 96%.",
+    "items": [
+      {
+        "syg_name":                              "Sale of Rossi Industries S.r.l. (2018)",
+        "syg_sourceofwealth":                    3,
+        "syg_description":                       "Sold 60% stake in family precision-engineering business to Swiss private-equity buyer.",
+        "syg_companyname":                       "Rossi Industries S.r.l.",
+        "syg_counterpartyname":                  "Helvetia Capital Partners SA",
+        "syg_relationshiptocounterparty":        2,
+        "syg_businessactivityid":                { "id": "769269c1-0ee3-ef11-9341-002248cacede", "name": "Banking & finance & stock trading", "etn": "syg_businessactivities" },
+        "syg_countryid":                         { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "new_country" },
+        "syg_yearofwealthgenerationid":          { "id": "091925c8-5efb-ef11-9340-6045bd29ab58", "name": "2018", "etn": "syg_year" },
+        "syg_yearofwealthgenerationinitiatedid": { "id": "eb1825c8-5efb-ef11-9340-6045bd29ab58", "name": "2003", "etn": "syg_year" },
+        "syg_initialinvestment":                 1200000,
+        "syg_wealthgenerated":                   8500000,
+        "syg_valueatvaluationdate":              8500000,
+        "syg_valuationdate":                     "2018-09-14",
+        "syg_corroboratedvalue":                 8200000,
+        "syg_corroboratedpercentage":            96,
+        "syg_rationale":                         "Documented via Share Purchase Agreement (notarised 2018-09-14) and Italian tax filings for FY2018. Buy-out structured as cash + 5-year earn-out (earn-out concluded 2023).",
+        "syg_supportinginformation":             "SPA dated 2018-09-14, Italian Notary Deed N. 4521/2018. Tax filings: Modello Redditi PF 2019 declaring capital gain of EUR 7.4M.",
+        "syg_additionaldetails":                 "Additional bank-trace audit available on request."
+      },
+      {
+        "syg_name":                              "Salary — Sygnum AG (2019–present)",
+        "syg_sourceofwealth":                    1,
+        "syg_description":                       "Senior Partner role; cumulative net salary plus partner-distribution received 2019 onward.",
+        "syg_companyname":                       "Sygnum AG",
+        "syg_relationshiptocounterparty":        1,
+        "syg_countryid":                         { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "new_country" },
+        "syg_yearofwealthgenerationid":          { "id": "0b1925c8-5efb-ef11-9340-6045bd29ab58", "name": "2019", "etn": "syg_year" },
+        "syg_wealthgenerated":                   2800000,
+        "syg_corroboratedvalue":                 2800000,
+        "syg_corroboratedpercentage":            100,
+        "syg_rationale":                         "Internal payroll records 2019–2025 reconcile to net amount.",
+        "syg_supportinginformation":             "Sygnum HR payroll export, employment contract dated 2019-01-15."
+      },
+      {
+        "syg_name":                              "Inheritance — grandfather (2014)",
+        "syg_sourceofwealth":                    7,
+        "syg_description":                       "Received 1/3 share of paternal grandfather's estate.",
+        "syg_counterpartyname":                  "Estate of Giovanni Rossi (decd. 2014)",
+        "syg_relationshiptocounterparty":        3,
+        "syg_countryid":                         { "id": "5d7e2d55-d539-ef11-a317-002248ca35c3", "name": "Italy", "etn": "new_country" },
+        "syg_yearofwealthgenerationid":          { "id": "011925c8-5efb-ef11-9340-6045bd29ab58", "name": "2014", "etn": "syg_year" },
+        "syg_wealthgenerated":                   1200000,
+        "syg_corroboratedvalue":                 1050000,
+        "syg_corroboratedpercentage":            87,
+        "syg_rationale":                         "Inheritance documented via Italian succession deed. Note: see Findings — grandfather's holding company sold three years AFTER claimed inheritance; clarification requested.",
+        "syg_supportinginformation":             "Successione N. 2014/3142 (Italian tax authority)."
+      }
+    ]
+  },
+
+  "currentAssetAllocation": {
+    "syg_TotalWealth_currency":                  12500000,
+    "syg_wealthdistribution_cash_dec":           25,
+    "syg_wealthdistribution_equities_dec":       30,
+    "syg_wealthdistribution_fixedincome_dec":    10,
+    "syg_wealthdistribution_digitalassets_dec":  15,
+    "syg_wealthdistribution_realestate_dec":     15,
+    "syg_wealthdistribution_commodities_dec":     0,
+    "syg_wealthdistribution_other_dec":           5
+  },
+
+  "digitalAssetHoldingsNarrative": "DA allocation of 15% (CHF 1.875M) reflects a long-held BTC position acquired primarily 2017–2020 (avg cost CHF 8.2k, current value CHF 1.45M), plus an ETH staking position with Sygnum since 2021 (CHF 425k). Both positions documented via on-chain proofs and custody attestations.",
+
+  "detailedDAHoldings": [
+    {
+      "syg_name":                  "BTC self-custody (cold storage)",
+      "syg_digitalassetid":        { "id": "8682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Bitcoin (BTC)",  "etn": "syg_digitalassetcurrency" },
+      "syg_amount":                18.45,
+      "syg_currentvaluechf":       1450000,
+      "syg_valuechf":              1450000,
+      "syg_dateofvaluation":       "2026-04-30",
+      "syg_acquiringyear":         { "id": "071925c8-5efb-ef11-9340-6045bd29ab58", "name": "2017", "etn": "syg_year" },
+      "syg_acquiringplace":        "Bitstamp (early 2017–2018) plus OTC desk (2019–2020)",
+      "syg_averageacquiringprice": 8200,
+      "syg_corroboratedamount":    18.45,
+      "syg_corroboratedamountchf": 1450000,
+      "syg_corroboratedvalue":     1450000,
+      "syg_currentcustody":        "Self-custody (Ledger hardware wallet, multi-sig with family member)",
+      "syg_description":           "Position acquired in tranches via Bitstamp 2017–2018 (CHF ~6k avg) and via licensed OTC desk 2019–2020 (CHF ~12k avg). Held in cold storage since 2020.",
+      "syg_originoffunds":         "Initial purchases funded from cash savings; later tranches funded from sale-of-business proceeds (2018).",
+      "syg_supportingdocuments":   "Bitstamp account statements 2017–2020, OTC desk transaction confirmations 2019–2020, hardware-wallet device attestations."
+    },
+    {
+      "syg_name":                  "ETH staking — Sygnum custody",
+      "syg_digitalassetid":        { "id": "e682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Ethereum (ETH)", "etn": "syg_digitalassetcurrency" },
+      "syg_amount":                425,
+      "syg_currentvaluechf":       425000,
+      "syg_valuechf":              425000,
+      "syg_dateofvaluation":       "2026-04-30",
+      "syg_acquiringyear":         { "id": "0f1925c8-5efb-ef11-9340-6045bd29ab58", "name": "2021", "etn": "syg_year" },
+      "syg_currentcustody":        "Sygnum Bank custody — staked under Sygnum staking program",
+      "syg_corroboratedamount":    425,
+      "syg_corroboratedamountchf": 425000,
+      "syg_corroboratedvalue":     425000,
+      "syg_description":           "Acquired via Sygnum salary-sacrifice 2021–2023; staking yields reinvested.",
+      "syg_originoffunds":         "Acquired via Sygnum AG salary-sacrifice arrangement 2021–2023.",
+      "syg_supportingdocuments":   "Sygnum staking statements 2021–2026, payroll deduction reconciliation."
+    }
+  ],
+
+  "transactionalBehaviour": "Expected monthly transactional volume: CHF 50k–150k via fiat rails (regular living expenses, asset rebalancing). Quarterly DA rebalancing in the 5–15 BTC range. No third-party transfers anticipated except direct family (spouse account, 2 children's accounts) and the Luxembourg holding once incorporated. High-value asset purchases (real estate, art) handled separately via dedicated transactions with full documentation.",
+
+  "plannedFiatFunds": [
+    {
+      "syg_name":              "Initial deposit — UBS to Sygnum CHF account",
+      "syg_amount":            2500000,
+      "syg_bank":              "UBS Switzerland AG",
+      "syg_bankdomicileid":    { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "new_country" },
+      "syg_clientid":          { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
+      "syg_proofofownership":  true,
+      "syg_transfertimeframe": 1
+    },
+    {
+      "syg_name":              "Quarterly funding — UBS rebalancing",
+      "syg_amount":            500000,
+      "syg_bank":              "UBS Switzerland AG",
+      "syg_bankdomicileid":    { "id": "837d2d55-d539-ef11-a317-002248ca35c3", "name": "Switzerland", "etn": "new_country" },
+      "syg_clientid":          { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
+      "syg_proofofownership":  true,
+      "syg_transfertimeframe": 3
+    }
+  ],
+
+  "plannedDAFunds": [
+    {
+      "syg_name":                            "BTC inbound — self-custody to Sygnum",
+      "syg_customerid":                      { "id": "862ab95f-a027-f111-88b3-7ced8d444879", "name": "Marco Rossi", "etn": "contact" },
+      "syg_firstdigitalassettransfertype":   { "id": "8682d7c1-05f5-ef11-9340-6045bd2a66d6", "name": "Bitcoin (BTC)", "etn": "syg_digitalassetcurrency" },
+      "syg_firstdigitalassettransferamount": 5,
+      "syg_firsttransferamount":             395000,
+      "syg_currentvaluechf":                 395000,
+      "syg_valuechf":                        395000,
+      "syg_dateofvaluation":                 "2026-05-15",
+      "syg_proofofownership":                true,
+      "syg_senderwallet":                    "bc1q9h6ujhz4xq2sqxnhcg3a4r0w8m5y2vke7p4e63",
+      "syg_source":                          "Self-custody hardware wallet (Ledger) — long-held position",
+      "syg_transfertimeframe":               1,
+      "syg_remarks":                         "Tranche of long-held BTC position; remaining ~13.5 BTC stays in self-custody.",
+      "syg_comment":                         "First inbound transfer — coordinate with custody team for cold-to-hot signing window.",
+      "syg_additionalexpectedfunding":       "Possible second tranche (3–5 BTC) in Q3 2026 depending on rebalancing needs."
+    }
+  ],
+
+  "pepSanctionsRisk": {
+    "syg_PEP":                                       false,
+    "syg_pepstatus":                                 0,
+    "syg_pepdetails":                                "",
+    "syg_pepderivationdetails":                      "Screening performed against Dow Jones Risk and World-Check One on 2026-04-29. Returned no PEP matches at level 1, 2, or 3. Second-cousin's regional-political role flagged at level 4 (below FINMA proximity threshold) and recorded in Findings for transparency.",
+    "syg_formerpepdetails":                          "",
+    "syg_ReputationalRisk":                          2,
+    "syg_mediascreeningandreputationalriskcomment":  "World-Check + LexisNexis + ComplyAdvantage screen on 2026-04-30. No adverse media findings. Italian-language press search 2014–2026 returned only positive coverage of Rossi Industries S.r.l. business activities.",
+    "syg_SanctionCheck":                             3,
+    "syg_sanctioncheckcomment":                      "Cleared — OFAC, EU, UK, SECO consolidated lists checked 2026-04-30. No matches."
+  },
+
+  "additionalComments": "Long-standing client relationship via Sygnum AG employment (since 2019). All documentation reviewed by Compliance lead Anna Schmid and ratified 2026-04-30. Recommend annual review cadence given moderate risk score and DA exposure. Note the Luxembourg holding company being established in 2025 — request a follow-up KYC review on that vehicle separately once incorporated."
+}
