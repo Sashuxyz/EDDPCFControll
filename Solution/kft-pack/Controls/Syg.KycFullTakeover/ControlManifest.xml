@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <manifest>
-  <control namespace="Syg" constructor="KycFullTakeover" version="0.5.3" display-name-key="KycFullTakeover_Display_Key" description-key="KycFullTakeover_Desc_Key" control-type="standard" api-version="1.3.18">
+  <control namespace="Syg" constructor="KycFullTakeover" version="0.5.4" display-name-key="KycFullTakeover_Display_Key" description-key="KycFullTakeover_Desc_Key" control-type="standard" api-version="1.3.18">
     <external-service-usage enabled="false"/>
     <property name="aiAnalyticsAudit" display-name-key="aiAnalyticsAudit" description-key="aiAnalyticsAudit_Desc" of-type="Multiple" usage="bound" required="true"/>
     <property name="takeoverStatus" display-name-key="takeoverStatus" description-key="takeoverStatus_Desc" of-type="Multiple" usage="bound" required="false"/>

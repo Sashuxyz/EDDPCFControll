@@ -152,6 +152,25 @@ export function isInvalidPropertyError(message: string): boolean {
   return INVALID_PROPERTY_PATTERNS.some((re) => re.test(message));
 }
 
+// Patterns Dataverse uses when a property/lookup-bind name in the payload
+// doesn't exist on the entity. The captured group is the offending name.
+const UNDECLARED_PROPERTY_PATTERNS: RegExp[] = [
+  /undeclared property ['"]([^'"]+)['"]/i,
+  /property ['"]([^'"]+)['"] does not exist/i,
+  /An undeclared property ['"]([^'"]+)['"]/i,
+];
+
+export function extractUndeclaredProperty(message: string): string | null {
+  if (typeof message !== 'string' || message.length === 0) return null;
+  for (const re of UNDECLARED_PROPERTY_PATTERNS) {
+    const m = re.exec(message);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+const MAX_PROPERTY_RETRIES = 5;
+
 export async function createChildren(
   entitySetName:   string,
   rows:            Array<Record<string, unknown>>,
@@ -163,53 +182,103 @@ export async function createChildren(
   const base = window.location.origin;
 
   const settled = await Promise.all(rows.map(async (row, idx) => {
-    try {
-      const resp = await fetch(`${base}/api/data/v9.2/${entitySetName}`, {
-        method:      'POST',
-        credentials: 'include',
-        headers:     {
-          'Content-Type':       'application/json',
-          'OData-Version':      '4.0',
-          'OData-MaxVersion':   '4.0',
-          'Accept':             'application/json',
-          'Prefer':             'return=representation',
-        },
-        body: JSON.stringify(row),
-      });
+    let body: Record<string, unknown> = { ...row };
+    const droppedProps: string[] = [];
+    let lastStatus = 0;
+    let lastMessage = '';
+    let lastRawBody = '';
 
-      if (resp.ok) return { ok: true as const };
-
-      let errBody = '';
-      try { errBody = await resp.text(); } catch { /* ignore */ }
-
-      // Try to extract the inner Dataverse message — it contains the
-      // specific property/attribute name that's wrong.
-      let extracted = '';
+    for (let attempt = 0; attempt <= MAX_PROPERTY_RETRIES; attempt += 1) {
       try {
-        const parsed = JSON.parse(errBody) as { error?: { message?: string } };
-        if (parsed?.error?.message) extracted = parsed.error.message;
-      } catch { /* not JSON, keep raw body */ }
+        const resp = await fetch(`${base}/api/data/v9.2/${entitySetName}`, {
+          method:      'POST',
+          credentials: 'include',
+          headers:     {
+            'Content-Type':       'application/json',
+            'OData-Version':      '4.0',
+            'OData-MaxVersion':   '4.0',
+            'Accept':             'application/json',
+            'Prefer':             'return=representation',
+          },
+          body: JSON.stringify(body),
+        });
 
-      // Full diagnostic dump to the console for debugging payload/property
-      // mismatches. Includes the row payload so the dev can correlate.
-      // eslint-disable-next-line no-console
-      console.error('[KycFullTakeover] createChildren FAILED', {
-        entitySetName,
-        rowIndex:  idx,
-        rowName:   rowNames[idx],
-        status:    resp.status,
-        message:   extracted || errBody,
-        body:      row,
-        rawError:  errBody,
-      });
+        if (resp.ok) {
+          if (droppedProps.length > 0) {
+            // eslint-disable-next-line no-console
+            console.warn('[KycFullTakeover] createChildren succeeded after dropping props', {
+              entitySetName,
+              rowIndex: idx,
+              rowName:  rowNames[idx],
+              droppedProps,
+            });
+          }
+          return { ok: true as const };
+        }
 
-      const display = extracted || errBody;
-      return { ok: false as const, message: `HTTP ${resp.status}: ${display.slice(0, 1500)}` };
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('[KycFullTakeover] createChildren THREW', { entitySetName, rowIndex: idx, rowName: rowNames[idx], error: e });
-      return { ok: false as const, message: (e as Error).message ?? String(e) };
+        lastStatus = resp.status;
+        let errBody = '';
+        try { errBody = await resp.text(); } catch { /* ignore */ }
+        lastRawBody = errBody;
+
+        let extracted = '';
+        try {
+          const parsed = JSON.parse(errBody) as { error?: { message?: string } };
+          if (parsed?.error?.message) extracted = parsed.error.message;
+        } catch { /* not JSON, keep raw body */ }
+        lastMessage = extracted || errBody;
+
+        // Self-healing: if Dataverse names an undeclared property, drop it
+        // (and any matching @odata.bind variant) and retry.
+        if (attempt < MAX_PROPERTY_RETRIES) {
+          const undeclared = extractUndeclaredProperty(lastMessage);
+          if (undeclared) {
+            const lower = undeclared.toLowerCase();
+            const candidates: string[] = [
+              undeclared, `${undeclared}@odata.bind`,
+              lower,      `${lower}@odata.bind`,
+            ];
+            const toRemove = Object.keys(body).filter((k) =>
+              candidates.includes(k) || candidates.includes(k.toLowerCase()),
+            );
+            if (toRemove.length > 0) {
+              toRemove.forEach((k) => { delete body[k]; });
+              droppedProps.push(...toRemove);
+              // eslint-disable-next-line no-console
+              console.warn('[KycFullTakeover] createChildren: dropping undeclared property and retrying', {
+                entitySetName,
+                rowIndex: idx,
+                rowName:  rowNames[idx],
+                undeclared,
+                droppedKeys: toRemove,
+                attempt,
+              });
+              continue;
+            }
+          }
+        }
+
+        // Out of retries / nothing more to drop — log and return failure.
+        // eslint-disable-next-line no-console
+        console.error('[KycFullTakeover] createChildren FAILED', {
+          entitySetName,
+          rowIndex:    idx,
+          rowName:     rowNames[idx],
+          status:      lastStatus,
+          message:     lastMessage,
+          body,
+          rawError:    lastRawBody,
+          droppedProps,
+        });
+        return { ok: false as const, message: `HTTP ${lastStatus}: ${lastMessage.slice(0, 1500)}` };
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[KycFullTakeover] createChildren THREW', { entitySetName, rowIndex: idx, rowName: rowNames[idx], error: e });
+        return { ok: false as const, message: (e as Error).message ?? String(e) };
+      }
     }
+
+    return { ok: false as const, message: `HTTP ${lastStatus}: ${lastMessage.slice(0, 1500)}` };
   }));
 
   settled.forEach((r, idx) => {

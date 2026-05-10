@@ -8,7 +8,7 @@
     <Descriptions>
       <Description description="Full-section AI-payload takeover for KYC profile forms" languagecode="1033" />
     </Descriptions>
-    <Version>0.5.3</Version>
+    <Version>0.5.4</Version>
     <Managed>1</Managed>
     <Publisher>
       <UniqueName>Sygnum</UniqueName>
