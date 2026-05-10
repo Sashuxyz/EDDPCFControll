@@ -9,6 +9,7 @@ import * as React from 'react';
 import { SectionFrame } from '../SectionFrame';
 import { WealthAllocation } from '../wealth-allocation/WealthAllocation';
 import { AllocationState } from '../wealth-allocation/types';
+import { applySlider, applyFieldBlur, totalAllocated } from '../wealth-allocation/allocationLogic';
 import {
   TotalWealthIncomeSection as TotalWealthPayload,
   AssetAllocationSection as AssetAllocationPayload,
@@ -44,10 +45,43 @@ export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> =
   const [tfFocused, setTfFocused] = React.useState(false);
   const tfValue = edits.syg_TimeframeforWealthAccumulation ?? payload.syg_TimeframeforWealthAccumulation ?? null;
 
+  // If the agent shipped values that already sum to > 100, normalise once
+  // on first render so the user has a sane starting point. We scale every
+  // class proportionally so the relative weights are preserved.
+  const rawVals = edits.vals ?? payloadToVals(assetPayload);
+  const rawSum  = rawVals.reduce((s, v) => s + v, 0);
+  const initialVals = (rawSum > 100.001 && edits.vals === undefined)
+    ? rawVals.map((v) => Math.round(((v / rawSum) * 100) * 100) / 100)
+    : rawVals;
+
   const allocationState: AllocationState = {
     totalWealth: edits.totalWealth ?? assetPayload?.syg_TotalWealth_currency ?? 0,
-    vals:        edits.vals ?? payloadToVals(assetPayload),
+    vals:        initialVals,
   };
+
+  const totalPct  = totalAllocated(allocationState.vals);
+  const isOver    = totalPct > 100.001;
+  const isUnder   = totalPct < 99.999;
+  const allocationStatus =
+    isOver  ? 'over'  :
+    isUnder ? 'under' :
+              'ok';
+
+  // Guard takeover behind the 100%-rule. When the allocation is over 100% we
+  // surface a non-blocking error message at the section level instead of writing
+  // garbage to Dataverse.
+  const guardedTakeover = (): void => {
+    if (allocationStatus === 'over') {
+      // eslint-disable-next-line no-console
+      console.warn('[KycFullTakeover] takeover blocked — asset allocation total is over 100%', { totalPct, vals: allocationState.vals });
+      return;
+    }
+    onTakeover();
+  };
+  const guardErrorMsg = errorMsg
+    ?? (allocationStatus === 'over'
+      ? `Asset allocation totals ${totalPct.toFixed(2)}% — reduce one or more rows so the total is at most 100% before clicking Take over.`
+      : undefined);
 
   return (
     <SectionFrame
@@ -55,8 +89,8 @@ export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> =
       state={state}
       count={fieldCount}
       lastRunAt={lastRunAt}
-      errorMsg={errorMsg}
-      onTakeover={onTakeover}
+      errorMsg={guardErrorMsg}
+      onTakeover={guardedTakeover}
     >
       <div style={gridStyle}>
         <Field label="Timeframe for wealth accumulation (years)">
@@ -81,27 +115,41 @@ export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> =
 
       {assetPayload && (
         <div style={{ marginTop: spacing.lg, paddingTop: spacing.lg, borderTop: `1px solid ${colors.borderSubtle}` }}>
-          <div style={{
-            fontSize:    typography.fontSizeLabel,
-            fontWeight:  typography.fontWeightBold,
-            color:       colors.textSecondary,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            marginBottom: spacing.md,
-          }}>Asset allocation</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.md }}>
+            <div style={{
+              fontSize:    typography.fontSizeLabel,
+              fontWeight:  typography.fontWeightBold,
+              color:       colors.textSecondary,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+            }}>Asset allocation</div>
+            <div style={{
+              fontSize:   typography.fontSizeLabel,
+              fontWeight: typography.fontWeightBold,
+              color:      allocationStatus === 'over'
+                ? colors.error
+                : allocationStatus === 'ok'
+                  ? colors.success
+                  : colors.warning,
+            }}>
+              Total {totalPct.toFixed(2)}%
+              {allocationStatus === 'over'  && ' · over 100%, please reduce before takeover'}
+              {allocationStatus === 'under' && ' · under 100%'}
+              {allocationStatus === 'ok'    && ' · OK'}
+            </div>
+          </div>
           <WealthAllocation
             state={allocationState}
             disabled={false}
             onTotalWealthChange={onEditTotalWealth}
             onSliderChange={(idx, value) => {
-              const next = [...allocationState.vals];
-              next[idx] = value;
-              onEditVals(next);
+              // Use applySlider so the value is clamped to the available headroom;
+              // total can never exceed 100%.
+              onEditVals(applySlider(idx, value, allocationState.vals));
             }}
             onFieldBlur={(idx, value) => {
-              const next = [...allocationState.vals];
-              next[idx] = value;
-              onEditVals(next);
+              // Same clamp on direct field input.
+              onEditVals(applyFieldBlur(idx, value, allocationState.vals));
             }}
           />
         </div>
