@@ -24,39 +24,27 @@ interface EmptyShellProps {
   detail?:        string;
 }
 
-const EXCITED_BOT_KEYFRAMES = `
-@keyframes kft-xbot-bounce   { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes kft-xbot-armL     { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
-@keyframes kft-xbot-armR     { 0%,100% { transform: rotate(8deg); }  50% { transform: rotate(-8deg); } }
-@keyframes kft-xbot-pupil    { 0%,30%,70%,100% { transform: translateX(0); } 45%,55% { transform: translateX(1.4px); } }
-@keyframes kft-xbot-ant      { 0%,100% { fill:#FFC477; opacity:0.65; } 50% { fill:#fff; opacity:1; } }
-@keyframes kft-xbot-mouth    { 0%,100% { transform: scale(1, 1); } 50% { transform: scale(1.15, 1.15); } }
-@keyframes kft-xbot-sparkle1 { 0%, 100% { opacity:0; transform: scale(0.4) rotate(0); }
-                               20% { opacity:1; transform: scale(1) rotate(60deg); }
-                               40% { opacity:0; transform: scale(0.6) rotate(120deg); } }
-@keyframes kft-xbot-sparkle2 { 0%, 30%, 100% { opacity:0; transform: scale(0.4) rotate(0); }
-                               55% { opacity:1; transform: scale(1) rotate(-60deg); }
-                               75% { opacity:0; transform: scale(0.6) rotate(-120deg); } }
-@keyframes kft-xbot-sparkle3 { 0%, 50%, 100% { opacity:0; transform: scale(0.4) rotate(0); }
-                               70% { opacity:1; transform: scale(1) rotate(45deg); }
-                               90% { opacity:0; transform: scale(0.6) rotate(90deg); } }
+// Focused-worker variant of the bot: same character as BoredBot for visual
+// continuity, but transformed to "working at a laptop". Head tilted slightly
+// forward, looking down at the screen; concentrated curved-line eyes (no
+// cartoon circles); arms forward; thumbs tapping rhythmically; three
+// thinking dots cycling on the laptop screen. No sparkles, no wave, no
+// wide grin — reads as focus, not cheering.
+const FOCUSED_BOT_KEYFRAMES = `
+@keyframes kft-fbot-tap-l   { 0%,40%,100% { transform: translateY(0); } 20% { transform: translateY(-1.5px); } }
+@keyframes kft-fbot-tap-r   { 0%,40%,100% { transform: translateY(0); } 20% { transform: translateY(-1.5px); } }
+@keyframes kft-fbot-ant     { 0%,100% { fill:#FFC477; opacity:0.6; } 50% { fill:#fff; opacity:1; } }
+@keyframes kft-fbot-screen  { 0%,100% { opacity:0.45; } 50% { opacity:1; } }
+@keyframes kft-fbot-dot1    { 0%,80%,100% { opacity:0.3; } 20% { opacity:1; } }
+@keyframes kft-fbot-dot2    { 0%,80%,100% { opacity:0.3; } 35% { opacity:1; } }
+@keyframes kft-fbot-dot3    { 0%,80%,100% { opacity:0.3; } 50% { opacity:1; } }
 @media (prefers-reduced-motion: reduce) {
-  .kft-xbot-bounce, .kft-xbot-armL, .kft-xbot-armR,
-  .kft-xbot-pupil,  .kft-xbot-ant,  .kft-xbot-mouth,
-  .kft-xbot-sparkle1, .kft-xbot-sparkle2, .kft-xbot-sparkle3 { animation: none !important; }
+  .kft-fbot-tap-l, .kft-fbot-tap-r, .kft-fbot-ant,
+  .kft-fbot-screen, .kft-fbot-dot1, .kft-fbot-dot2, .kft-fbot-dot3 { animation: none !important; }
 }
 `;
 
-const Sparkle: React.FC<{ x: number; y: number; size: number; color: string; anim: string }> = ({ x, y, size, color, anim }) => (
-  <g className={anim} style={{ transformOrigin: `${x}px ${y}px`, animation: `${anim} 2.4s ease-in-out infinite` }}>
-    <path
-      d={`M ${x} ${y - size} L ${x + size * 0.25} ${y - size * 0.25} L ${x + size} ${y} L ${x + size * 0.25} ${y + size * 0.25} L ${x} ${y + size} L ${x - size * 0.25} ${y + size * 0.25} L ${x - size} ${y} L ${x - size * 0.25} ${y - size * 0.25} Z`}
-      fill={color}
-    />
-  </g>
-);
-
-const ExcitedBot: React.FC<{ accent: string }> = ({ accent }) => (
+const FocusedBot: React.FC<{ accent: string }> = ({ accent }) => (
   <div
     aria-hidden="true"
     style={{
@@ -65,85 +53,62 @@ const ExcitedBot: React.FC<{ accent: string }> = ({ accent }) => (
       position: 'relative',
     }}
   >
-    <style>{EXCITED_BOT_KEYFRAMES}</style>
+    <style>{FOCUSED_BOT_KEYFRAMES}</style>
     <svg width="160" height="170" viewBox="0 0 160 170" fill="none">
-      {/* Sparkles around the bot — stagger to feel alive */}
-      <Sparkle x={30}  y={50}  size={6} color="#FFC477" anim="kft-xbot-sparkle1" />
-      <Sparkle x={130} y={45}  size={5} color="#F04E68" anim="kft-xbot-sparkle2" />
-      <Sparkle x={20}  y={110} size={5} color="#FFB1C0" anim="kft-xbot-sparkle3" />
-      <Sparkle x={140} y={108} size={6} color="#FFC477" anim="kft-xbot-sparkle2" />
-      <Sparkle x={80}  y={20}  size={4} color="#F04E68" anim="kft-xbot-sparkle3" />
+      {/* Antenna */}
+      <line x1="80" y1="28" x2="80" y2="44" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="80" cy="26" r="3.5" fill="#FFC477"
+              style={{ animation: 'kft-fbot-ant 1.2s ease-in-out infinite' }}/>
 
-      {/* Whole-bot wrapper — bouncing */}
-      <g
-        className="kft-xbot-bounce"
-        style={{ animation: 'kft-xbot-bounce 0.85s cubic-bezier(0.45,0,0.55,1) infinite' }}
-      >
-        {/* Antenna */}
-        <line x1="80" y1="30" x2="80" y2="48" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
-        <circle cx="80" cy="28" r="3.8" fill="#FFC477"
-                className="kft-xbot-ant"
-                style={{ animation: 'kft-xbot-ant 0.8s ease-in-out infinite' }}/>
-
-        {/* Head */}
-        <rect x="46" y="48" width="68" height="54" rx="10" fill="#fff"
-              stroke={accent} strokeWidth="2.5"/>
-
-        {/* Cheek blush — brighter than the bored variant */}
-        <ellipse cx="56" cy="84" rx="4.5" ry="2.5" fill="#F04E68" opacity="0.55"/>
-        <ellipse cx="104" cy="84" rx="4.5" ry="2.5" fill="#F04E68" opacity="0.55"/>
-
-        {/* Eyes — wide open: outer white circle, dark pupil, tiny white highlight */}
-        <g>
-          <circle cx="66" cy="72" r="6" fill="#fff" stroke={accent} strokeWidth="1.8"/>
-          <g className="kft-xbot-pupil" style={{ transformOrigin: '66px 72px', animation: 'kft-xbot-pupil 3.2s ease-in-out infinite' }}>
-            <circle cx="66" cy="72" r="3" fill={accent}/>
-            <circle cx="67.4" cy="70.6" r="1" fill="#fff"/>
-          </g>
-        </g>
-        <g>
-          <circle cx="94" cy="72" r="6" fill="#fff" stroke={accent} strokeWidth="1.8"/>
-          <g className="kft-xbot-pupil" style={{ transformOrigin: '94px 72px', animation: 'kft-xbot-pupil 3.2s ease-in-out infinite' }}>
-            <circle cx="94" cy="72" r="3" fill={accent}/>
-            <circle cx="95.4" cy="70.6" r="1" fill="#fff"/>
-          </g>
-        </g>
-
-        {/* Mouth — big open "smile" oval that pulses */}
-        <g className="kft-xbot-mouth" style={{ transformOrigin: '80px 92px', animation: 'kft-xbot-mouth 1.1s ease-in-out infinite' }}>
-          <path d="M 70 90 Q 80 99 90 90 Q 80 96 70 90 Z" fill={accent}/>
-        </g>
-
-        {/* Body */}
-        <rect x="54" y="102" width="52" height="36" rx="6" fill="#fff"
-              stroke={accent} strokeWidth="2.5"/>
-
-        {/* Chest light — brighter coral */}
-        <circle cx="80" cy="120" r="3.5" fill="#F04E68"/>
-
-        {/* Arms RAISED — wave back and forth */}
-        <g
-          className="kft-xbot-armL"
-          style={{ transformOrigin: '54px 108px', animation: 'kft-xbot-armL 0.7s ease-in-out infinite' }}
-        >
-          <line x1="54" y1="108" x2="36" y2="86" stroke={accent} strokeWidth="2.5" strokeLinecap="round"/>
-          <circle cx="36" cy="84" r="4" fill="#fff" stroke={accent} strokeWidth="2"/>
-        </g>
-        <g
-          className="kft-xbot-armR"
-          style={{ transformOrigin: '106px 108px', animation: 'kft-xbot-armR 0.7s ease-in-out infinite' }}
-        >
-          <line x1="106" y1="108" x2="124" y2="86" stroke={accent} strokeWidth="2.5" strokeLinecap="round"/>
-          <circle cx="124" cy="84" r="4" fill="#fff" stroke={accent} strokeWidth="2"/>
-        </g>
-
-        {/* Feet */}
-        <rect x="58" y="138" width="14" height="6" rx="2" fill="#fff" stroke={accent} strokeWidth="2"/>
-        <rect x="88" y="138" width="14" height="6" rx="2" fill="#fff" stroke={accent} strokeWidth="2"/>
+      {/* Head — tilted slightly forward (looking down at the laptop). The
+          rotate around the head's bottom-centre keeps the antenna stem
+          attached at the top. */}
+      <g transform="rotate(8 80 100)">
+        <rect x="50" y="48" width="60" height="48" rx="9" fill="#fff"
+              stroke={accent} strokeWidth="2.4"/>
+        {/* Concentrated eyes — short curved lines that lean slightly downward */}
+        <path d="M62 72 q4 1.5 8 0" stroke={accent} strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+        <path d="M90 72 q4 1.5 8 0" stroke={accent} strokeWidth="2.4" fill="none" strokeLinecap="round"/>
+        {/* Subtle mouth — flat focused line */}
+        <line x1="74" y1="86" x2="86" y2="86" stroke={accent} strokeWidth="1.8" strokeLinecap="round"/>
       </g>
 
-      {/* Ground shadow — pulses with bounce */}
-      <ellipse cx="80" cy="156" rx="34" ry="3.5" fill={accent} opacity="0.12"/>
+      {/* Body */}
+      <rect x="56" y="100" width="48" height="32" rx="6" fill="#fff"
+            stroke={accent} strokeWidth="2.4"/>
+
+      {/* Arms forward — hands hovering over the laptop, tapping in rhythm.
+          Left and right slightly offset so the tap reads as alternating. */}
+      <g style={{ animation: 'kft-fbot-tap-l 0.55s ease-in-out infinite' }}>
+        <line x1="64" y1="110" x2="56" y2="128" stroke={accent} strokeWidth="2.4" strokeLinecap="round"/>
+        <circle cx="56" cy="130" r="3.2" fill="#fff" stroke={accent} strokeWidth="1.8"/>
+      </g>
+      <g style={{ animation: 'kft-fbot-tap-r 0.55s ease-in-out 0.27s infinite' }}>
+        <line x1="96" y1="110" x2="104" y2="128" stroke={accent} strokeWidth="2.4" strokeLinecap="round"/>
+        <circle cx="104" cy="130" r="3.2" fill="#fff" stroke={accent} strokeWidth="1.8"/>
+      </g>
+
+      {/* Laptop */}
+      <g>
+        {/* Screen */}
+        <rect x="50" y="120" width="60" height="16" rx="2.5" fill="#fff"
+              stroke={accent} strokeWidth="2"/>
+        {/* Bezel */}
+        <path d="M46 136 L114 136 L118 148 L42 148 Z" fill="#fff"
+              stroke={accent} strokeWidth="2"/>
+        {/* Screen contents — three cycling thinking dots, breathing intensity */}
+        <g style={{ animation: 'kft-fbot-screen 1.6s ease-in-out infinite' }}>
+          <circle cx="68" cy="128" r="2" fill={accent}
+                  style={{ animation: 'kft-fbot-dot1 1.2s linear infinite' }}/>
+          <circle cx="80" cy="128" r="2" fill={accent}
+                  style={{ animation: 'kft-fbot-dot2 1.2s linear infinite' }}/>
+          <circle cx="92" cy="128" r="2" fill={accent}
+                  style={{ animation: 'kft-fbot-dot3 1.2s linear infinite' }}/>
+        </g>
+      </g>
+
+      {/* Ground shadow */}
+      <ellipse cx="80" cy="156" rx="38" ry="3" fill={accent} opacity="0.1"/>
     </svg>
   </div>
 );
@@ -254,14 +219,14 @@ export const EmptyShell: React.FC<EmptyShellProps> = ({
 
   const heading =
     subState === 'error'   ? 'AI payload could not be read'
-    : subState === 'running' ? 'Working on it…'
+    : subState === 'running' ? 'Analysing the profile…'
     :                        'No agent run yet';
 
   const message =
     subState === 'error'
       ? 'The bound aiAnalyticsAudit field exists but its format is not supported by this control version.'
       : subState === 'running'
-        ? 'The KYC AI agent is analysing this profile right now. The form will refresh automatically when the analysis is ready.'
+        ? 'The KYC AI agent is reviewing the case file. The form will refresh when the analysis is ready.'
         : 'Nothing to do here yet — click “Trigger agent run” above and I\'ll get to work on the KYC AI analysis for this profile.';
 
   const accent = subState === 'error' ? colors.warning   : colors.brand;
@@ -294,7 +259,7 @@ export const EmptyShell: React.FC<EmptyShellProps> = ({
           }}
         >
           {subState === 'running' ? (
-            <ExcitedBot accent={accent} />
+            <FocusedBot accent={accent} />
           ) : subState === 'idle' ? (
             <BoredBot accent={accent} />
           ) : (
