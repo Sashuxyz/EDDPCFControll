@@ -97,11 +97,12 @@ function buildJunctionBody(
   if (row.syg_domicilecountryid?.id)                    out['syg_domicilecountryid@odata.bind']                            = `/new_countries(${row.syg_domicilecountryid.id})`;
   if (row.syg_mainbusinessactivityid?.id)               out['syg_mainbusinessactivityid@odata.bind']                       = `/syg_businessactivitieses(${row.syg_mainbusinessactivityid.id})`;
   if (row.syg_maincountryofbusinessactivityid?.id)      out['syg_maincountryofbusinessactivityid@odata.bind']              = `/new_countries(${row.syg_maincountryofbusinessactivityid.id})`;
-  if (row.syg_relatedcountries)                         out['syg_relatedcountries']                                        = row.syg_relatedcountries;
+  // syg_relatedcountries and syg_riskscore intentionally not written
+  // (removed from the UI in 0.7.2 per RM request — fields stay on the entity
+  // but are no longer populated from the agent payload).
   if (row.syg_pep !== undefined)                        out['syg_pep']                                                     = row.syg_pep;
   if (row.syg_pepstatusid?.id)                          out['syg_pepstatusid@odata.bind']                                  = `/syg_kycproperties(${row.syg_pepstatusid.id})`;
   if (row.syg_peplevelid?.id)                           out['syg_peplevelid@odata.bind']                                   = `/syg_kycproperties(${row.syg_peplevelid.id})`;
-  if (row.syg_riskscore !== undefined)                  out['syg_riskscore']                                               = row.syg_riskscore;
   if (row.syg_comment)                                  out['syg_comment']                                                  = row.syg_comment;
   return out;
 }

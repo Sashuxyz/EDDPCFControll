@@ -141,14 +141,12 @@ function rowToCardConfig(
     { kind: 'lookup',   label: 'Domicile country',               value: row.syg_domicilecountryid, entityTypes: ['new_country'], onChange: u('syg_domicilecountryid') },
     { kind: 'lookup',   label: 'Main business activity',         value: row.syg_mainbusinessactivityid, entityTypes: ['syg_businessactivities'], onChange: u('syg_mainbusinessactivityid') },
     { kind: 'lookup',   label: 'Country of business activity',   value: row.syg_maincountryofbusinessactivityid, entityTypes: ['new_country'], onChange: u('syg_maincountryofbusinessactivityid') },
-    { kind: 'text',     label: 'Related countries',              value: row.syg_relatedcountries, onChange: u('syg_relatedcountries'), wide: true },
     { kind: 'picklist', label: 'PEP',
       value: row.syg_pep === true ? 1 : (row.syg_pep === false ? 0 : undefined),
       map:   YES_NO,
       onChange: (v) => onUpdate(idx, 'syg_pep', v === undefined ? undefined : v === 1) },
     { kind: 'lookup',   label: 'PEP status',                     value: row.syg_pepstatusid, entityTypes: ['syg_kycproperty'], onChange: u('syg_pepstatusid') },
     { kind: 'lookup',   label: 'PEP level',                      value: row.syg_peplevelid, entityTypes: ['syg_kycproperty'], onChange: u('syg_peplevelid') },
-    { kind: 'number',   label: 'Risk score',                     value: row.syg_riskscore, onChange: u('syg_riskscore') },
     { kind: 'longtext', label: 'Comment',                        value: row.syg_comment, onChange: u('syg_comment'), wide: true, minRows: 2 },
   ];
 
