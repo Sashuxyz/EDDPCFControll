@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sygnum.com/schemas/kyc-full-takeover-input/0.6.x.json",
+  "title": "KycFullTakeover input payload",
+  "description": "JSON shape written to syg_aianalytics_audit (Multiline text) on syg_kycprofile. Consumed by the Syg.KycFullTakeover PCF control. Mirrors KycFullTakeover/types.ts exactly. Section-keyed envelope; every section is optional; the PCF only renders sections present on the payload.",
+  "type": "object",
+  "required": ["schemaVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "description": "Currently '1.0'. PCF supports any string starting with '1.'. Bumped breaking-change-style.",
+      "pattern": "^1\\."
+    },
+
+    "findings":            { "type": "array", "items": { "$ref": "#/$defs/Finding" } },
+    "proposedClientEmail": { "$ref": "#/$defs/ProposedEmail" },
+
+    "personalDetails":        { "$ref": "#/$defs/PersonalDetailsSection",
+                                "description": "Hidden in PCF since 0.4.2 — parsed but ignored. Kept for forward-compat." },
+    "professionalExperience": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "syg_ProfessionalExperienceSummary": { "type": "string" }
+      },
+      "required": ["syg_ProfessionalExperienceSummary"]
+    },
+    "businessActivities":  { "type": "array", "items": { "$ref": "#/$defs/LookupRef" },
+                             "description": "N:N to syg_businessactivities" },
+    "countriesOfActivity": { "type": "array", "items": { "$ref": "#/$defs/LookupRef" },
+                             "description": "N:N to new_country" },
+    "relatedParties":      { "type": "array", "items": { "$ref": "#/$defs/RelatedPartyRow" } },
+
+    "financialSituationNarrative":   { "type": "string" },
+    "totalWealthIncome":             { "$ref": "#/$defs/TotalWealthIncomeSection" },
+    "sourceOfWealth":                { "$ref": "#/$defs/SourceOfWealthSection" },
+    "currentAssetAllocation":        { "$ref": "#/$defs/AssetAllocationSection" },
+    "digitalAssetHoldingsNarrative": { "type": "string" },
+    "detailedDAHoldings":            { "type": "array", "items": { "$ref": "#/$defs/DigitalAssetHoldingRow" } },
+
+    "transactionalBehaviour": { "type": "string" },
+    "plannedFiatFunds":       { "type": "array", "items": { "$ref": "#/$defs/IncomingFiatFundRow" } },
+    "plannedDAFunds":         { "type": "array", "items": { "$ref": "#/$defs/DigitalAssetFundRow" } },
+
+    "pepSanctionsRisk":  { "$ref": "#/$defs/PepSanctionsRiskSection" },
+    "additionalComments": {
+      "type": "string",
+      "description": "Hidden in PCF since 0.6.7 — parsed but not rendered. Restore by uncommenting the section in KycFullTakeover.tsx."
+    }
+  },
+
+  "$defs": {
+    "LookupRef": {
+      "type": "object",
+      "description": "Pointer to an existing Dataverse record. The PCF writes a polymorphic @odata.bind on takeover. `etn` (entity logical name) is required for polymorphic Customer fields and recommended everywhere; the PCF infers correctly without it for non-polymorphic single-target lookups.",
+      "additionalProperties": false,
+      "required": ["id", "name"],
+      "properties": {
+        "id":   { "type": "string", "format": "uuid", "description": "Dataverse record GUID — lowercase, no braces." },
+        "name": { "type": "string", "description": "Display name. Shown in cards; not written to Dataverse." },
+        "etn":  { "type": "string", "description": "Entity logical name (e.g. 'new_country', 'syg_year', 'syg_digitalassetcurrency', 'contact', 'account')." }
+      }
+    },
+
+    "Finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severity", "category", "title", "detail"],
+      "properties": {
+        "severity":            { "enum": ["info", "warning", "critical"] },
+        "category":            { "type": "string" },
+        "title":               { "type": "string" },
+        "detail":              { "type": "string" },
+        "regulatoryReference": { "type": "string" }
+      }
+    },
+
+    "ProposedEmail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "to", "body"],
+      "properties": {
+        "subject": { "type": "string" },
+        "to":      { "type": "array", "items": { "$ref": "#/$defs/LookupRef" },
+                     "description": "Typically a single LookupRef with etn='lead' or 'contact'." },
+        "body":    { "type": "string" }
+      }
+    },
+
+    "PersonalDetailsSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "syg_AccountHolderNationalityID":    { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_Nationality2ID":                { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_accountholdernationality3id":   { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_AccountHolderDomicileID":       { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_dateofbirth":                   { "type": "string", "format": "date", "description": "ISO 8601 yyyy-mm-dd" },
+        "syg_AccountHolderCountryofBirthID": { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_uspersonstatus":                { "type": "integer", "enum": [1, 2, 3, 4],
+                                               "description": "1 = Not a US Person, 2 = Former US Person, 3 = US Person, 4 = US Nexus" }
+      }
+    },
+
+    "RelatedPartyRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["syg_relatedpartyid", "syg_relatedpartytypeid"],
+      "properties": {
+        "syg_name":                            { "type": "string", "description": "Display name on the junction row (syg_relatedclientparties.syg_name)." },
+        "syg_relatedpartyid":                  { "$ref": "#/$defs/PartyRef",
+                                                 "description": "Either an existing contact/account or a CreateNewPartyRef. M6 PCF creates the contact/account first when this is a CreateNewPartyRef." },
+        "syg_relatedpartytypeid":              { "$ref": "#/$defs/LookupRef", "description": "syg_kycproperty — e.g. 'Close Family Member', 'Trust/Foundation - Beneficiary'." },
+        "syg_relatedpartynationality1id":      { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ], "description": "new_country" },
+        "syg_relatedpartynationality2id":      { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_relatedpartynationality3id":      { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_domicilecountryid":               { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_mainbusinessactivityid":          { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_maincountryofbusinessactivityid": { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_relatedcountries":                { "type": "string", "description": "Free-text comma list." },
+        "syg_pep":                             { "type": "boolean" },
+        "syg_pepstatusid":                     { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_peplevelid":                      { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
+        "syg_riskscore":                       { "type": "number" }
+      }
+    },
+
+    "PartyRef": {
+      "description": "Discriminated union: existing party (has `id`) OR CreateNewPartyRef (has `createNew`).",
+      "oneOf": [
+        {
+          "type": "object",
+          "title": "ExistingPartyRef",
+          "additionalProperties": false,
+          "required": ["id", "name", "etn"],
+          "properties": {
+            "id":   { "type": "string", "format": "uuid" },
+            "name": { "type": "string" },
+            "etn":  { "enum": ["contact", "account"] }
+          }
+        },
+        {
+          "type": "object",
+          "title": "CreateNewPartyRef",
+          "additionalProperties": false,
+          "required": ["etn", "name", "createNew"],
+          "properties": {
+            "etn":  { "enum": ["contact", "account"] },
+            "name": { "type": "string", "description": "Display name shown in the confirmation dialog before the contact/account is created." },
+            "createNew": {
+              "oneOf": [
+                { "$ref": "#/$defs/NewContactAttributes" },
+                { "$ref": "#/$defs/NewAccountAttributes" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    "NewContactAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["new_typeofcontact"],
+      "properties": {
+        "firstname":                       { "type": "string" },
+        "lastname":                        { "type": "string" },
+        "fullname":                        { "type": "string" },
+        "new_typeofcontact":               { "const": 9, "description": "Multi-select picklist on contact; Phase 1 always ships 9 (KYC profile related party)." },
+        "syg_dateofbirth":                 { "type": "string", "format": "date" },
+        "syg_accountholdernationalityid":  { "$ref": "#/$defs/LookupRef" },
+        "syg_accountholderdomicileid":     { "$ref": "#/$defs/LookupRef" },
+        "emailaddress1":                   { "type": "string", "format": "email" },
+        "telephone1":                      { "type": "string" }
+      }
+    },
+
+    "NewAccountAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["new_typeofcontact"],
+      "properties": {
+        "new_typeofcontact":          { "const": 9 },
+        "syg_domicilecountryid":      { "$ref": "#/$defs/LookupRef" },
+        "syg_mainbusinessactivityid": { "$ref": "#/$defs/LookupRef" },
+        "emailaddress1":              { "type": "string", "format": "email" },
+        "telephone1":                 { "type": "string" }
+      }
+    },
+
+    "TotalWealthIncomeSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "syg_TotalWealth_currency":           { "type": "number", "minimum": 0,
+                                                "description": "CHF total wealth — money field on syg_kycprofile." },
+        "syg_TotalWealth":                    { "type": "integer", "minimum": 1, "maximum": 7,
+                                                "description": "Banded total wealth picklist. 1=<500k, 2=500k–2M, 3=2M–5M, 4=5M–10M, 5=10M–25M, 6=25M–50M, 7=>50M. Hidden in PCF since 0.4.2 but parsed for forward-compat." },
+        "syg_annualincome":                   { "type": "integer", "minimum": 1, "maximum": 5,
+                                                "description": "Banded annual income. 1=<=100k, 2=100–250k, 3=250–500k, 4=500k–1M, 5=>1M. Hidden in PCF since 0.4.2." },
+        "syg_TimeframeforWealthAccumulation": { "type": "integer", "minimum": 0,
+                                                "description": "Years over which the wealth was accumulated." }
+      }
+    },
+
+    "SourceOfWealthSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["narrative", "items"],
+      "properties": {
+        "narrative": { "type": "string", "description": "PATCHes syg_kycprofile.syg_sourceofwealthdetails on takeover." },
+        "items":     { "type": "array", "items": { "$ref": "#/$defs/SourceOfWealthRow" } }
+      }
+    },
+
+    "SourceOfWealthRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Row creates one syg_sourceofwealth record. Bound to parent via syg_kycprofileid (lowercase nav prop).",
+      "properties": {
+        "syg_name":                              { "type": "string" },
+        "syg_sourceofwealth":                    { "type": "integer", "minimum": 0, "maximum": 23,
+                                                   "description": "Source-of-wealth picklist. 0=Self-Employment, 1=Salaried Income, 2=Investment: Financial Products, 3=Investment: Cryptocurrencies, 4=Investment: ICOs, 5=Airdrops, 6=Sale of Company, 7=Inheritance/Gift, 8=Sale of Real Estate, 9=Pay-off/Allowance, 10=Family Wealth, 11=Sale of Valuables, 12=Lotteries, 13=Pension Funds, 14=Cryptocurrency Mining, 15=Other, 16=Business ownership, 17=Equity Fundraising/IPOs, 18=Token Fundraising/ICOs, 19=Government Support, 20=Donations, 21=Profit from current business, 22=Debt Issuance, 23=Corporate Dividend." },
+        "syg_description":                       { "type": "string" },
+        "syg_companyname":                       { "type": "string" },
+        "syg_counterpartyname":                  { "type": "string" },
+        "syg_relationshiptocounterparty":        { "type": "integer", "description": "Custom picklist; values come from the syg_relationshiptocounterparty option set." },
+        "syg_businessactivityid":                { "$ref": "#/$defs/LookupRef", "description": "syg_businessactivities" },
+        "syg_countryid":                         { "$ref": "#/$defs/LookupRef", "description": "new_country" },
+        "syg_yearofwealthgenerationid":          { "$ref": "#/$defs/LookupRef", "description": "syg_year" },
+        "syg_yearofwealthgenerationinitiatedid": { "$ref": "#/$defs/LookupRef", "description": "syg_year" },
+        "syg_initialinvestment":                 { "type": "number", "minimum": 0, "description": "CHF" },
+        "syg_valueatvaluationdate":              { "type": "number", "minimum": 0, "description": "CHF" },
+        "syg_valuationdate":                     { "type": "string", "format": "date" },
+        "syg_wealthgenerated":                   { "type": "number", "minimum": 0, "description": "CHF" },
+        "syg_corroboratedvalue":                 { "type": "number", "minimum": 0, "description": "CHF" },
+        "syg_corroboratedpercentage":            { "type": "integer", "minimum": 0, "maximum": 100 },
+        "syg_rationale":                         { "type": "string" },
+        "syg_supportinginformation":             { "type": "string" },
+        "syg_additionaldetails":                 { "type": "string" },
+        "syg_digitalassetactivities":            { "type": "array", "items": { "type": "integer" },
+                                                   "description": "Multi-select picklist; OData writes as comma-separated integer string." }
+      }
+    },
+
+    "AssetAllocationSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Percentages must sum to ≤ 100. PCF enforces the cap on takeover (since 0.6.5).",
+      "properties": {
+        "syg_TotalWealth_currency":                 { "type": "number", "minimum": 0 },
+        "syg_wealthdistribution_cash_dec":          { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_equities_dec":      { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_fixedincome_dec":   { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_digitalassets_dec": { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_realestate_dec":    { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_commodities_dec":   { "type": "number", "minimum": 0, "maximum": 100 },
+        "syg_wealthdistribution_other_dec":         { "type": "number", "minimum": 0, "maximum": 100 }
+      }
+    },
+
+    "DigitalAssetHoldingRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Row creates one syg_digitalassetsholding record. Parent bind nav prop is `syg_KYCProfileID` (PascalCase + 'ID' suffix).",
+      "properties": {
+        "syg_name":                  { "type": "string" },
+        "syg_digitalassetid":        { "$ref": "#/$defs/LookupRef", "description": "syg_digitalassetcurrency (token)" },
+        "syg_amount":                { "type": "number", "minimum": 0 },
+        "syg_currentvaluechf":       { "type": "number", "minimum": 0 },
+        "syg_valuechf":              { "type": "number", "minimum": 0 },
+        "syg_dateofvaluation":       { "type": "string", "format": "date" },
+        "syg_acquiringyear":         { "$ref": "#/$defs/LookupRef", "description": "syg_year" },
+        "syg_acquiringplace":        { "type": "string" },
+        "syg_averageacquiringprice": { "type": "number", "minimum": 0 },
+        "syg_corroboratedamount":    { "type": "number", "minimum": 0 },
+        "syg_corroboratedamountchf": { "type": "number", "minimum": 0 },
+        "syg_corroboratedvalue":     { "type": "number", "minimum": 0 },
+        "syg_currentcustody":        { "type": "string" },
+        "syg_description":           { "type": "string" },
+        "syg_originoffunds":         { "type": "string" },
+        "syg_supportingdocuments":   { "type": "string" }
+      }
+    },
+
+    "IncomingFiatFundRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Row creates one syg_incomingfiatfunds record. syg_clientid is polymorphic Customer (account or contact) — etn drives whether bind key is _account or _contact.",
+      "properties": {
+        "syg_name":              { "type": "string" },
+        "syg_amount":            { "type": "number", "minimum": 0, "description": "CHF" },
+        "syg_bank":              { "type": "string" },
+        "syg_bankdomicileid":    { "$ref": "#/$defs/LookupRef", "description": "new_country" },
+        "syg_clientid":          { "$ref": "#/$defs/LookupRef", "description": "Polymorphic Customer; etn must be 'account' or 'contact'." },
+        "syg_proofofownership":  { "type": "boolean" },
+        "syg_transfertimeframe": { "type": "integer", "enum": [1, 2, 3],
+                                   "description": "1 = Initial Funding (<6 months), 2 = Over Time (>6 months), 3 = Recurring transfer." }
+      }
+    },
+
+    "DigitalAssetFundRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Row creates one syg_digitalassetfunds record. syg_customerid is polymorphic Customer.",
+      "properties": {
+        "syg_name":                            { "type": "string" },
+        "syg_customerid":                      { "$ref": "#/$defs/LookupRef", "description": "Polymorphic Customer." },
+        "syg_firstdigitalassettransfertype":   { "$ref": "#/$defs/LookupRef", "description": "syg_digitalassetcurrency" },
+        "syg_firstdigitalassettransferamount": { "type": "number", "minimum": 0 },
+        "syg_firsttransferamount":             { "type": "number", "minimum": 0, "description": "CHF equivalent" },
+        "syg_currentvaluechf":                 { "type": "number", "minimum": 0 },
+        "syg_valuechf":                        { "type": "number", "minimum": 0 },
+        "syg_dateofvaluation":                 { "type": "string", "format": "date" },
+        "syg_proofofownership":                { "type": "boolean" },
+        "syg_senderwallet":                    { "type": "string" },
+        "syg_senderwallet_optionset":          { "type": "integer", "description": "Sender-wallet category picklist." },
+        "syg_source":                          { "type": "string" },
+        "syg_transfertimeframe":               { "type": "integer", "enum": [1, 2, 3] },
+        "syg_remarks":                         { "type": "string" },
+        "syg_comment":                         { "type": "string" },
+        "syg_additionalexpectedfunding":       { "type": "string" }
+      }
+    },
+
+    "PepSanctionsRiskSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "PATCHed onto syg_kycprofile in one operation. Section is rendered as 'Name Screening' in the PCF (since 0.6.7).",
+      "properties": {
+        "syg_PEP":                                      { "type": "boolean" },
+        "syg_pepstatus":                                { "type": "integer", "enum": [0, 1, 2, 3, 4],
+                                                          "description": "0=No, 1=Foreign PEP, 2=Domestic PEP, 3=Intl organisation PEP, 4=Intl Sports Federation PEP." },
+        "syg_pepstatusid":                              { "$ref": "#/$defs/LookupRef" },
+        "syg_peplevelid":                               { "$ref": "#/$defs/LookupRef" },
+        "syg_pepdetails":                               { "type": "string" },
+        "syg_pepderivationdetails":                     { "type": "string" },
+        "syg_formerpepdetails":                         { "type": "string" },
+
+        "syg_ReputationalRisk":                         { "type": "integer", "enum": [1, 2, 3],
+                                                          "description": "1=Yes, reputational risk identified; 2=No reputational risk; 3=Not assessed." },
+        "syg_mediascreeningandreputationalriskcomment": { "type": "string" },
+
+        "syg_SanctionCheck":                            { "type": "integer", "enum": [2, 3],
+                                                          "description": "2=Yes, min. one hit; 3=No hits." },
+        "syg_sanctioncheckcomment":                     { "type": "string" }
+      }
+    }
+  }
+}
