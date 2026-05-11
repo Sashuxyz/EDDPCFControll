@@ -38,19 +38,21 @@ export const HeaderStrip: React.FC<HeaderStripProps> = ({
   return (
     <div
       style={{
-        position:     'relative',
-        overflow:     'hidden',
-        padding:      flying ? '16px 24px' : '12px 24px',
-        display:      'flex',
-        alignItems:   'center',
-        gap:          18,
-        background:   agentBar.bgGradient,
-        borderBottom: `1px solid ${agentBar.borderBottom}`,
-        color:        '#fff',
-        fontFamily:   agentBar.fontFamily,
+        position:            'relative',
+        overflow:            'hidden',
+        padding:             flying ? '16px 24px' : '12px 24px',
+        display:             'flex',
+        alignItems:          'center',
+        gap:                 18,
+        background:          agentBar.bgGradient,
+        borderBottom:        `1px solid ${agentBar.borderBottom}`,
+        borderTopLeftRadius:  4,
+        borderTopRightRadius: 4,
+        color:               '#fff',
+        fontFamily:          agentBar.fontFamily,
         minHeight,
-        minWidth:     1000,
-        transition:   'min-height 250ms ease, padding 250ms ease',
+        minWidth:            1000,
+        transition:          'min-height 250ms ease, padding 250ms ease',
       }}
     >
       <style>{KEYFRAMES}</style>
