@@ -23,6 +23,7 @@ export class OnboardingApprovalTracker
   private notifyOutputChanged!: () => void;
   private parentId: string | null = null;
   private flowState: FlowState = { kind: 'loading' };
+  private lastContext!: ComponentFramework.Context<IInputs>;
 
   public init(
     context: ComponentFramework.Context<IInputs>,
@@ -41,6 +42,7 @@ export class OnboardingApprovalTracker
   }
 
   public updateView(context: ComponentFramework.Context<IInputs>): void {
+    this.lastContext = context;
     const ds = context.parameters.transitionLogs;
 
     if (!ds.loading && ds.paging?.hasNextPage) {
@@ -60,21 +62,26 @@ export class OnboardingApprovalTracker
         this.flowState = { kind: 'no-parent' };
       } else {
         this.flowState = { kind: 'loading' };
-        void this.loadFlow(parent);
+        void this.loadFlow(parent, context.webAPI);
       }
     }
 
     this.render(context, ds);
   }
 
-  private async loadFlow(parent: ParentInfo): Promise<void> {
-    const result = await fetchApprovalFlow(parent);
+  private async loadFlow(
+    parent: ParentInfo,
+    webAPI: ComponentFramework.WebApi
+  ): Promise<void> {
+    const result = await fetchApprovalFlow(parent, webAPI);
     if (result.kind === 'ok') {
       this.flowState = { kind: 'ok', approvalFlow: result.approvalFlow };
     } else {
       this.flowState = { kind: 'error' };
     }
-    this.notifyOutputChanged();
+    // notifyOutputChanged does not reliably trigger updateView for a dataset
+    // control with no bound output property, so re-render directly.
+    this.render(this.lastContext, this.lastContext.parameters.transitionLogs);
   }
 
   private render(

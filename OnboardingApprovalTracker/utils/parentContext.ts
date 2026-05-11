@@ -10,13 +10,6 @@ export type FetchOutcome =
   | { kind: 'no-parent' }
   | { kind: 'error' };
 
-function getXrmGlobalContext(): { getClientUrl?: () => string } | undefined {
-  const xrm = (window as unknown as {
-    Xrm?: { Utility?: { getGlobalContext?: () => { getClientUrl?: () => string } } };
-  }).Xrm;
-  return xrm?.Utility?.getGlobalContext?.();
-}
-
 export function resolveParentInfo(context: ComponentFramework.Context<unknown>): ParentInfo | null {
   const ctxInfo = (context.mode as unknown as {
     contextInfo?: { entityTypeName?: string; entityId?: string };
@@ -41,35 +34,58 @@ export function resolveParentInfo(context: ComponentFramework.Context<unknown>):
   return { entityName, entityId: cleaned };
 }
 
-async function fetchOnce(parent: ParentInfo): Promise<FetchOutcome> {
-  const baseUrl = getXrmGlobalContext()?.getClientUrl?.() ?? window.location.origin;
-  const setName = `${parent.entityName}s`;
+// Formula columns that return a Choice/Whole-number value can surface in
+// several shapes over OData: a plain integer, a numeric string, or an object
+// with a `Value` property. Accept all of them so the control still works.
+function coerceToOptionInt(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+    const n = Number(trimmed);
+    if (Number.isInteger(n)) return n;
+  }
+  if (raw && typeof raw === 'object' && 'Value' in (raw as Record<string, unknown>)) {
+    const v = (raw as { Value: unknown }).Value;
+    return typeof v === 'number' && Number.isFinite(v) ? v : null;
+  }
+  return null;
+}
 
+async function fetchOnce(
+  parent: ParentInfo,
+  webAPI: ComponentFramework.WebApi
+): Promise<FetchOutcome> {
   try {
-    const resp = await fetch(
-      `${baseUrl}/api/data/v9.2/${setName}(${parent.entityId})?$select=syg_approvalflowformula`,
-      {
-        credentials: 'include',
-        headers: {
-          'OData-Version': '4.0',
-          'OData-MaxVersion': '4.0',
-          'Accept': 'application/json',
-        },
-      }
+    const record = await webAPI.retrieveRecord(
+      parent.entityName,
+      parent.entityId,
+      '?$select=syg_approvalflowformula'
     );
-    if (!resp.ok && resp.status !== 304) return { kind: 'error' };
-    const data = await resp.json();
-    const raw = data?.syg_approvalflowformula;
-    const approvalFlow = typeof raw === 'number' ? raw : null;
-    return { kind: 'ok', approvalFlow };
+    const fields = record as Record<string, unknown>;
+
+    let value = coerceToOptionInt(fields.syg_approvalflowformula);
+    if (value == null) {
+      // Formula columns can omit the raw value and only surface the formatted
+      // (label) value; if the formatted value is itself a stringified number
+      // (e.g. "4") it'll coerce, otherwise we give up to ok/null.
+      value = coerceToOptionInt(
+        fields['syg_approvalflowformula@OData.Community.Display.V1.FormattedValue']
+      );
+    }
+
+    return { kind: 'ok', approvalFlow: value };
   } catch {
     return { kind: 'error' };
   }
 }
 
-export async function fetchApprovalFlow(parent: ParentInfo): Promise<FetchOutcome> {
-  const first = await fetchOnce(parent);
+export async function fetchApprovalFlow(
+  parent: ParentInfo,
+  webAPI: ComponentFramework.WebApi
+): Promise<FetchOutcome> {
+  const first = await fetchOnce(parent, webAPI);
   if (first.kind === 'ok') return first;
   await new Promise((r) => setTimeout(r, 1000));
-  return fetchOnce(parent);
+  return fetchOnce(parent, webAPI);
 }

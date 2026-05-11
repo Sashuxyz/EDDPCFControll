@@ -37,8 +37,8 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     _state: ComponentFramework.Dictionary,
     container: HTMLDivElement
   ): void {
-    container.setAttribute('data-np-version', '1.0.21');
-    console.log('[NpChecklist v1.0.21] init started');
+    container.setAttribute('data-np-version', '1.0.22');
+    console.log('[NpChecklist v1.0.22] init started');
 
     try {
       this.root = createRoot(container);
@@ -58,7 +58,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
     this.userName = (context.userSettings as any).userName ?? (context.userSettings as any).userId ?? 'Unknown';
 
     // Restore saved answers from the bound field
-    const savedJson = (context.parameters.checklistResults as any)?.raw ?? null;
+    const savedJson = (context.parameters.checkResults as any)?.raw ?? null;
     const saved = parseCheckResults(savedJson);
     if (saved) {
       this.state = {
@@ -240,7 +240,7 @@ export class NpOnboardingChecklist implements ComponentFramework.StandardControl
   }
 
   public getOutputs(): IOutputs {
-    return { checklistResults: this.outputJson } as IOutputs;
+    return { checkResults: this.outputJson } as IOutputs;
   }
 
   public destroy(): void {
