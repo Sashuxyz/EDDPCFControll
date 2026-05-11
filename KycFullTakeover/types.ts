@@ -15,7 +15,9 @@ export interface KycPayload {
   professionalExperience?:         { syg_ProfessionalExperienceSummary: string };
   businessActivities?:             LookupRef[];
   countriesOfActivity?:            LookupRef[];
-  relatedParties?:                 RelatedPartyRow[];
+  /** Either the new shape ({ narrative?, items }) or the legacy bare array.
+   *  payloadParser normalises bare arrays into the new shape on read. */
+  relatedParties?:                 RelatedPartiesSection | RelatedPartyRow[];
 
   financialSituationNarrative?:    string;
   totalWealthIncome?:              TotalWealthIncomeSection;
@@ -64,6 +66,13 @@ export interface PersonalDetailsSection {
   syg_dateofbirth?:                   string;
   syg_AccountHolderCountryofBirthID?: LookupRef | null;
   syg_uspersonstatus?:                1 | 2 | 3 | 4;
+}
+
+export interface RelatedPartiesSection {
+  /** Optional narrative — PATCHed onto syg_kycprofile.syg_additionalpartiesinfomations
+   *  in the same takeover as the junction rows. Empty string is allowed and skipped. */
+  narrative?: string;
+  items:      RelatedPartyRow[];
 }
 
 export interface RelatedPartyRow {

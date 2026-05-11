@@ -29,10 +29,12 @@ describe('parsePayload', () => {
     expect(result.payload.schemaVersion).toBe('1.0');
     expect(result.payload.findings).toHaveLength(2);
     expect(result.payload.proposedClientEmail?.to[0].etn).toBe('lead');
-    expect(result.payload.relatedParties).toHaveLength(3);
+    // relatedParties is normalised to { items } even if the source was a bare array.
+    const rp = result.payload.relatedParties as { narrative?: string; items: unknown[] };
+    expect(rp.items).toHaveLength(3);
 
     // The third related party uses CreateNewPartyRef
-    const sofia = result.payload.relatedParties![2];
+    const sofia = rp.items[2] as { syg_relatedpartyid: object };
     expect('createNew' in sofia.syg_relatedpartyid).toBe(true);
   });
 

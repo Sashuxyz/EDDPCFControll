@@ -17,36 +17,60 @@
 import * as React from 'react';
 import { ItemizedSection } from './ItemizedSection';
 import { ItemizedCardDetail } from '../common/ItemizedCard';
+import { AutoTextarea } from '../common/AutoTextarea';
 import { RelatedPartyRow, SectionState, PartyRef, CreateNewPartyRef, ExistingPartyRef, LookupRef } from '../../types';
-import { colors, typography } from '../../styles/tokens';
+import { colors, typography, spacing } from '../../styles/tokens';
 
 const YES_NO: Record<number, string> = { 1: 'Yes', 0: 'No' };
 
 interface RelatedPartiesSectionProps {
-  payload:     RelatedPartyRow[];
-  state:       SectionState;
-  itemsEdit:   RelatedPartyRow[] | undefined;
-  onRemoveRow: (idx: number) => void;
-  onUpdateRow: (idx: number, field: keyof RelatedPartyRow, value: unknown) => void;
-  onTakeover:  () => void;
-  lastRunAt?:  string;
-  errorMsg?:   string;
+  payload:           RelatedPartyRow[];
+  state:             SectionState;
+  narrativeEdit:     string | undefined;
+  payloadNarrative:  string | undefined;
+  itemsEdit:         RelatedPartyRow[] | undefined;
+  onNarrativeChange: (next: string) => void;
+  onRemoveRow:       (idx: number) => void;
+  onUpdateRow:       (idx: number, field: keyof RelatedPartyRow, value: unknown) => void;
+  onTakeover:        () => void;
+  lastRunAt?:        string;
+  errorMsg?:         string;
 }
 
 export const RelatedPartiesSection: React.FC<RelatedPartiesSectionProps> = ({
-  payload, state, itemsEdit, onRemoveRow, onUpdateRow, onTakeover, lastRunAt, errorMsg,
-}) => (
-  <ItemizedSection<RelatedPartyRow>
-    title="Related Parties"
-    items={itemsEdit ?? payload}
-    rowConfig={(row, idx) => rowToCardConfig(row, idx, onUpdateRow)}
-    state={state}
-    onTakeover={onTakeover}
-    onRemove={onRemoveRow}
-    lastRunAt={lastRunAt}
-    errorMsg={errorMsg}
-  />
-);
+  payload, state, narrativeEdit, payloadNarrative, itemsEdit,
+  onNarrativeChange, onRemoveRow, onUpdateRow, onTakeover, lastRunAt, errorMsg,
+}) => {
+  const narrativeValue = narrativeEdit ?? payloadNarrative ?? '';
+  return (
+    <ItemizedSection<RelatedPartyRow>
+      title="Related Parties"
+      items={itemsEdit ?? payload}
+      rowConfig={(row, idx) => rowToCardConfig(row, idx, onUpdateRow)}
+      state={state}
+      onTakeover={onTakeover}
+      onRemove={onRemoveRow}
+      lastRunAt={lastRunAt}
+      errorMsg={errorMsg}
+      preListSlot={
+        <div style={{ marginBottom: spacing.lg }}>
+          <label style={{
+            display:      'block',
+            fontSize:     typography.fontSizeLabel,
+            color:        colors.textSecondary,
+            marginBottom: spacing.xs,
+          }}>Related Parties narrative (parent field)</label>
+          <AutoTextarea
+            value={narrativeValue}
+            onChange={onNarrativeChange}
+            minRows={3}
+            ariaLabel="Related Parties narrative"
+          />
+        </div>
+      }
+    />
+  );
+};
 
 function isCreateNew(ref: PartyRef): ref is CreateNewPartyRef {
   return 'createNew' in ref;

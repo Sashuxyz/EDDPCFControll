@@ -89,10 +89,10 @@ interface EditState {
   detailedDAHoldings?:  DigitalAssetHoldingRow[];
   plannedFiatFunds?:    IncomingFiatFundRow[];
   plannedDAFunds?:      DigitalAssetFundRow[];
-  // Related Parties — same edit shape as the other itemized sections; M6
-  // adds two-stage writes for any row where syg_relatedpartyid is a
-  // CreateNewPartyRef.
-  relatedParties?:      RelatedPartyRow[];
+  // Related Parties — narrative + items. Narrative PATCHes
+  // syg_additionalpartiesinfomations on the parent profile alongside the
+  // two-stage party-creation writes. Same edit shape as Source of Wealth.
+  relatedParties?:      { narrative?: string; items?: RelatedPartyRow[] };
 }
 
 export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
@@ -371,7 +371,7 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
   // brand-new contact/account (POST contact/account first, then POST junction).
   // The confirmation dialog enumerates all new contacts/accounts up front so
   // the RM has a single audit gate for record creation.
-  const takeoverRelatedParties = async (rows: RelatedPartyRow[]): Promise<void> => {
+  const takeoverRelatedParties = async (rows: RelatedPartyRow[], narrative: string | undefined): Promise<void> => {
     const id: SectionId = 'relatedParties';
     const current = statusBlob.sections[id];
     const isReRun = current?.state === 'done' || current?.state === 'partial-failed';
@@ -391,6 +391,26 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       isReRun,
     });
     if (!ok) return;
+
+    // Phase 1: PATCH the parent narrative (syg_additionalpartiesinfomations) first
+    // so the textarea write is visible even if a later party creation fails.
+    let patched = 0;
+    if (typeof narrative === 'string' && narrative.length > 0) {
+      const parentResult = await patchKycProfile(webAPI, kycProfileId, {
+        syg_additionalpartiesinfomations: narrative,
+      });
+      if (!parentResult.ok) {
+        persistStatus(setSectionState(statusBlob, id, {
+          state:       'partial-failed',
+          lastRunAt:   new Date().toISOString(),
+          result:      { patched: 0, created: 0, failed: 1 },
+          errors:      [{ message: `parent patch failed: ${parentResult.error ?? 'unknown'}` }],
+          payloadHash: hashSlice({ narrative, rows }),
+        }));
+        return;
+      }
+      patched = 1;
+    }
 
     let created = 0;
     let failed  = 0;
@@ -415,15 +435,15 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
       ? {
           state:       'done',
           lastRunAt:   new Date().toISOString(),
-          result:      { created, patched: 0 },
-          payloadHash: hashSlice({ rows }),
+          result:      { created, patched },
+          payloadHash: hashSlice({ narrative, rows }),
         }
       : {
           state:       'partial-failed',
           lastRunAt:   new Date().toISOString(),
-          result:      { created, failed, patched: 0 },
+          result:      { created, failed, patched },
           errors,
-          payloadHash: hashSlice({ rows }),
+          payloadHash: hashSlice({ narrative, rows }),
         };
     persistStatus(setSectionState(statusBlob, id, record));
   };
@@ -703,25 +723,37 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
             );
           })()}
           {payload.relatedParties && (() => {
-            const rpItems = edits.relatedParties ?? payload.relatedParties;
+            // payload.relatedParties is normalised to { narrative?, items } by payloadParser.
+            const rpPayload    = payload.relatedParties as { narrative?: string; items: RelatedPartyRow[] };
+            const rpItems      = edits.relatedParties?.items ?? rpPayload.items;
+            const rpNarrative  = rpPayload.narrative;
             return (
               <div id="section-relatedParties">
                 <RelatedPartiesSection
-                  payload={payload.relatedParties}
+                  payload={rpPayload.items}
                   state={(edits.relatedParties !== undefined && statusBlob.sections.relatedParties?.state !== 'done')
                     ? 'edited'
                     : sectionState('relatedParties', true)}
-                  itemsEdit={edits.relatedParties}
+                  narrativeEdit={edits.relatedParties?.narrative}
+                  payloadNarrative={rpNarrative}
+                  itemsEdit={edits.relatedParties?.items}
+                  onNarrativeChange={(next) => setEdits((p) => ({
+                    ...p,
+                    relatedParties: { ...(p.relatedParties ?? {}), narrative: next },
+                  }))}
                   onRemoveRow={(idx) => setEdits((p) => ({
                     ...p,
-                    relatedParties: rpItems.filter((_, i) => i !== idx),
+                    relatedParties: { ...(p.relatedParties ?? {}), items: rpItems.filter((_, i) => i !== idx) },
                   }))}
                   onUpdateRow={(idx, field, value) => setEdits((p) => {
-                    const list = (p.relatedParties ?? payload.relatedParties!).slice();
+                    const list = (p.relatedParties?.items ?? rpPayload.items).slice();
                     list[idx] = { ...list[idx], [field]: value };
-                    return { ...p, relatedParties: list };
+                    return { ...p, relatedParties: { ...(p.relatedParties ?? {}), items: list } };
                   })}
-                  onTakeover={() => takeoverRelatedParties(rpItems)}
+                  onTakeover={() => takeoverRelatedParties(
+                    rpItems,
+                    edits.relatedParties?.narrative ?? rpNarrative,
+                  )}
                   lastRunAt={statusBlob.sections.relatedParties?.lastRunAt}
                   errorMsg={statusBlob.sections.relatedParties?.errors?.[0]?.message}
                 />

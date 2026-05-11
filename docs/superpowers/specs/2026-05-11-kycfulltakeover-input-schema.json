@@ -30,7 +30,13 @@
                              "description": "N:N to syg_businessactivities" },
     "countriesOfActivity": { "type": "array", "items": { "$ref": "#/$defs/LookupRef" },
                              "description": "N:N to new_country" },
-    "relatedParties":      { "type": "array", "items": { "$ref": "#/$defs/RelatedPartyRow" } },
+    "relatedParties": {
+      "description": "Either the new shape ({narrative?, items}) — preferred since 0.7.0 — or the legacy bare array. PCF parser normalises arrays into the new shape on read.",
+      "oneOf": [
+        { "$ref": "#/$defs/RelatedPartiesSection" },
+        { "type": "array", "items": { "$ref": "#/$defs/RelatedPartyRow" } }
+      ]
+    },
 
     "financialSituationNarrative":   { "type": "string" },
     "totalWealthIncome":             { "$ref": "#/$defs/TotalWealthIncomeSection" },
@@ -100,6 +106,19 @@
         "syg_AccountHolderCountryofBirthID": { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
         "syg_uspersonstatus":                { "type": "integer", "enum": [1, 2, 3, 4],
                                                "description": "1 = Not a US Person, 2 = Former US Person, 3 = US Person, 4 = US Nexus" }
+      }
+    },
+
+    "RelatedPartiesSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items"],
+      "properties": {
+        "narrative": {
+          "type": "string",
+          "description": "PATCHes syg_kycprofile.syg_additionalpartiesinfomations on takeover. Optional; empty string is treated as 'do not patch'."
+        },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/RelatedPartyRow" } }
       }
     },
 
