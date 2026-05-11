@@ -39,7 +39,7 @@ export const PepSanctionsRiskSection: React.FC<PepSanctionsRiskSectionProps> = (
 
   return (
     <SectionFrame
-      title="PEP, Adverse Media and Sanctions"
+      title="Name Screening"
       state={state}
       count={fieldCount}
       lastRunAt={lastRunAt}

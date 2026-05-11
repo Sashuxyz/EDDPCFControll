@@ -162,8 +162,10 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
     {
       label: 'Compliance & Other',
       entries: [
-        { id: 'pepSanctionsRisk'   as SectionId, label: 'PEP, Adverse Media and Sanctions', state: sectionState('pepSanctionsRisk', !!payload.pepSanctionsRisk) },
-        { id: 'additionalComments' as SectionId, label: 'Additional Comments',              state: sectionState('additionalComments', typeof payload.additionalComments === 'string') },
+        { id: 'pepSanctionsRisk'   as SectionId, label: 'Name Screening', state: sectionState('pepSanctionsRisk', !!payload.pepSanctionsRisk) },
+        // Additional Comments is hidden in the UI per 0.6.7. The agent may
+        // still ship `additionalComments`; the PCF parses but does not render
+        // it. Restore the entry above when the section is brought back.
       ],
     },
   ];
@@ -947,26 +949,15 @@ export const KycFullTakeover: React.FC<KycFullTakeoverProps> = ({
                 state={sectionState('pepSanctionsRisk', true)}
                 edits={edits.pepSanctionsRisk ?? {}}
                 onEdit={(key, value) => setEdits((p) => ({ ...p, pepSanctionsRisk: { ...(p.pepSanctionsRisk ?? {}), [key as string]: value } }))}
-                onTakeover={() => takeoverFieldSet('pepSanctionsRisk', 'PEP, Adverse Media and Sanctions', buildPepSanctionsRiskPatch())}
+                onTakeover={() => takeoverFieldSet('pepSanctionsRisk', 'Name Screening', buildPepSanctionsRiskPatch())}
                 lastRunAt={statusBlob.sections.pepSanctionsRisk?.lastRunAt}
                 errorMsg={statusBlob.sections.pepSanctionsRisk?.errors?.[0]?.message}
               />
             </div>
           )}
-          {typeof payload.additionalComments === 'string' && (
-            <div id="section-additionalComments">
-              <NarrativeSection
-                title="Additional Comments"
-                fieldLabel="Additional Comments"
-                state={sectionState('additionalComments', true)}
-                value={edits.additionalComments ?? payload.additionalComments}
-                onChange={(next) => setEdits((p) => ({ ...p, additionalComments: next }))}
-                onTakeover={() => takeoverNarrative('additionalComments', 'Additional Comments', 'syg_additionalcomments_clientservices')}
-                lastRunAt={statusBlob.sections.additionalComments?.lastRunAt}
-                errorMsg={statusBlob.sections.additionalComments?.errors?.[0]?.message}
-              />
-            </div>
-          )}
+          {/* Additional Comments section hidden in 0.6.7. Payload is still
+              parsed (edits.additionalComments / payload.additionalComments
+              remain accessible) so re-enabling later is a no-op rerender. */}
 
         </main>
       </div>
