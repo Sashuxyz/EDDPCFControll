@@ -26,8 +26,8 @@ const KEYFRAMES = `
 }
 `;
 
-const BAR_HEIGHT_IDLE    = 56;   // compact when no run in progress
-const BAR_HEIGHT_RUNNING = 80;   // expanded to fit the workspace card
+const BAR_HEIGHT_IDLE    = 68;   // compact when no run in progress (room for title + disclaimer)
+const BAR_HEIGHT_RUNNING = 88;   // expanded to fit the workspace card
 
 export const HeaderStrip: React.FC<HeaderStripProps> = ({
   schemaVersion, lastRunAt, kycProfileId, webAPI,
@@ -74,14 +74,31 @@ export const HeaderStrip: React.FC<HeaderStripProps> = ({
         aria-hidden="true"
       />
 
-      {/* Title */}
-      <h2 style={{
-        margin: 0, fontSize: 18, fontWeight: 600,
-        letterSpacing: '-0.005em', position: 'relative', zIndex: 1,
+      {/* Title + disclaimer (stacked) */}
+      <div style={{
+        display:    'flex',
+        flexDirection: 'column',
+        position:   'relative',
+        zIndex:     1,
         flexShrink: 0,
+        gap:        2,
+        maxWidth:   360,
       }}>
-        KYC Agent Output
-      </h2>
+        <h2 style={{
+          margin: 0, fontSize: 18, fontWeight: 600,
+          letterSpacing: '-0.005em',
+        }}>
+          KYC Agent Output
+        </h2>
+        <span style={{
+          fontSize:    11,
+          fontWeight:  400,
+          opacity:     0.78,
+          lineHeight:  1.3,
+        }}>
+          Please note that AI generated content may be incorrect. Users are accountable to ensure correctness of data.
+        </span>
+      </div>
 
       {/* Trigger button slot (owns the workspace card + drone when flying) */}
       <AgentTriggerButton
