@@ -90,6 +90,10 @@ export interface RelatedPartyRow {
   syg_pepstatusid?:                     LookupRef | null;
   syg_peplevelid?:                      LookupRef | null;
   syg_riskscore?:                       number;
+  /** Free-text comment on the junction row. Written to syg_comment on
+   *  syg_relatedclientparties. If your environment uses a different field name,
+   *  update the key in createRelatedParty.buildJunctionBody. */
+  syg_comment?:                         string;
 }
 
 export type PartyRef = ExistingPartyRef | CreateNewPartyRef;

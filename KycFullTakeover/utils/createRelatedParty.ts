@@ -102,6 +102,7 @@ function buildJunctionBody(
   if (row.syg_pepstatusid?.id)                          out['syg_pepstatusid@odata.bind']                                  = `/syg_kycproperties(${row.syg_pepstatusid.id})`;
   if (row.syg_peplevelid?.id)                           out['syg_peplevelid@odata.bind']                                   = `/syg_kycproperties(${row.syg_peplevelid.id})`;
   if (row.syg_riskscore !== undefined)                  out['syg_riskscore']                                               = row.syg_riskscore;
+  if (row.syg_comment)                                  out['syg_comment']                                                  = row.syg_comment;
   return out;
 }
 

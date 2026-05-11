@@ -149,6 +149,7 @@ function rowToCardConfig(
     { kind: 'lookup',   label: 'PEP status',                     value: row.syg_pepstatusid, entityTypes: ['syg_kycproperty'], onChange: u('syg_pepstatusid') },
     { kind: 'lookup',   label: 'PEP level',                      value: row.syg_peplevelid, entityTypes: ['syg_kycproperty'], onChange: u('syg_peplevelid') },
     { kind: 'number',   label: 'Risk score',                     value: row.syg_riskscore, onChange: u('syg_riskscore') },
+    { kind: 'longtext', label: 'Comment',                        value: row.syg_comment, onChange: u('syg_comment'), wide: true, minRows: 2 },
   ];
 
   return {

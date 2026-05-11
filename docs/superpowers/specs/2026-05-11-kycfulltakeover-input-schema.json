@@ -141,7 +141,8 @@
         "syg_pep":                             { "type": "boolean" },
         "syg_pepstatusid":                     { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
         "syg_peplevelid":                      { "anyOf": [ { "$ref": "#/$defs/LookupRef" }, { "type": "null" } ] },
-        "syg_riskscore":                       { "type": "number" }
+        "syg_riskscore":                       { "type": "number" },
+        "syg_comment":                         { "type": "string", "description": "Free-text comment on the junction row. PCF writes to syg_comment on syg_relatedclientparties." }
       }
     },
 
