@@ -14,6 +14,10 @@ interface HeaderStripProps {
   lastRunAt?:      string;
   kycProfileId:    string;
   webAPI:          ComponentFramework.WebApi;
+  /** Notifies the parent when the agent-run state changes — used by the
+   *  empty-state shell to swap the bored robot for an excited one while a
+   *  run is in progress. */
+  onFlyingChange?: (flying: boolean) => void;
 }
 
 const KEYFRAMES = `
@@ -30,10 +34,12 @@ const BAR_HEIGHT_IDLE    = 68;   // compact when no run in progress (room for ti
 const BAR_HEIGHT_RUNNING = 88;   // expanded to fit the workspace card
 
 export const HeaderStrip: React.FC<HeaderStripProps> = ({
-  schemaVersion, lastRunAt, kycProfileId, webAPI,
+  schemaVersion, lastRunAt, kycProfileId, webAPI, onFlyingChange,
 }) => {
   const [flying, setFlying] = React.useState(false);
   const minHeight = flying ? BAR_HEIGHT_RUNNING : BAR_HEIGHT_IDLE;
+  // Bubble the agent-run state up to the parent (used by EmptyShell).
+  React.useEffect(() => { onFlyingChange?.(flying); }, [flying, onFlyingChange]);
 
   return (
     <div
