@@ -4,6 +4,7 @@
 // POST children + contact/account creation come in M5-M6.
 
 import { isValidGuid } from './guidValidation';
+import { debugError } from './debugLog';
 
 type WebAPI = ComponentFramework.WebApi;
 
@@ -152,22 +153,12 @@ export function isInvalidPropertyError(message: string): boolean {
   return INVALID_PROPERTY_PATTERNS.some((re) => re.test(message));
 }
 
-// Patterns Dataverse uses when a property/lookup-bind name in the payload
-// doesn't exist on the entity. The captured group is the offending name.
-const UNDECLARED_PROPERTY_PATTERNS: RegExp[] = [
-  /undeclared property ['"]([^'"]+)['"]/i,
-  /property ['"]([^'"]+)['"] does not exist/i,
-  /An undeclared property ['"]([^'"]+)['"]/i,
-];
-
-export function extractUndeclaredProperty(message: string): string | null {
-  if (typeof message !== 'string' || message.length === 0) return null;
-  for (const re of UNDECLARED_PROPERTY_PATTERNS) {
-    const m = re.exec(message);
-    if (m) return m[1];
-  }
-  return null;
-}
+// Note: an earlier prototype had a self-healing retry that auto-dropped
+// "undeclared property" keys from the row body and retried. It was removed
+// in 0.5.5 because silent data loss on a 1:1 takeover is worse than a
+// visible "your schema is wrong" error. Don't reintroduce it without (a) a
+// hard cap of 1 retry, (b) per-section visible warnings listing every
+// dropped key, and (c) RM confirmation.
 
 export async function createChildren(
   entitySetName:   string,
@@ -205,8 +196,7 @@ export async function createChildren(
         if (parsed?.error?.message) extracted = parsed.error.message;
       } catch { /* not JSON, keep raw body */ }
 
-      // eslint-disable-next-line no-console
-      console.error('[KycFullTakeover] createChildren FAILED', {
+      debugError('[KycFullTakeover] createChildren FAILED', {
         entitySetName,
         rowIndex:  idx,
         rowName:   rowNames[idx],
@@ -219,8 +209,7 @@ export async function createChildren(
       const display = extracted || errBody;
       return { ok: false as const, message: `HTTP ${resp.status}: ${display.slice(0, 1500)}` };
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('[KycFullTakeover] createChildren THREW', { entitySetName, rowIndex: idx, rowName: rowNames[idx], error: e });
+      debugError('[KycFullTakeover] createChildren THREW', { entitySetName, rowIndex: idx, rowName: rowNames[idx], error: e });
       return { ok: false as const, message: (e as Error).message ?? String(e) };
     }
   }));

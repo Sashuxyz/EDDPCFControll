@@ -72,8 +72,9 @@ export const TotalWealthIncomeSection: React.FC<TotalWealthIncomeSectionProps> =
   // garbage to Dataverse.
   const guardedTakeover = (): void => {
     if (allocationStatus === 'over') {
+      // Don't log the vals — small but still attributable user data.
       // eslint-disable-next-line no-console
-      console.warn('[KycFullTakeover] takeover blocked — asset allocation total is over 100%', { totalPct, vals: allocationState.vals });
+      console.warn('[KycFullTakeover] takeover blocked — asset allocation total is over 100%', { totalPct });
       return;
     }
     onTakeover();

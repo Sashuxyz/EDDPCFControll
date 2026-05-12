@@ -15,6 +15,7 @@
 // the console so the RM/devs can diagnose unexpected schema differences.
 
 import { isValidGuid } from './guidValidation';
+import { debugInfo, debugWarn, debugError } from './debugLog';
 
 export interface TriggerResult {
   ok:     boolean;
@@ -40,8 +41,7 @@ async function tryCreate(
   kycProfileId: string,
 ): Promise<TriggerResult> {
   const data = { [bindKey]: `/syg_kycprofiles(${kycProfileId})` } as Record<string, string>;
-  // eslint-disable-next-line no-console
-  console.info('[KycFullTakeover] triggerAgentRun: createRecord', {
+  debugInfo('[KycFullTakeover] triggerAgentRun: createRecord', {
     entity: 'syg_agentrunlog',
     bindKey,
     data,
@@ -49,14 +49,12 @@ async function tryCreate(
   try {
     const created = await webAPI.createRecord('syg_agentrunlog', data);
     const id = (created as { id?: string }).id ?? '';
-    // eslint-disable-next-line no-console
-    console.info('[KycFullTakeover] triggerAgentRun: created', { id });
+    debugInfo('[KycFullTakeover] triggerAgentRun: created', { id });
     return { ok: true, recordId: id };
   } catch (e) {
     const err = e as { message?: string; toString?: () => string };
     const msg = err.message ?? err.toString?.() ?? 'unknown error';
-    // eslint-disable-next-line no-console
-    console.error('[KycFullTakeover] triggerAgentRun: createRecord FAILED', { bindKey, msg, error: e });
+    debugError('[KycFullTakeover] triggerAgentRun: createRecord FAILED', { bindKey, msg, error: e });
     return { ok: false, error: msg };
   }
 }
@@ -75,8 +73,7 @@ export async function triggerAgentRun(
 
   // Attempt 2: PascalCase schema name binding
   if (lower.error && looksLikeBadProperty(lower.error)) {
-    // eslint-disable-next-line no-console
-    console.warn('[KycFullTakeover] triggerAgentRun: retrying with PascalCase bind key');
+    debugWarn('[KycFullTakeover] triggerAgentRun: retrying with PascalCase bind key');
     const upper = await tryCreate(webAPI, 'syg_KycProfileId@odata.bind', kycProfileId);
     return upper;
   }

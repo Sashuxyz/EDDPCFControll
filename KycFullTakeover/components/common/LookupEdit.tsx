@@ -20,6 +20,7 @@ import * as React from 'react';
 import { LookupRef } from '../../types';
 import { colors, typography } from '../../styles/tokens';
 import { useLookupObjects, LookupObjectsFn } from './LookupContext';
+import { debugInfo, debugWarn, debugError } from '../../utils/debugLog';
 
 interface LookupEditProps {
   value:        LookupRef | null | undefined;
@@ -43,15 +44,12 @@ async function openLookupPicker(
 
   if (pcfFn) {
     try {
-      // eslint-disable-next-line no-console
-      console.info('[KycFullTakeover/LookupEdit] context.utils.lookupObjects', enriched);
+      debugInfo('[KycFullTakeover/LookupEdit] context.utils.lookupObjects', enriched);
       const r = await pcfFn(enriched);
-      // eslint-disable-next-line no-console
-      console.info('[KycFullTakeover/LookupEdit] result (pcf)', r);
+      debugInfo('[KycFullTakeover/LookupEdit] result (pcf) count', { count: r?.length ?? 0 });
       return r ?? [];
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('[KycFullTakeover/LookupEdit] pcf path threw, falling back to Xrm.Utility', e);
+      debugWarn('[KycFullTakeover/LookupEdit] pcf path threw, falling back to Xrm.Utility', e);
     }
   }
 
@@ -59,16 +57,13 @@ async function openLookupPicker(
     Xrm?: { Utility?: { lookupObjects?: (opts: unknown) => Promise<ComponentFramework.LookupValue[]> } };
   }).Xrm;
   if (xrm?.Utility?.lookupObjects) {
-    // eslint-disable-next-line no-console
-    console.info('[KycFullTakeover/LookupEdit] Xrm.Utility.lookupObjects', enriched);
+    debugInfo('[KycFullTakeover/LookupEdit] Xrm.Utility.lookupObjects', enriched);
     const r = await xrm.Utility.lookupObjects(enriched);
-    // eslint-disable-next-line no-console
-    console.info('[KycFullTakeover/LookupEdit] result (xrm)', r);
+    debugInfo('[KycFullTakeover/LookupEdit] result (xrm) count', { count: r?.length ?? 0 });
     return r ?? [];
   }
 
-  // eslint-disable-next-line no-console
-  console.error('[KycFullTakeover/LookupEdit] no lookupObjects available — neither context.utils nor Xrm.Utility');
+  debugError('[KycFullTakeover/LookupEdit] no lookupObjects available — neither context.utils nor Xrm.Utility');
   return [];
 }
 
@@ -83,8 +78,7 @@ export const LookupEdit: React.FC<LookupEditProps> = ({
 
   const openPicker = React.useCallback(async () => {
     if (!hasPicker) {
-      // eslint-disable-next-line no-console
-      console.warn('[KycFullTakeover/LookupEdit] no picker available — field is read-only');
+      debugWarn('[KycFullTakeover/LookupEdit] no picker available — field is read-only');
       return;
     }
     if (busy) return;
@@ -104,20 +98,19 @@ export const LookupEdit: React.FC<LookupEditProps> = ({
             name: r.name ?? '',
             etn:  r.entityType ?? entityTypes[0],
           };
-          // eslint-disable-next-line no-console
-          console.info('[KycFullTakeover/LookupEdit] picked', next);
+          // Log only the etn + id length so the audit trail keeps schema info
+          // out of devtools. The picked name flows through onChange to the UI;
+          // no need to also dump it to console.
+          debugInfo('[KycFullTakeover/LookupEdit] picked', { etn: next.etn, idLen: next.id.length });
           onChange(next);
         } else {
-          // eslint-disable-next-line no-console
-          console.warn('[KycFullTakeover/LookupEdit] picker returned a result with empty id', r);
+          debugWarn('[KycFullTakeover/LookupEdit] picker returned a result with empty id', { etn: r.entityType });
         }
       } else {
-        // eslint-disable-next-line no-console
-        console.info('[KycFullTakeover/LookupEdit] picker cancelled or returned empty');
+        debugInfo('[KycFullTakeover/LookupEdit] picker cancelled or returned empty');
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('[KycFullTakeover/LookupEdit] picker threw', e);
+      debugWarn('[KycFullTakeover/LookupEdit] picker threw', e);
     } finally {
       setBusy(false);
     }

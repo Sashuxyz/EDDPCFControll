@@ -1020,13 +1020,22 @@ function mostRecentLastRun(blob: TakeoverStatusBlob): string | undefined {
   return latest;
 }
 
-// Trims raw OData error bodies into something readable on a section header.
-// Strips the JSON wrapper / stack-trace and caps length so the "Last run"
-// line stays single-line at typical viewport widths.
+// CISO F-03: the takeoverStatus blob is persisted to syg_kycprofile.syg_kycaitakeoverstatus
+// and is readable by anyone with Read on that field. Raw OData messages contain
+// schema property names ("undeclared property 'syg_X' does not exist on type
+// 'Microsoft.Dynamics.CRM.syg_Y'") and full entity-set plurals. We map every
+// error into a small set of codes before it reaches the blob; the verbose
+// version still flows to console.error (gated by debugLog in production) for
+// devs working the issue.
 function shortenErrorMessage(raw: string): string {
-  if (typeof raw !== 'string' || raw.length === 0) return 'unknown';
-  // Try to extract the OData "message" field
-  const m = raw.match(/"message"\s*:\s*"([^"]+)"/);
-  const msg = m ? m[1] : raw;
-  return msg.length > 140 ? msg.slice(0, 137) + '…' : msg;
+  if (typeof raw !== 'string' || raw.length === 0) return 'WRITE_FAILED';
+  if (/duplicate key|already exists|duplicate.?record|duplicate.?detected/i.test(raw)) return 'ALREADY_EXISTS';
+  if (/undeclared property|does not exist on type|invalid property/i.test(raw)) return 'SCHEMA_MISMATCH';
+  if (/HTTP 401|unauthorized/i.test(raw))                                      return 'UNAUTHORIZED';
+  if (/HTTP 403|forbidden|permission/i.test(raw))                              return 'FORBIDDEN';
+  if (/HTTP 5\d\d/.test(raw))                                                  return 'SERVER_ERROR';
+  if (/HTTP 4\d\d|bad request|invalid|validation/i.test(raw))                  return 'BAD_REQUEST';
+  if (/timeout|timed out/i.test(raw))                                          return 'TIMEOUT';
+  if (/network|fetch failed|failed to fetch/i.test(raw))                       return 'NETWORK_ERROR';
+  return 'WRITE_FAILED';
 }

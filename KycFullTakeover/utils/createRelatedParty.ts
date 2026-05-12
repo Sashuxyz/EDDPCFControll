@@ -12,6 +12,7 @@
 // without depending on global window. Both default to the Dataverse standard plurals.
 
 import { isValidGuid } from './guidValidation';
+import { debugInfo, debugError } from './debugLog';
 import { RelatedPartyRow, ExistingPartyRef, CreateNewPartyRef, PartyRef, NewContactAttributes, NewAccountAttributes, LookupRef } from '../types';
 
 export interface RelatedPartyCreateResult {
@@ -196,12 +197,10 @@ export async function createRelatedParty(
     partyEtn = row.syg_relatedpartyid.etn;
     const setName = partyEtn === 'account' ? ENTITYSET_ACCOUNTS : ENTITYSET_CONTACTS;
     const newBody = buildNewPartyBody(row.syg_relatedpartyid);
-    // eslint-disable-next-line no-console
-    console.info('[KycFullTakeover] createRelatedParty stage 1 — creating new party', { etn: partyEtn, body: newBody });
+    debugInfo('[KycFullTakeover] createRelatedParty stage 1 — creating new party', { etn: partyEtn, body: newBody });
     const created = await postJson(`${base}/api/data/v9.2/${setName}`, newBody);
     if (!created.ok || !created.created?.id) {
-      // eslint-disable-next-line no-console
-      console.error('[KycFullTakeover] createRelatedParty stage 1 FAILED', { etn: partyEtn, status: created.status, message: created.message });
+      debugError('[KycFullTakeover] createRelatedParty stage 1 FAILED', { etn: partyEtn, status: created.status, message: created.message });
       return {
         ok: false,
         failedAt: 'party',
@@ -217,12 +216,10 @@ export async function createRelatedParty(
 
   // Stage 2: junction row.
   const junctionBody = buildJunctionBody(row, kycProfileId, partyId, partyEtn);
-  // eslint-disable-next-line no-console
-  console.info('[KycFullTakeover] createRelatedParty stage 2 — creating junction', { body: junctionBody });
+  debugInfo('[KycFullTakeover] createRelatedParty stage 2 — creating junction', { body: junctionBody });
   const junction = await postJson(`${base}/api/data/v9.2/${ENTITYSET_RELATEDCLIENTPARTIES}`, junctionBody);
   if (!junction.ok) {
-    // eslint-disable-next-line no-console
-    console.error('[KycFullTakeover] createRelatedParty stage 2 FAILED', { status: junction.status, message: junction.message, orphan: newPartyId });
+    debugError('[KycFullTakeover] createRelatedParty stage 2 FAILED', { status: junction.status, message: junction.message, orphan: newPartyId });
     return {
       ok: false,
       failedAt: 'junction',

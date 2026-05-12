@@ -9,6 +9,7 @@ import { KycFullTakeover as KycFullTakeoverComponent } from './components/KycFul
 import { EmptyStatePane } from './components/EmptyStatePane';
 import { EmptyShell } from './components/EmptyShell';
 import { parsePayload } from './utils/payloadParser';
+import { debugInfo, debugWarn, debugError } from './utils/debugLog';
 import { parseStatusBlob, serialiseStatusBlob } from './utils/sectionStatus';
 import { TakeoverStatusBlob } from './types';
 
@@ -158,15 +159,13 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
     const rawId = xrm?.Page?.data?.entity?.getId?.();
     const cleanId = typeof rawId === 'string' ? rawId.replace(/[{}]/g, '') : '';
     if (!cleanId) {
-      // eslint-disable-next-line no-console
-      console.info('[KycFullTakeover] auto-save skipped — record has no GUID yet (Unsaved). Click Save on the form to persist takeover status.');
+      debugInfo('[KycFullTakeover] auto-save skipped — record has no GUID yet (Unsaved). Click Save on the form to persist takeover status.');
       return;
     }
 
     const saveFn = xrm?.Page?.data?.save;
     if (typeof saveFn !== 'function') {
-      // eslint-disable-next-line no-console
-      console.warn('[KycFullTakeover] Xrm.Page.data.save unavailable — form must be saved manually to persist takeover status');
+      debugWarn('[KycFullTakeover] Xrm.Page.data.save unavailable — form must be saved manually to persist takeover status');
       return;
     }
     setTimeout(() => {
@@ -174,13 +173,11 @@ export class KycFullTakeover implements ComponentFramework.StandardControl<IInpu
         const result = saveFn();
         if (result && typeof (result as Promise<unknown>).catch === 'function') {
           (result as Promise<unknown>).catch((e: unknown) => {
-            // eslint-disable-next-line no-console
-            console.error('[KycFullTakeover] auto-save rejected', e);
+            debugError('[KycFullTakeover] auto-save rejected', e);
           });
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[KycFullTakeover] auto-save threw', e);
+        debugError('[KycFullTakeover] auto-save threw', e);
       }
     }, 200);
   }
