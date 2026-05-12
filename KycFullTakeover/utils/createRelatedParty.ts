@@ -40,7 +40,23 @@ function partyBindKey(etn: 'contact' | 'account'): string {
   return etn === 'account' ? 'syg_relatedpartyid_account@odata.bind' : 'syg_relatedpartyid_contact@odata.bind';
 }
 
-/** Builds the body for the new contact/account POST. */
+/** Builds the body for the new contact/account POST.
+ *
+ * NB: the agent payload uses the syg_KYCProfile field names (syg_dateofbirth,
+ * syg_accountholdernationalityid, syg_accountholderdomicileid, syg_domicilecountryid,
+ * syg_mainbusinessactivityid) because that's the shape the agent already knows
+ * for the KYC profile. The CONTACT and ACCOUNT entities use DIFFERENT field names
+ * (verified against the SygnumKYC schema dump):
+ *
+ *   syg_dateofbirth                  → birthdate                    (contact)
+ *   syg_accountholdernationalityid   → new_nationality1id@odata.bind (contact)
+ *   syg_accountholderdomicileid      → new_countryid@odata.bind      (contact)
+ *   syg_domicilecountryid            → new_countryid@odata.bind      (account)
+ *   syg_mainbusinessactivityid       → NO EQUIVALENT on account — dropped silently.
+ *
+ * Mapping happens here so the agent payload contract stays stable; only this
+ * write step knows the target entity's schema.
+ */
 function buildNewPartyBody(ref: CreateNewPartyRef): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (ref.etn === 'contact') {
@@ -50,12 +66,12 @@ function buildNewPartyBody(ref: CreateNewPartyRef): Record<string, unknown> {
     if (a.fullname)                         out['fullname']                         = a.fullname;
     // multi-select picklist on the wire is a comma-separated string of int values
     if (a.new_typeofcontact !== undefined)  out['new_typeofcontact']                = String(a.new_typeofcontact);
-    if (a.syg_dateofbirth)                  out['syg_dateofbirth']                  = a.syg_dateofbirth;
+    if (a.syg_dateofbirth)                  out['birthdate']                        = a.syg_dateofbirth;
     if (a.syg_accountholdernationalityid?.id) {
-      out['syg_AccountHolderNationalityID@odata.bind'] = `/new_countries(${a.syg_accountholdernationalityid.id})`;
+      out['new_nationality1id@odata.bind'] = `/new_countries(${a.syg_accountholdernationalityid.id})`;
     }
     if (a.syg_accountholderdomicileid?.id) {
-      out['syg_AccountHolderDomicileID@odata.bind']    = `/new_countries(${a.syg_accountholderdomicileid.id})`;
+      out['new_countryid@odata.bind']      = `/new_countries(${a.syg_accountholderdomicileid.id})`;
     }
     if (a.emailaddress1)                    out['emailaddress1']                    = a.emailaddress1;
     if (a.telephone1)                       out['telephone1']                       = a.telephone1;
@@ -63,11 +79,12 @@ function buildNewPartyBody(ref: CreateNewPartyRef): Record<string, unknown> {
     const a = ref.createNew as NewAccountAttributes;
     if (a.new_typeofcontact !== undefined)  out['new_typeofcontact']                = String(a.new_typeofcontact);
     if (a.syg_domicilecountryid?.id) {
-      out['syg_domicilecountryid@odata.bind']      = `/new_countries(${a.syg_domicilecountryid.id})`;
+      out['new_countryid@odata.bind']      = `/new_countries(${a.syg_domicilecountryid.id})`;
     }
-    if (a.syg_mainbusinessactivityid?.id) {
-      out['syg_mainbusinessactivityid@odata.bind'] = `/syg_businessactivitieses(${a.syg_mainbusinessactivityid.id})`;
-    }
+    // syg_mainbusinessactivityid has no equivalent attribute on the account
+    // entity in the SygnumKYC schema. Drop silently — the agent's intent is
+    // recorded on the syg_relatedclientparties junction row instead (via
+    // syg_mainbusinessactivityid on that entity, which DOES exist).
     if (a.emailaddress1)                    out['emailaddress1']                    = a.emailaddress1;
     if (a.telephone1)                       out['telephone1']                       = a.telephone1;
     // accounts require a name; use the ref.name as the company name fallback
